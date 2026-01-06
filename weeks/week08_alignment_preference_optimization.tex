@@ -1,0 +1,168 @@
+\section{Week 8: Alignment, Instruction Tuning, and Preference Optimization}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain why pretraining alone is insufficient for safe deployment
+  \item Distinguish capability training from alignment training
+  \item Understand supervised instruction tuning (SFT)
+  \item Understand preference-based optimization (RLHF / DPO-style)
+  \item Identify systems-level and human-factors risks introduced by alignment
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Post-training}
+\begin{itemize}
+  \item Instruction tuning
+  \item Preference learning
+  \item Behavior shaping
+\end{itemize}
+
+\textbf{Human interface}
+\begin{itemize}
+  \item Human feedback loops
+  \item Normative objectives
+  \item Value encoding
+\end{itemize}
+
+\subsection{Conceptual Core: Capability vs Alignment}
+
+Pretraining optimizes for:
+\begin{quote}
+\emph{Statistical prediction of text}
+\end{quote}
+
+Alignment optimizes for:
+\begin{quote}
+\emph{Human-preferred behavior under constraints}
+\end{quote}
+
+These objectives are related but not identical.
+
+Alignment does not add new knowledge; it reshapes how existing knowledge is expressed.
+
+\subsection{Supervised Instruction Tuning (SFT)}
+
+SFT fine-tunes a pretrained model on datasets of:
+\[
+(\text{instruction}, \text{desired response})
+\]
+
+Effects:
+\begin{itemize}
+  \item improves instruction following,
+  \item changes tone and verbosity,
+  \item reduces irrelevant completions.
+\end{itemize}
+
+Limitations:
+\begin{itemize}
+  \item brittle outside training distribution,
+  \item encodes annotator bias,
+  \item scales poorly with task diversity.
+\end{itemize}
+
+\subsection{Preference-Based Optimization}
+
+Preference optimization uses comparisons:
+\[
+(\text{prompt}, y^+, y^-)
+\]
+
+where $y^+$ is preferred over $y^-$.
+
+Approaches include:
+\begin{itemize}
+  \item Reinforcement Learning from Human Feedback (RLHF),
+  \item Direct Preference Optimization (DPO).
+\end{itemize}
+
+These methods optimize relative preference rather than absolute correctness.
+
+\subsection{What Alignment Changes}
+
+Alignment tends to change:
+\begin{itemize}
+  \item refusal behavior,
+  \item politeness and tone,
+  \item verbosity,
+  \item safety-related responses.
+\end{itemize}
+
+It does not:
+\begin{itemize}
+  \item make models truthful,
+  \item eliminate hallucinations,
+  \item guarantee ethical behavior.
+\end{itemize}
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Predictable behavior under sensitive prompts
+  \item Transparency about limitations
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Separation of base model and alignment layers
+  \item Auditable post-training pipeline
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Red-teaming
+  \item Behavioral regression testing
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Continuous monitoring for drift
+  \item Incident response processes
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Alignment introduces new human risks:
+\begin{itemize}
+  \item overtrust due to polite fluency,
+  \item false sense of safety,
+  \item normative opacity (whose values?).
+\end{itemize}
+
+Human users often conflate:
+\begin{quote}
+Aligned behavior $\neq$ correct or ethical behavior
+\end{quote}
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{ouyang2022training} — InstructGPT / RLHF
+  \item \citet{rafailov2023direct} — Direct Preference Optimization
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS324 — alignment and foundation models  
+  \url{https://stanford-cs324.github.io/winter2022/}
+
+  \item Berkeley AI Safety lectures  
+  \url{https://aisafety.berkeley.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week08/week08\_lab\_alignment\_preference.ipynb}.
+
+\subsection{Week 8 Takeaway}
+
+\begin{quote}
+Alignment shapes how models behave, not what they fundamentally know.
+\end{quote}
+
+

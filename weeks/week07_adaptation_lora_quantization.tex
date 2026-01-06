@@ -1,0 +1,164 @@
+\section{Week 7: Model Adaptation, LoRA, Quantization, and Deployment Reality}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain why full fine-tuning is rarely used in production
+  \item Understand parameter-efficient fine-tuning (PEFT)
+  \item Describe LoRA and how it modifies linear layers
+  \item Reason about quantization and precision tradeoffs
+  \item Design a validation strategy for adapted models
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Adaptation}
+\begin{itemize}
+  \item Fine-tuning vs parameter-efficient fine-tuning
+  \item Low-Rank Adaptation (LoRA)
+\end{itemize}
+
+\textbf{Deployment}
+\begin{itemize}
+  \item Quantization
+  \item Memory and latency constraints
+  \item Model versioning
+\end{itemize}
+
+\subsection{Conceptual Core: Why Full Fine-Tuning Breaks Down}
+
+Full fine-tuning updates \emph{all} model parameters.
+For modern LLMs, this implies:
+\begin{itemize}
+  \item prohibitive compute cost,
+  \item catastrophic forgetting,
+  \item versioning and rollback complexity,
+  \item high operational risk.
+\end{itemize}
+
+As a result, most production systems rely on \emph{parameter-efficient adaptation}.
+
+\subsection{Parameter-Efficient Fine-Tuning (PEFT)}
+
+PEFT methods freeze the base model and train a small number of additional parameters.
+
+Benefits:
+\begin{itemize}
+  \item faster training,
+  \item reduced memory footprint,
+  \item safer updates,
+  \item easier rollback.
+\end{itemize}
+
+LoRA is the dominant PEFT technique for LLMs.
+
+\subsection{Low-Rank Adaptation (LoRA)}
+
+LoRA modifies a linear layer:
+
+\[
+W x \rightarrow (W + \Delta W) x
+\]
+
+where:
+
+\[
+\Delta W = A B,\quad A \in \mathbb{R}^{d \times r},\ B \in \mathbb{R}^{r \times k}
+\]
+
+with rank $r \ll \min(d,k)$.
+
+Only $A$ and $B$ are trained; $W$ remains frozen.
+
+\subsection{Why LoRA Works}
+
+Empirically, many adaptation tasks lie in a low-rank subspace.
+LoRA exploits this by:
+\begin{itemize}
+  \item preserving pretrained knowledge,
+  \item limiting update capacity,
+  \item improving stability.
+\end{itemize}
+
+\subsection{Quantization}
+
+Quantization reduces numerical precision (e.g.\ FP32 → FP16 → INT8).
+
+Benefits:
+\begin{itemize}
+  \item reduced memory usage,
+  \item faster inference,
+  \item lower energy consumption.
+\end{itemize}
+
+Risks:
+\begin{itemize}
+  \item numerical instability,
+  \item output drift,
+  \item amplified rare-token errors.
+\end{itemize}
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Fast iteration with bounded risk
+  \item Predictable inference cost
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Frozen base model + adapters
+  \item Precision-aware serving stack
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Regression testing against base model
+  \item Task-specific evaluation suites
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Adapter versioning
+  \item Rollback and A/B testing
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Common misconceptions:
+\begin{itemize}
+  \item ``The model has been retrained''
+  \item ``Quantization only affects speed''
+\end{itemize}
+
+In reality, adaptation changes behavior subtly and requires careful validation.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{hu2021lora} — LoRA
+  \item \citet{dettmers2023qlora} — QLoRA
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS324 — model adaptation and deployment  
+  \url{https://stanford-cs324.github.io/winter2022/}
+
+  \item MIT 6.S191 — practical deep learning systems  
+  \url{https://introtodeeplearning.mit.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week07/week07\_lab\_adaptation\_lora\_quantization.ipynb}.
+
+\subsection{Week 7 Takeaway}
+
+\begin{quote}
+Most real-world LLM improvements come from *adapting* models safely, not retraining them from scratch.
+\end{quote}
+

@@ -1,0 +1,171 @@
+\section{Week 9: LLM Systems — Retrieval, Tool Use, and Evaluation Harnesses}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Reason about LLMs as components in larger systems
+  \item Explain Retrieval-Augmented Generation (RAG)
+  \item Understand tool use as structured I/O, not “reasoning”
+  \item Design evaluation harnesses for LLM systems
+  \item Identify system-level failure modes and silent errors
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{System architecture}
+\begin{itemize}
+  \item Retrieval pipelines
+  \item Prompt construction
+  \item Tool interfaces
+\end{itemize}
+
+\textbf{Evaluation}
+\begin{itemize}
+  \item Task-specific test sets
+  \item Regression testing
+  \item Human-in-the-loop evaluation
+\end{itemize}
+
+\subsection{Conceptual Core: LLMs Are Not Standalone Systems}
+
+Modern LLM deployments rarely rely on the model alone.
+Instead, they combine:
+\begin{itemize}
+  \item pretrained models,
+  \item external knowledge sources,
+  \item structured tools,
+  \item application logic.
+\end{itemize}
+
+The system boundary matters more than the model internals.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+RAG augments generation by conditioning on retrieved documents:
+
+\[
+P(y \mid x) \rightarrow P(y \mid x, d_1, \dots, d_k)
+\]
+
+where $d_i$ are retrieved from an external corpus.
+
+Benefits:
+\begin{itemize}
+  \item reduced hallucination,
+  \item up-to-date knowledge,
+  \item traceable sources.
+\end{itemize}
+
+Risks:
+\begin{itemize}
+  \item retrieval errors,
+  \item prompt injection,
+  \item false sense of grounding.
+\end{itemize}
+
+\subsection{Tool Use as Interface Design}
+
+Tool use is often framed as “reasoning,” but operationally it is:
+\begin{itemize}
+  \item structured input/output,
+  \item constrained action spaces,
+  \item orchestration by external code.
+\end{itemize}
+
+The LLM proposes actions; the system executes them.
+
+\subsection{Prompt Construction as a System Artifact}
+
+Prompts encode:
+\begin{itemize}
+  \item task specification,
+  \item retrieved context,
+  \item safety constraints.
+\end{itemize}
+
+They must be:
+\begin{itemize}
+  \item versioned,
+  \item tested,
+  \item audited.
+\end{itemize}
+
+Prompt changes are system changes.
+
+\subsection{Evaluation Harnesses}
+
+Evaluating LLM systems requires:
+\begin{itemize}
+  \item representative test cases,
+  \item clear success criteria,
+  \item automated regression detection.
+\end{itemize}
+
+Naive metrics (e.g.\ BLEU) are often misleading.
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Correctness under distribution shift
+  \item Graceful failure modes
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Modular components
+  \item Clear interfaces and contracts
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item End-to-end testing
+  \item Red-teaming of retrieval and tools
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Logging and traceability
+  \item Continuous evaluation
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Common risks include:
+\begin{itemize}
+  \item automation bias,
+  \item overtrust in retrieved content,
+  \item opaque failure chains.
+\end{itemize}
+
+Users often attribute errors to the model rather than the system.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{lewis2020retrieval} — RAG
+  \item \citet{yao2023react} — tool use and reasoning-action loops
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS324 — LLM systems and evaluation  
+  \url{https://stanford-cs324.github.io/winter2022/}
+
+  \item Berkeley AI Systems lectures  
+  \url{https://bair.berkeley.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week09/week09\_lab\_llm\_systems\_rag\_eval.ipynb}.
+
+\subsection{Week 9 Takeaway}
+
+\begin{quote}
+Most LLM failures are system failures, not model failures.
+\end{quote}
+
+

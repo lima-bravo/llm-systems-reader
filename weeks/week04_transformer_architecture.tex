@@ -1,0 +1,181 @@
+\section{Week 4: The Transformer — Attention as the Core Computational Primitive}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Derive scaled dot-product self-attention
+  \item Explain the roles of queries, keys, and values
+  \item Understand the structure of a Transformer block
+  \item Reason about residual streams and layer normalization
+  \item Explain why Transformers scale better than prior sequence models
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Core architecture}
+\begin{itemize}
+  \item Token embeddings + positional information
+  \item Self-attention (Q, K, V)
+  \item Multi-head attention
+  \item Feed-forward (MLP) blocks
+  \item Residual connections and layer normalization
+\end{itemize}
+
+\textbf{Systems relevance}
+\begin{itemize}
+  \item Parallelism and scalability
+  \item Memory and compute tradeoffs
+  \item Attention as content-addressable memory
+\end{itemize}
+
+\subsection{Conceptual Core: Why Attention Replaced Recurrence}
+
+Prior sequence models (RNNs, LSTMs) process tokens sequentially, limiting:
+\begin{itemize}
+  \item parallelism,
+  \item long-range dependency modeling,
+  \item scalability.
+\end{itemize}
+
+Transformers eliminate recurrence entirely.
+Instead, they allow each token to attend directly to every other token in the context window.
+
+\subsection{Scaled Dot-Product Self-Attention}
+
+Given an input sequence represented as vectors
+\[
+X \in \mathbb{R}^{T \times d}
+\]
+
+we compute:
+
+\[
+Q = XW_Q,\quad K = XW_K,\quad V = XW_V
+\]
+
+Attention weights are:
+
+\[
+A = \mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)
+\]
+
+and outputs:
+
+\[
+\mathrm{Attention}(Q,K,V) = AV
+\]
+
+Interpretation:
+\begin{itemize}
+  \item Queries ask questions
+  \item Keys advertise content
+  \item Values carry information
+\end{itemize}
+
+This is best understood as \emph{learned, differentiable lookup}.
+
+\subsection{Multi-Head Attention}
+
+Instead of a single attention operation, Transformers use multiple heads:
+
+\[
+\mathrm{MHA}(X) = \mathrm{Concat}(h_1,\dots,h_H)W_O
+\]
+
+Each head can learn a different relational pattern:
+\begin{itemize}
+  \item syntax,
+  \item coreference,
+  \item positional relationships.
+\end{itemize}
+
+\subsection{The Transformer Block}
+
+A decoder-style Transformer block consists of:
+
+\begin{enumerate}
+  \item LayerNorm
+  \item Masked self-attention
+  \item Residual connection
+  \item LayerNorm
+  \item Feed-forward network (MLP)
+  \item Residual connection
+\end{enumerate}
+
+The residual stream allows information to flow across layers with minimal degradation.
+
+\subsection{Why Positional Information Is Required}
+
+Attention is permutation-invariant.
+Without positional encoding, token order is lost.
+
+Position information is injected via:
+\begin{itemize}
+  \item sinusoidal encodings,
+  \item learned embeddings,
+  \item rotary position encodings (conceptually).
+\end{itemize}
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Efficient parallel computation
+  \item Stable training across depth
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Attention scales as $O(T^2)$
+  \item KV-cache reduces inference cost
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Inspect attention patterns
+  \item Check masking correctness
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Context window management
+  \item Memory and latency monitoring
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Common misunderstandings:
+\begin{itemize}
+  \item ``Attention equals explanation'' (it does not)
+  \item Overinterpreting attention visualizations
+\end{itemize}
+
+Attention weights reflect internal computation, not human-interpretable reasoning.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{vaswani2017attention} — Transformer architecture
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS224N — Transformers and attention  
+  \url{https://web.stanford.edu/class/cs224n/}
+
+  \item MIT 6.S191 — Attention mechanisms  
+  \url{https://introtodeeplearning.mit.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week04/week04\_lab\_transformer\_blocks.ipynb}.
+
+\subsection{Week 4 Takeaway}
+
+\begin{quote}
+The Transformer turns sequence modeling into parallel, differentiable memory access.
+\end{quote}
+

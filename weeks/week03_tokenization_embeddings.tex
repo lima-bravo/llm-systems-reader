@@ -1,0 +1,173 @@
+\section{Week 3: Tokenization and Embeddings — From Text to Vectors}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain why tokenization is a design choice, not a neutral preprocessing step
+  \item Compare word-level and subword-level tokenization
+  \item Understand embeddings as learned geometric representations
+  \item Reason about how meaning, similarity, and analogy emerge in vector spaces
+  \item Identify system-level consequences of tokenization decisions
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Input representation}
+\begin{itemize}
+  \item Tokenization (word vs subword)
+  \item Vocabulary construction
+  \item Token IDs and special tokens
+\end{itemize}
+
+\textbf{Representation learning}
+\begin{itemize}
+  \item Embedding layers
+  \item Semantic geometry
+  \item Similarity and clustering
+\end{itemize}
+
+\subsection{Conceptual Core: Language as Discrete Symbols}
+
+Neural networks operate on vectors in $\mathbb{R}^n$, but natural language is discrete and symbolic.
+Tokenization is the process that defines the mapping:
+
+\[
+\text{text} \rightarrow \text{tokens} \rightarrow \text{integers} \rightarrow \text{vectors}
+\]
+
+This mapping is:
+\begin{itemize}
+  \item lossy,
+  \item irreversible,
+  \item and deeply consequential.
+\end{itemize}
+
+Once tokenized, the model never ``sees'' characters or words again — only token IDs.
+
+\subsection{Word-Level Tokenization}
+
+In word-level tokenization, text is split on whitespace or punctuation.
+This approach is intuitive but brittle:
+\begin{itemize}
+  \item out-of-vocabulary (OOV) words,
+  \item poor handling of morphology,
+  \item exploding vocabulary size.
+\end{itemize}
+
+Early neural language models relied heavily on this approach.
+
+\subsection{Subword Tokenization}
+
+Modern LLMs use subword tokenization (e.g.\ Byte Pair Encoding).
+
+Key idea:
+\begin{itemize}
+  \item frequent character sequences become tokens,
+  \item rare words are decomposed into smaller units.
+\end{itemize}
+
+This allows:
+\begin{itemize}
+  \item open-vocabulary modeling,
+  \item graceful handling of neologisms,
+  \item shared statistical strength across words.
+\end{itemize}
+
+\subsection{Embeddings as Learned Geometry}
+
+Each token ID is mapped to a vector via an embedding matrix:
+
+\[
+\mathbf{e}_i \in \mathbb{R}^d
+\]
+
+These vectors are learned jointly with the rest of the model.
+Distances and directions in embedding space capture statistical regularities of language.
+
+Similarity is often measured via cosine similarity:
+
+\[
+\cos(\theta) = \frac{\mathbf{e}_i \cdot \mathbf{e}_j}{\|\mathbf{e}_i\| \|\mathbf{e}_j\|}
+\]
+
+\subsection{What Embeddings Encode (and What They Do Not)}
+
+Embeddings encode:
+\begin{itemize}
+  \item distributional similarity,
+  \item syntactic and semantic regularities,
+  \item task-relevant biases from training data.
+\end{itemize}
+
+They do not encode:
+\begin{itemize}
+  \item ground truth,
+  \item symbolic meaning,
+  \item explicit ontologies.
+\end{itemize}
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Tokenization must be stable across training and inference
+  \item Vocabulary changes imply retraining or incompatibility
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Tokenizers are part of the model contract
+  \item Embedding tables dominate memory footprint at scale
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Check tokenization invariants
+  \item Inspect embedding drift across versions
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Token-level monitoring
+  \item Input distribution shift detection
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Common failures include:
+\begin{itemize}
+  \item assuming ``word meaning'' is preserved,
+  \item misunderstanding why similar prompts tokenize differently,
+  \item prompt brittleness due to token boundaries.
+\end{itemize}
+
+These effects are invisible without explicit inspection.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{mikolov2013efficient} — word embeddings
+  \item \citet{sennrich2016bpe} — subword tokenization for neural MT
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS224N — word vectors and embeddings  
+  \url{https://web.stanford.edu/class/cs224n/}
+
+  \item MIT 6.864 — statistical NLP foundations  
+  \url{https://nlp.csail.mit.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week03/week03\_lab\_tokenization\_embeddings.ipynb}.
+
+\subsection{Week 3 Takeaway}
+
+\begin{quote}
+Tokenization defines the language a model can speak; embeddings define the geometry in which it thinks.
+\end{quote}
+

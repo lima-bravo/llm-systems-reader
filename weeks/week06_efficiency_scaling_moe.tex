@@ -1,0 +1,169 @@
+\section{Week 6: Efficiency, Scaling, and Mixture-of-Experts}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain why efficiency dominates modern LLM design
+  \item Understand the tradeoff between model capacity and compute cost
+  \item Describe Mixture-of-Experts (MoE) architectures and routing
+  \item Identify new failure modes introduced by conditional computation
+  \item Reason about MoE from a systems-engineering perspective
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Scaling and efficiency}
+\begin{itemize}
+  \item Dense vs sparse computation
+  \item Conditional parameter activation
+  \item Compute–memory tradeoffs
+\end{itemize}
+
+\textbf{Architectural patterns}
+\begin{itemize}
+  \item Mixture-of-Experts layers
+  \item Routing networks
+  \item Load balancing mechanisms
+\end{itemize}
+
+\subsection{Conceptual Core: Why Efficiency Matters}
+
+Modern LLMs are constrained not by parameter count alone, but by:
+\begin{itemize}
+  \item training compute,
+  \item inference latency,
+  \item memory bandwidth,
+  \item energy consumption.
+\end{itemize}
+
+A dense Transformer activates \emph{all} parameters for \emph{every} token.
+This scales cost linearly with model size.
+
+Mixture-of-Experts (MoE) architectures decouple:
+\begin{quote}
+\textbf{model capacity} from \textbf{per-token compute}.
+\end{quote}
+
+\subsection{Dense vs Sparse Computation}
+
+In a standard Transformer, the feed-forward block computes:
+
+\[
+\mathrm{FFN}(x) = W_2 \sigma(W_1 x)
+\]
+
+In an MoE layer, this becomes:
+
+\[
+\mathrm{MoE}(x) = \sum_{i \in \mathcal{E}(x)} g_i(x) \cdot \mathrm{Expert}_i(x)
+\]
+
+where:
+\begin{itemize}
+  \item $\mathcal{E}(x)$ is a small subset of experts,
+  \item $g_i(x)$ are gating weights,
+  \item only selected experts are evaluated.
+\end{itemize}
+
+\subsection{Routing and Gating}
+
+Routing is typically performed by a lightweight network that maps inputs to expert scores.
+
+Common strategies:
+\begin{itemize}
+  \item top-1 routing,
+  \item top-2 routing,
+  \item load-balanced routing.
+\end{itemize}
+
+Routing decisions introduce discreteness into otherwise smooth optimization.
+
+\subsection{Benefits of MoE}
+
+MoE architectures allow:
+\begin{itemize}
+  \item massive parameter counts,
+  \item lower inference cost,
+  \item specialization of sub-networks.
+\end{itemize}
+
+This makes them attractive for frontier-scale models.
+
+\subsection{New Failure Modes}
+
+MoE introduces new challenges:
+\begin{itemize}
+  \item expert collapse,
+  \item load imbalance,
+  \item routing instability,
+  \item harder debugging and reproducibility.
+\end{itemize}
+
+These are \emph{systems problems}, not merely modeling problems.
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Predictable latency
+  \item Robust routing under distribution shift
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Expert parallelism
+  \item Routing instrumentation
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Load balance metrics
+  \item Per-expert activation monitoring
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Capacity planning
+  \item Expert health checks
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+MoE systems are harder to reason about:
+\begin{itemize}
+  \item behavior may vary subtly across inputs,
+  \item failures may be localized to experts,
+  \item debugging requires new mental models.
+\end{itemize}
+
+This increases operational cognitive load.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{shazeer2017outrageously} — original MoE
+  \item \citet{fedus2021switch} — Switch Transformers
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS324 — scaling and efficiency  
+  \url{https://stanford-cs324.github.io/winter2022/}
+
+  \item Berkeley CS182 — systems aspects of deep learning  
+  \url{https://cs182.berkeley.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week06/week06\_lab\_efficiency\_moe.ipynb}.
+
+\subsection{Week 6 Takeaway}
+
+\begin{quote}
+Scaling LLMs is no longer a modeling problem alone — it is a distributed systems problem.
+\end{quote}
+
+

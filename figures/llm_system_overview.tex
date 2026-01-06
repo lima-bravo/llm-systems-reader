@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, align=center, minimum width=3cm, minimum height=1cm},
+  arrow/.style={->, thick}
+]
+
+\node[box] (user) {User / Environment};
+\node[box, below=of user] (app) {Application Layer\\UI / Guardrails};
+\node[box, below left=1.5cm and 1.5cm of app] (retrieval) {Retrieval / RAG};
+\node[box, below right=1.5cm and 1.5cm of app] (tools) {Tools / APIs};
+\node[box, below=3cm of app] (llm) {Foundation Model};
+\node[box, below=of llm] (monitor) {Monitoring / Logging};
+
+\draw[arrow] (user) -- (app);
+\draw[arrow] (app) -- (llm);
+\draw[arrow] (retrieval) -- (llm);
+\draw[arrow] (tools) -- (llm);
+\draw[arrow] (llm) -- (monitor);
+
+\end{tikzpicture}
+

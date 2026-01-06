@@ -1,0 +1,194 @@
+\section{Week 1: Statistical Learning Foundations for Large Language Models}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Formally interpret a Large Language Model (LLM) as a conditional probabilistic model
+  \item Re-derive the cross-entropy loss used in next-token prediction
+  \item Distinguish probability, confidence, and correctness in model outputs
+  \item Explain why LLM behavior must be understood statistically rather than symbolically
+  \item Identify early human-factor risks caused by misinterpreting probabilistic outputs
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+This week focuses on the statistical substrate underlying all LLM systems.
+
+\textbf{Modeling and Training}
+\begin{itemize}
+  \item Conditional probability modeling
+  \item Maximum likelihood estimation
+  \item Cross-entropy loss
+  \item Calibration and uncertainty
+\end{itemize}
+
+\textbf{Systems Perspective}
+\begin{itemize}
+  \item Interpretation of model outputs
+  \item Implications of probabilistic behavior for downstream system design
+\end{itemize}
+
+\subsection{Conceptual Core: What Kind of Object Is an LLM?}
+
+A Large Language Model defines a probability distribution over sequences of discrete symbols (tokens):
+
+\begin{equation}
+P_\theta(x_1, x_2, \ldots, x_T)
+\end{equation}
+
+Using the chain rule of probability, this joint distribution can be factorized as:
+
+\begin{equation}
+P_\theta(x_1, \ldots, x_T) = \prod_{t=1}^{T} P_\theta(x_t \mid x_1, \ldots, x_{t-1})
+\end{equation}
+
+Thus, an LLM is trained to model the conditional distribution of the next token given all previous tokens.
+
+Importantly, an LLM does \emph{not} explicitly store facts, rules, or symbols. Instead, it learns to approximate these conditional distributions from large corpora of text. Many characteristic behaviors of LLMs---including hallucinations, overconfidence, and brittle reasoning failures---follow directly from this probabilistic framing.
+
+\subsection{Maximum Likelihood and Next-Token Prediction}
+
+\subsubsection{Training Objective}
+
+Given a dataset of token sequences
+\[
+\mathcal{D} = \{x^{(i)}_1, \ldots, x^{(i)}_{T_i}\}_{i=1}^N,
+\]
+training proceeds by maximizing the log-likelihood of the observed data:
+
+\begin{equation}
+\mathcal{L}(\theta) = \sum_{i=1}^{N} \sum_{t=1}^{T_i} 
+\log P_\theta(x^{(i)}_t \mid x^{(i)}_{<t})
+\end{equation}
+
+Equivalently, this corresponds to minimizing the empirical cross-entropy loss:
+
+\begin{equation}
+\mathcal{L}_{CE} = - \mathbb{E}_{x \sim \mathcal{D}}
+\left[ \log P_\theta(x_t \mid x_{<t}) \right]
+\end{equation}
+
+At each timestep, next-token prediction is mathematically equivalent to multinomial logistic regression over the vocabulary.
+
+\subsubsection{Softmax and Logits}
+
+Let $z \in \mathbb{R}^{|V|}$ denote the vector of logits produced by the model for a vocabulary $V$.  
+The softmax function converts logits into probabilities:
+
+\begin{equation}
+P(x_t = v \mid x_{<t}) =
+\frac{\exp(z_v)}{\sum_{v' \in V} \exp(z_{v'})}
+\end{equation}
+
+A critical implication is that probabilities are \emph{relative}. Increasing the probability of one token necessarily decreases the probability of others.
+
+\subsection{Information-Theoretic Interpretation}
+
+The cross-entropy between the true data distribution $p$ and the model distribution $q_\theta$ can be decomposed as:
+
+\begin{equation}
+H(p, q_\theta) = H(p) + D_{\mathrm{KL}}(p \parallel q_\theta)
+\end{equation}
+
+Since $H(p)$ is fixed, minimizing cross-entropy corresponds to minimizing the Kullback--Leibler divergence between the data distribution and the model distribution.
+
+This highlights an important limitation: minimizing loss ensures distributional similarity, not semantic correctness. As a result, fluent but incorrect outputs can score well under the training objective.
+
+\subsection{Uncertainty, Confidence, and Calibration}
+
+\subsubsection{Probability vs.\ Confidence}
+
+It is essential to distinguish:
+\begin{itemize}
+  \item \textbf{Probability}: the model-assigned likelihood of a token
+  \item \textbf{Confidence}: the sharpness (entropy) of the output distribution
+  \item \textbf{Correctness}: correspondence with external ground truth
+\end{itemize}
+
+LLMs are frequently miscalibrated, exhibiting high confidence on incorrect outputs and low confidence on rare but correct ones.
+
+\subsubsection{Temperature Scaling}
+
+During inference, logits are often rescaled by a temperature parameter $T$:
+
+\begin{equation}
+P_T(v) \propto \exp(z_v / T)
+\end{equation}
+
+Lower temperatures ($T < 1$) sharpen distributions, while higher temperatures ($T > 1$) increase entropy. Temperature modifies uncertainty but does not introduce new knowledge.
+
+\subsection{Systems Engineering Implications}
+
+From a systems engineering standpoint, an LLM should be treated as a stochastic subsystem with opaque internal state and non-stationary performance.
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Assumption} & \textbf{Consequence} \\
+\hline
+Outputs are probabilistic & Variance must be managed \\
+Training data is finite & Distribution shift is inevitable \\
+No truth guarantee & External verification is required \\
+\hline
+\end{tabular}
+\end{center}
+
+These properties motivate architectural patterns such as verification layers, retrieval augmentation, and human-in-the-loop review.
+
+\subsection{Human Factors and Failure Modes}
+
+A common early failure mode in LLM systems is automation bias:
+
+\begin{quote}
+``The model sounds confident, therefore it must be correct.''
+\end{quote}
+
+This arises from a mismatch between human epistemic intuitions and probabilistic text generation. Effective mitigations include structured outputs, confidence visualization, and explicit source attribution.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{bishop2006prml} — \emph{Pattern Recognition and Machine Learning}
+  \item \citet{murphy2012mlpp} — \emph{Machine Learning: A Probabilistic Perspective}
+  \item \citet{shannon1948} — \emph{A Mathematical Theory of Communication}
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Caltech CS156 — \emph{Learning From Data}  
+  \url{https://www.youtube.com/playlist?list=PLD63A284B7615313A}
+
+  \item MIT 6.036 — \emph{Introduction to Machine Learning (OCW)}  
+  \url{https://ocw.mit.edu/courses/6-036-introduction-to-machine-learning-fall-2020/}
+
+  \item Stanford CS229 — \emph{Machine Learning} (probability and optimization sections)  
+  \url{https://cs229.stanford.edu/}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+\textbf{Objective:} Implement multinomial logistic regression for a toy sequence task using Python and PyTorch.
+
+\textbf{Tasks:}
+\begin{enumerate}
+  \item Train a simple next-token classifier
+  \item Inspect output probability distributions
+  \item Measure accuracy, entropy, and calibration error
+\end{enumerate}
+
+\textbf{Deliverable:}
+\begin{itemize}
+  \item Jupyter notebook
+  \item One-page reflection on probabilistic intuition failures
+\end{itemize}
+
+\subsection{Week 1 Takeaway}
+
+\begin{quote}
+An LLM is not a knowledge base or a reasoner; it is a probabilistic sequence model trained on text.
+\end{quote}
+
+All subsequent components---Transformers, alignment, retrieval, tools, and agents---build on this foundation.
+

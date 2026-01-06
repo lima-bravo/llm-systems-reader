@@ -1,0 +1,67 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Preamble ---
+\input{preamble}
+
+\title{Large Language Models as Engineered Systems}
+\subtitle{A Systems, Statistical, and Human-Factors Primer}
+\author{ }
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% INTRODUCTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Preface}
+\addcontentsline{toc}{section}{Preface}
+
+This reader is intended for readers with a strong background in mathematics,
+statistics, and computer science who wish to reason rigorously about modern
+Large Language Model (LLM) systems.
+
+The focus is not on using LLMs as black boxes, but on understanding them as
+\emph{engineered socio-technical systems}, integrating:
+\begin{itemize}
+  \item probabilistic modeling,
+  \item large-scale optimization,
+  \item systems engineering tradeoffs,
+  \item human factors and failure modes.
+\end{itemize}
+
+Each weekly handout combines theory, systems design considerations, and
+practical experimentation.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% WEEKS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\input{weeks/week01_statistical_foundations}
+
+% Future weeks (uncomment as they are added)
+% \input{weeks/week02_optimization}
+% \input{weeks/week03_embeddings}
+% \input{weeks/week04_transformers}
+% \input{weeks/week05_pretraining}
+% \input{weeks/week06_scaling}
+% \input{weeks/week07_adaptation}
+% \input{weeks/week08_alignment}
+% \input{weeks/week09_llm_systems}
+% \input{weeks/week10_governance}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% REFERENCES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newpage
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\end{document}
+

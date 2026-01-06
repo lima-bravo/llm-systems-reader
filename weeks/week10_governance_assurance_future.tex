@@ -1,0 +1,143 @@
+\section{Week 10: Governance, Assurance, and the Future of AI Systems}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Reason about LLMs as socio-technical systems
+  \item Identify governance and risk management needs for AI systems
+  \item Construct a basic AI assurance case
+  \item Distinguish technical risk from organizational and human risk
+  \item Articulate limits of current LLM paradigms
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{System context}
+\begin{itemize}
+  \item Organizational embedding
+  \item Human–AI interaction
+  \item Lifecycle management
+\end{itemize}
+
+\textbf{Governance}
+\begin{itemize}
+  \item Assurance cases
+  \item Risk controls
+  \item Accountability mechanisms
+\end{itemize}
+
+\subsection{Conceptual Core: LLMs as Socio-Technical Systems}
+
+LLMs do not operate in isolation.
+They are embedded in:
+\begin{itemize}
+  \item organizations,
+  \item workflows,
+  \item regulatory environments,
+  \item human decision-making loops.
+\end{itemize}
+
+Most real-world failures arise from \emph{system-level interactions}, not model internals.
+
+\subsection{From Model Evaluation to System Assurance}
+
+Benchmark scores do not constitute assurance.
+
+Assurance requires structured arguments:
+\begin{itemize}
+  \item what claims are made about the system,
+  \item under what assumptions,
+  \item supported by what evidence.
+\end{itemize}
+
+This mirrors safety-critical engineering practices.
+
+\subsection{Hazards and Failure Modes}
+
+Common hazard categories:
+\begin{itemize}
+  \item technical (hallucination, brittleness),
+  \item human (overtrust, deskilling),
+  \item organizational (automation bias, diffusion of responsibility),
+  \item temporal (model drift, data staleness).
+\end{itemize}
+
+Not all hazards are eliminable.
+
+\subsection{Controls and Mitigations}
+
+Controls operate at multiple levels:
+\begin{itemize}
+  \item \textbf{Preventive}: prompt constraints, retrieval grounding
+  \item \textbf{Detective}: monitoring, logging, audits
+  \item \textbf{Corrective}: rollback, human override, retraining
+\end{itemize}
+
+Effective systems combine technical and procedural controls.
+
+\subsection{Assurance Cases for AI}
+
+An assurance case typically includes:
+\begin{itemize}
+  \item \textbf{Claims}: what the system is safe/fit to do
+  \item \textbf{Evidence}: tests, audits, evaluations
+  \item \textbf{Assumptions}: operating conditions, user behavior
+\end{itemize}
+
+Assurance is never absolute — it is contextual and revisable.
+
+\subsection{Human Factors}
+
+Human operators:
+\begin{itemize}
+  \item interpret outputs,
+  \item decide when to trust or override,
+  \item adapt behavior over time.
+\end{itemize}
+
+Ignoring human factors is a primary cause of system failure.
+
+\subsection{Limits of the Current Paradigm}
+
+Current LLMs:
+\begin{itemize}
+  \item lack grounded understanding,
+  \item have no intrinsic goals,
+  \item optimize proxy objectives.
+\end{itemize}
+
+Future progress may require:
+\begin{itemize}
+  \item new training paradigms,
+  \item tighter integration with symbolic systems,
+  \item improved governance frameworks.
+\end{itemize}
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{amodei2016concrete} — AI safety problems
+  \item \citet{leslie2021understanding} — AI assurance
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS324 — governance and foundation models  
+  \url{https://stanford-cs324.github.io/winter2022/}
+
+  \item MIT AI Policy lectures  
+  \url{https://ai.mit.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week10/week10\_lab\_governance\_assurance.ipynb}.
+
+\subsection{Week 10 Takeaway}
+
+\begin{quote}
+AI systems cannot be made safe by models alone; safety emerges from design, governance, and human judgment.
+\end{quote}
+

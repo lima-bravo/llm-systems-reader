@@ -1,0 +1,198 @@
+\section{Week 2: Optimization, Generalization, and Scaling Intuition}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain why gradient-based optimization behaves counterintuitively in deep networks
+  \item Distinguish optimization failure from generalization failure
+  \item Understand why overparameterization often \emph{helps} generalization
+  \item Reason about learning rates, optimizers, and schedules as system-level design choices
+  \item Connect small-scale experiments to large-scale LLM training behavior
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Training dynamics}
+\begin{itemize}
+  \item Gradient descent and stochasticity
+  \item Adam / AdamW vs SGD
+  \item Learning-rate schedules
+  \item Overparameterization
+\end{itemize}
+
+\textbf{Systems relevance}
+\begin{itemize}
+  \item Training instability and regressions
+  \item Sensitivity to hyperparameters
+  \item Why scaling laws emerge empirically
+\end{itemize}
+
+\subsection{Conceptual Core: Optimization Is Not Inference}
+
+Training an LLM is a large-scale numerical optimization problem, not a logical inference procedure.
+The training objective from Week~1 is optimized via variants of stochastic gradient descent (SGD):
+
+\begin{equation}
+\theta_{t+1} = \theta_t - \eta_t \nabla_\theta \mathcal{L}(\theta_t)
+\end{equation}
+
+where:
+\begin{itemize}
+  \item $\theta$ are model parameters,
+  \item $\eta_t$ is the learning rate,
+  \item $\mathcal{L}$ is the empirical cross-entropy loss.
+\end{itemize}
+
+Crucially, this optimization occurs in:
+\begin{itemize}
+  \item very high-dimensional parameter spaces,
+  \item with non-convex loss surfaces,
+  \item using noisy gradient estimates.
+\end{itemize}
+
+Yet, modern deep networks reliably converge.
+
+\subsection{Why Overparameterization Does Not Doom Generalization}
+
+Classical intuition suggests that models with more parameters than data should overfit catastrophically.
+Empirically, deep networks exhibit \emph{benign overfitting}:
+\begin{itemize}
+  \item training loss goes to (near) zero,
+  \item test loss does not explode,
+  \item larger models often generalize better than smaller ones.
+\end{itemize}
+
+This behavior is not fully explained theoretically, but several mechanisms are believed to contribute:
+\begin{itemize}
+  \item implicit regularization from optimization dynamics,
+  \item flat minima bias,
+  \item data structure and redundancy,
+  \item early stopping.
+\end{itemize}
+
+For LLMs, this observation underpins the entire scaling paradigm.
+
+\subsection{Optimizers as Design Choices}
+
+\subsubsection{SGD vs AdamW}
+
+SGD updates parameters using raw gradient estimates.
+Adam-style optimizers maintain adaptive per-parameter learning rates.
+
+AdamW decouples weight decay from gradient updates, improving stability.
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Optimizer & Strengths & Risks \\
+\hline
+SGD & Simplicity, stability & Slow convergence \\
+Adam & Fast initial progress & Overfitting, sharp minima \\
+AdamW & Better generalization & Sensitive hyperparameters \\
+\hline
+\end{tabular}
+\end{center}
+
+Large language models almost universally rely on AdamW or closely related variants.
+
+\subsection{Learning Rate Schedules}
+
+The learning rate $\eta_t$ is often the single most important hyperparameter.
+
+Common schedules include:
+\begin{itemize}
+  \item constant learning rate,
+  \item linear warmup + decay,
+  \item cosine decay.
+\end{itemize}
+
+Warmup phases are especially critical for large models to avoid early divergence.
+
+\subsection{Empirical Scaling and Its Consequences}
+
+Empirical scaling laws show that loss decreases smoothly as a function of:
+\begin{itemize}
+  \item model size,
+  \item dataset size,
+  \item compute budget.
+\end{itemize}
+
+These relationships hold over many orders of magnitude and motivate:
+\begin{itemize}
+  \item predictability of returns on compute investment,
+  \item industrial-scale training pipelines,
+  \item architectural choices that prioritize scalability.
+\end{itemize}
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Training must be stable and repeatable
+  \item Failures must be detectable early
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Gradient clipping
+  \item Learning-rate warmup
+  \item Checkpointing and rollback
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Loss curve monitoring
+  \item Seed sensitivity testing
+  \item Small-scale proxy experiments
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Automated regression detection
+  \item Cost–quality tradeoff tracking
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+A recurring human failure mode is attributing training behavior to ``model intelligence''
+rather than optimization dynamics.
+
+Examples:
+\begin{itemize}
+  \item ``The model learned reasoning'' vs ``the loss surface permits generalizing minima''
+  \item Overinterpreting early training instability
+\end{itemize}
+
+Understanding optimization mechanics is essential for realistic expectations.
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{goodfellow2016dl} — optimization and generalization in deep learning
+  \item \citet{zhang2017understanding} — empirical study of overparameterization
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item MIT 6.S191 — optimization and deep learning practice  
+  \url{https://introtodeeplearning.mit.edu}
+
+  \item Berkeley CS182 — deep learning foundations  
+  \url{https://cs182.berkeley.edu}
+
+  \item Stanford CS229 — gradient descent and generalization  
+  \url{https://cs229.stanford.edu}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week02/week02\_lab\_optimization\_generalization.ipynb}.
+
+\subsection{Week 2 Takeaway}
+
+\begin{quote}
+Training behavior in LLMs is governed less by ``intelligence'' than by optimization dynamics operating in very high dimensions.
+\end{quote}
+

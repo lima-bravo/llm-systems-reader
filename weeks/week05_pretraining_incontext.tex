@@ -1,0 +1,163 @@
+\section{Week 5: Pretraining, GPT-Style Models, and In-Context Learning}
+
+\subsection{Learning Objectives}
+
+By the end of this week, you should be able to:
+\begin{itemize}
+  \item Explain the GPT-style pretraining paradigm
+  \item Understand in-context learning as inference-time behavior
+  \item Distinguish memorization from generalization
+  \item Identify evaluation pitfalls in language modeling
+  \item Reason about why prompting works at all
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Training paradigm}
+\begin{itemize}
+  \item Decoder-only Transformers
+  \item Autoregressive pretraining
+  \item Next-token prediction at scale
+\end{itemize}
+
+\textbf{Inference behavior}
+\begin{itemize}
+  \item Prompting
+  \item Few-shot and in-context learning
+  \item Sampling strategies
+\end{itemize}
+
+\subsection{Conceptual Core: Pretraining as Representation Learning}
+
+GPT-style models are trained on massive corpora using a single objective:
+
+\[
+\mathcal{L} = -\mathbb{E} \left[ \log P_\theta(x_t \mid x_{<t}) \right]
+\]
+
+No task labels are provided.
+All downstream behavior emerges from statistical regularities in text.
+
+This leads to a critical conceptual shift:
+\begin{quote}
+Training produces a general-purpose sequence model; prompting selects behavior.
+\end{quote}
+
+\subsection{Decoder-Only Architecture}
+
+GPT-style models use:
+\begin{itemize}
+  \item causal self-attention,
+  \item no encoder,
+  \item no explicit task heads.
+\end{itemize}
+
+This simplicity enables:
+\begin{itemize}
+  \item scalable pretraining,
+  \item flexible prompting,
+  \item uniform treatment of all tasks as text completion.
+\end{itemize}
+
+\subsection{In-Context Learning}
+
+In-context learning refers to the ability of a model to adapt its behavior based on examples provided in the prompt, without gradient updates.
+
+Key properties:
+\begin{itemize}
+  \item occurs at inference time,
+  \item does not modify parameters,
+  \item is sensitive to prompt format and ordering.
+\end{itemize}
+
+The dominant hypothesis is that in-context learning is a form of implicit meta-learning learned during pretraining.
+
+\subsection{Memorization vs Generalization}
+
+Large models inevitably memorize parts of their training data.
+However, they also:
+\begin{itemize}
+  \item recombine patterns,
+  \item interpolate between examples,
+  \item generalize to novel inputs.
+\end{itemize}
+
+Distinguishing these regimes empirically is difficult and error-prone.
+
+\subsection{Evaluation Pitfalls}
+
+Common evaluation failures include:
+\begin{itemize}
+  \item data contamination,
+  \item overly narrow benchmarks,
+  \item prompt overfitting,
+  \item interpreting fluency as correctness.
+\end{itemize}
+
+Careless evaluation can dramatically overestimate capability.
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements}
+\begin{itemize}
+  \item Clear separation between training and evaluation data
+  \item Reproducible prompting protocols
+\end{itemize}
+
+\textbf{Architecture}
+\begin{itemize}
+  \item Prompt templates as system artifacts
+  \item Versioning of prompts and decoding parameters
+\end{itemize}
+
+\textbf{Verification \& Validation}
+\begin{itemize}
+  \item Hold-out evaluation
+  \item Prompt robustness testing
+\end{itemize}
+
+\textbf{Operations}
+\begin{itemize}
+  \item Monitor prompt drift
+  \item Guard against prompt injection
+\end{itemize}
+
+\subsection{Human Factors and Failure Modes}
+
+Humans naturally anthropomorphize in-context learning as “understanding.”
+
+Failure modes include:
+\begin{itemize}
+  \item assuming persistent learning,
+  \item overtrusting few-shot performance,
+  \item neglecting distribution shift.
+\end{itemize}
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{radford2018improving} — GPT
+  \item \citet{brown2020language} — GPT-3 and in-context learning
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS224N — Language models and pretraining  
+  \url{https://web.stanford.edu/class/cs224n/}
+
+  \item Stanford CS324 — Foundation models  
+  \url{https://stanford-cs324.github.io/winter2022/}
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+See \texttt{labs/week05/week05\_lab\_pretraining\_incontext.ipynb}.
+
+\subsection{Week 5 Takeaway}
+
+\begin{quote}
+Pretraining creates a powerful statistical engine; prompting steers it, but does not retrain it.
+\end{quote}
+
+
