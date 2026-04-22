@@ -1,163 +1,625 @@
 \section{Week 5: Pretraining, GPT-Style Models, and In-Context Learning}
+\label{sec:week5-pretrain}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Explain the GPT-style pretraining paradigm
-  \item Understand in-context learning as inference-time behavior
-  \item Distinguish memorization from generalization
-  \item Identify evaluation pitfalls in language modeling
-  \item Reason about why prompting works at all
+  \item Describe an industrial-grade pretraining data pipeline
+        (acquisition, filtering, deduplication, licensing, red-flag
+        detection) and its failure modes.
+  \item Contrast autoregressive, masked, and prefix language modeling
+        objectives and argue why decoder-only autoregressive
+        dominates today.
+  \item Reason about batch packing, document boundaries, and
+        sequence-length schedules at pretraining scale.
+  \item Translate the Chinchilla scaling law into a compute-optimal
+        training plan.
+  \item Describe in-context learning empirically
+        (\citealt{brown2020language}) and three mechanistic
+        hypotheses: implicit Bayesian inference
+        (\citealt{xie2022explanation}), induction heads
+        (\citealt{olsson2022induction}), and gradient-descent-in-the-
+        forward-pass (\citealt{vonoswald2023transformers}).
+  \item Quantify few-shot format sensitivity, prompt ordering, and
+        label-space effects and their engineering implications.
+  \item State the math of greedy, beam, top-$k$, nucleus (top-$p$),
+        min-$p$, temperature, and repetition-penalty sampling.
+  \item Critique the emergence debate (\citealt{wei2022emergent} vs
+        \citealt{schaeffer2023mirage}) as a metric-artefact question.
+  \item Measure memorization and extraction risk
+        (\citealt{carlini2021extracting,carlini2023quantifying}) and
+        connect the results to governance controls.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
 \textbf{Training paradigm}
 \begin{itemize}
-  \item Decoder-only Transformers
-  \item Autoregressive pretraining
-  \item Next-token prediction at scale
+  \item Decoder-only architectures and autoregressive pretraining.
+  \item Data pipelines: Common Crawl, filtering, deduplication,
+        licensing.
+  \item Batch packing and sequence-length schedules.
 \end{itemize}
 
 \textbf{Inference behavior}
 \begin{itemize}
-  \item Prompting
-  \item Few-shot and in-context learning
-  \item Sampling strategies
+  \item Prompting and few-shot in-context learning.
+  \item Sampling strategies (greedy, beam, top-$k$, top-$p$, min-$p$,
+        temperature).
+  \item Emergent-capability claims and calibration caveats.
+\end{itemize}
+
+\textbf{Systems relevance}
+\begin{itemize}
+  \item Prompt versioning and evaluation harnesses.
+  \item Data contamination detection.
+  \item Memorization / extraction risk as an operational hazard.
 \end{itemize}
 
 \subsection{Conceptual Core: Pretraining as Representation Learning}
 
-GPT-style models are trained on massive corpora using a single objective:
-
-\[
-\mathcal{L} = -\mathbb{E} \left[ \log P_\theta(x_t \mid x_{<t}) \right]
-\]
-
-No task labels are provided.
-All downstream behavior emerges from statistical regularities in text.
-
-This leads to a critical conceptual shift:
+GPT-style pretraining optimizes a single objective: maximize the
+autoregressive log-likelihood of text under the causal factorization
+from Week~1:
+\begin{equation}
+\label{eq:week5-pretrain-obj}
+\mathcal{L}(\theta)
+ \;=\; -\,\E_{x \sim \mathcal{D}}
+       \Bigl[\,\textstyle\sum_{t=1}^{T} \log p_\theta(x_t \mid x_{<t})\Bigr].
+\end{equation}
+No task labels appear; all ``task'' structure is latent in the
+distribution $\mathcal{D}$. The conceptual consequence:
 \begin{quote}
-Training produces a general-purpose sequence model; prompting selects behavior.
+Training produces a general-purpose sequence model;
+prompting selects a behavior from it.
 \end{quote}
+This is the single most important systems insight of the era. A
+pretrained LLM is not a chatbot, a classifier, or a code assistant;
+it is a statistical engine over token sequences that can be steered
+toward any of those behaviors by appropriate context. Every
+downstream deployment (Weeks 7--11) is, at bottom, a mechanism for
+constructing the right prompts and constraining the outputs of this
+engine.
 
-\subsection{Decoder-Only Architecture}
+\subsection{Autoregressive, Masked, and Prefix Language Modeling}
 
-GPT-style models use:
+Three objectives have competed for the LLM crown; the decoder-only
+autoregressive objective has won for capability reasons that are
+worth understanding.
+
+\subsubsection{Autoregressive (Causal) LM}
+
+Eq.~\eqref{eq:week5-pretrain-obj}, with a causal mask (Week~4).
+Every position is both a training \emph{context} and a training
+\emph{target}: the cross-entropy is summed over all $T$ positions in a
+single forward pass. Architectures: GPT family, Llama, Mistral,
+Claude, Gemini, PaLM (with minor variants).
+
+\subsubsection{Masked LM (MLM)}
+
+Used in BERT~\citep{devlin2019bert}. Replace a fraction $p$ (typically
+15\%) of input tokens with a \texttt{[MASK]} sentinel and predict the
+originals. Bidirectional context (no causal mask) makes MLM excellent
+for representation learning -- BERT embeddings powered the 2018-2020
+NLP ecosystem -- but the model cannot \emph{generate} without
+auxiliary machinery.
+
+\subsubsection{Prefix LM / Span Corruption}
+
+T5~\citep{raffel2020t5} and UL2 train an encoder-decoder with
+\emph{span corruption}: contiguous spans of the input are replaced
+with sentinel tokens, and the decoder reconstructs them. This
+unifies MLM and autoregressive LM in a single objective. Gemini and
+some multilingual models retain a prefix-LM component.
+
+\subsubsection{Why Autoregressive Won}
+
+Three practical reasons:
+(i)~it generalizes to arbitrary prompt $\to$ completion tasks at
+inference time, so one pretrained model can serve all workloads;
+(ii)~it trains densely (loss per position, not per masked token),
+squeezing more signal from each forward pass;
+(iii)~it scales cleanly under the Chinchilla law without
+encoder/decoder partitioning. The engineering convenience -- one
+forward pass, one objective, one KV cache -- dominates.
+
+\subsection{The Pretraining Data Pipeline}
+
+\subsubsection{Acquisition}
+
+The dominant starting point is \emph{Common Crawl}, a monthly
+snapshot of the public Web currently totalling $\sim\!400$\,TB of
+WARC files. Commercial pretraining mixes in curated sources: code
+repositories (GitHub, StackOverflow), books (Project Gutenberg,
+licensed collections), scientific papers (arXiv, PubMed),
+encyclopedia (Wikipedia), Q\&A forums (Reddit, StackExchange), and
+dialogue corpora. Open-source reference pipelines: the
+Pile~\citep{gao2020pile} at 825\,GB; RedPajama~\citep{redpajama2023} as
+a 1.2\,T-token Llama-style mix.
+
+\subsubsection{Filtering}
+
+Raw Common Crawl is approximately $3\%$ usable text by volume. A
+typical filter cascade:
+\begin{enumerate}
+  \item \textbf{Language identification} (fastText / CLD3) -- drop
+        non-target languages.
+  \item \textbf{Quality classifiers} -- a small model trained to
+        distinguish ``book-like'' from ``spam-like'' text.
+  \item \textbf{Heuristic filters} -- minimum mean line length,
+        punctuation ratio, top-word ratio (Gopher filters).
+  \item \textbf{Toxicity / safety filters} -- keyword and
+        classifier-based removal of CSAM, extremist content, PII.
+  \item \textbf{Perplexity filtering} -- use a small reference model
+        to drop extreme-perplexity outliers (both garbage and
+        memorized).
+\end{enumerate}
+Each filter has a false-positive rate that disproportionately removes
+low-resource languages, minority dialects, and specialized domains.
+Filter choices are a primary driver of the cultural biases an LLM
+inherits.
+
+\subsubsection{Deduplication}
+
+\citet{lee2022deduplicating} showed that near-duplicate training
+examples cause disproportionate memorization and, counterintuitively,
+\emph{worse} generalization. Modern pipelines apply:
 \begin{itemize}
-  \item causal self-attention,
-  \item no encoder,
-  \item no explicit task heads.
+  \item \textbf{Exact dedup}: hash-match 13-gram shingles across the
+        corpus.
+  \item \textbf{Near-duplicate dedup}: MinHash-LSH at the document
+        level, typically at Jaccard threshold $\ge 0.8$.
+  \item \textbf{Eval contamination checks}: explicit 13-gram matching
+        against benchmark test sets (MMLU, GSM8K, HumanEval) with
+        removal.
 \end{itemize}
 
-This simplicity enables:
+\subsubsection{Licensing and Provenance}
+
+A major operational issue in 2024--2026: much Common-Crawl content is
+copyrighted; some jurisdictions permit text-and-data mining, others
+require opt-in. Responsible pipelines now maintain a per-document
+provenance log (source URL, crawl date, license detection, opt-out
+signals), and the regulatory surface (EU AI Act, US state laws,
+individual suits) is rapidly evolving. This becomes a Week~10
+governance input: your assurance case requires a defensible data
+provenance record.
+
+\subsubsection{Red-Flag Detection}
+
+Production pipelines also scan for: CSAM signatures, known PII
+corpuses, adversarial data-poisoning signatures, and data engineered
+to bypass filters. This is a moving adversarial front.
+
+\subsection{Batch Packing and Sequence-Length Schedules}
+
+\subsubsection{Packing}
+
+Documents have variable lengths but Transformers operate on
+fixed-length batches. Padding wastes FLOPs. The canonical solution is
+\emph{packing}: concatenate multiple short documents into a single
+sequence of length $T$, separated by the end-of-document token
+(\texttt{<|endoftext|>}, a.k.a.\ \texttt{<eos>}). Combined with a
+\emph{block-diagonal} attention mask (Week~4), attention cannot leak
+across documents within the same packed sequence, preserving the
+per-document autoregressive factorization.
+
+\subsubsection{Sequence-Length Schedules}
+
+Training at the full context length throughout pretraining is
+wasteful: short-context phases are cheap and establish the base
+capabilities; long-context capability can be added at the end by
+continued pretraining at extended $T$. A common schedule:
 \begin{itemize}
-  \item scalable pretraining,
-  \item flexible prompting,
-  \item uniform treatment of all tasks as text completion.
+  \item Phase 1: $T = 2048$ for $\sim\!90\%$ of tokens.
+  \item Phase 2: $T = 8192$ for $\sim\!8\%$ of tokens.
+  \item Phase 3: $T = 32\,768$ (or longer) for the final $\sim\!2\%$
+        of tokens, often with an adjusted RoPE base frequency
+        (``NTK-aware scaling'').
 \end{itemize}
+This strategy bought Llama-2's 32k context at a fraction of the
+compute a full-length pretrain would cost.
+
+\subsection{Scaling Laws Revisited: Compute-Optimal Training}
+
+From Week~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
+is
+\begin{equation}
+\label{eq:week5-chinchilla}
+L(N, D) \;=\; E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}.
+\end{equation}
+Under a compute budget $C = 6 N D$, the minimizing allocation is
+$N^\star \propto C^{1/2}, D^\star \propto C^{1/2}$, i.e.,
+\emph{roughly 20 training tokens per parameter} at current fitted
+constants. For a $10^{25}$ FLOPs budget this yields $N \sim 70$\,B,
+$D \sim 1.4$\,T tokens -- the Chinchilla recipe.
+
+\emph{Why this matters operationally}: the cost of an LLM is
+dominated by \emph{training} compute for frontier labs and by
+\emph{inference} compute for deployed services. A
+\emph{Chinchilla-undertrained} large model is wasteful for training
+but \emph{cheap to serve}; a \emph{Chinchilla-overtrained} small
+model is cheap to train per quality point but expensive per
+inference. Production choices (Llama-3 at 15T tokens for the 8B
+model) explicitly overtrain to optimize serving economics. This is a
+cost-engineering decision, not a scientific one.
 
 \subsection{In-Context Learning}
 
-In-context learning refers to the ability of a model to adapt its behavior based on examples provided in the prompt, without gradient updates.
+\subsubsection{The Empirical Result}
 
-Key properties:
+\citet{brown2020language} showed that a 175\,B-parameter
+autoregressive LM, given a prompt of the form
+\begin{quote}\small\ttfamily
+Q: \{example question 1\}\\
+A: \{answer 1\}\\
+\ldots\\
+Q: \{example question k\}\\
+A: \{answer k\}\\
+Q: \{query question\}\\
+A:
+\end{quote}
+can perform many tasks with accuracy rivaling fine-tuned small models.
+No gradient update occurs; the examples act as \emph{context}. This
+is \emph{in-context learning (ICL)}. ICL exhibits three striking
+empirical properties:
 \begin{itemize}
-  \item occurs at inference time,
-  \item does not modify parameters,
-  \item is sensitive to prompt format and ordering.
+  \item Zero/few-shot performance improves steeply with model scale.
+  \item It is brittle to prompt format and example order
+        \citep{lu2022fantastically}.
+  \item Much of the ``learning'' is contributed by the \emph{format}
+        (the label space, the template), not by the specific input-output
+        pairings \citep{min2022rethinking}.
 \end{itemize}
 
-The dominant hypothesis is that in-context learning is a form of implicit meta-learning learned during pretraining.
+\subsubsection{Mechanistic Hypotheses}
 
-\subsection{Memorization vs Generalization}
+Three research lines explain ICL at different levels of abstraction.
 
-Large models inevitably memorize parts of their training data.
-However, they also:
+\textbf{Implicit Bayesian inference}
+\citep{xie2022explanation}. Pretraining fits a mixture model over
+latent ``tasks''; at inference time the prompt's examples are
+evidence conditioning on which the model computes the posterior over
+task identity. The model then generates from the posterior-weighted
+mixture. Strength: explains format sensitivity (ambiguous examples
+give diffuse posteriors). Weakness: the ``latent task'' construct is
+not directly observable.
+
+\textbf{Induction heads} \citep{olsson2022induction}. A two-layer
+Transformer circuit, discovered empirically in every sufficiently
+trained autoregressive LM, implements the rule ``given
+\texttt{...A B...A}, copy \texttt{B}'' through the composition of a
+\emph{previous-token head} (layer 1) and a \emph{copy-on-match head}
+(layer 2). The emergence of this circuit during training coincides
+with a sharp drop in in-context loss. Strength: mechanistically
+grounded in the architecture of Week~4. Weakness: extends only to
+the copy-like component of ICL.
+
+\textbf{Gradient descent in the forward pass}
+\citep{garg2022transformers,vonoswald2023transformers}. A single
+Transformer layer can be constructed to implement one step of
+gradient descent on a linear-regression problem given the
+regression examples as input; multi-layer stacks can implement
+multi-step updates. On simple function classes, trained Transformers
+converge to the same solutions as the corresponding GD-in-the-
+forward-pass circuits. Strength: gives a crisp computational target.
+Weakness: extrapolation to natural-language ICL is non-trivial.
+
+No single hypothesis suffices on its own; the three are best read as
+complementary views of a phenomenon that is empirically rich and
+mechanistically heterogeneous. For a survey, see
+\citet{dong2023survey}.
+
+\subsection{Few-Shot Format Sensitivity}
+
+Lu et al.~\citep{lu2022fantastically} showed that simply
+\emph{reordering} the in-context examples can move accuracy by 20
+percentage points on common tasks. Three engineering-relevant
+findings:
 \begin{itemize}
-  \item recombine patterns,
-  \item interpolate between examples,
-  \item generalize to novel inputs.
+  \item Accuracy varies substantially with example order, separator
+        choice, and label verbalization.
+  \item Adding irrelevant examples sometimes \emph{improves} accuracy
+        by reinforcing format; sometimes it hurts.
+  \item The optimal prompt is model-specific and version-specific.
 \end{itemize}
+Operational countermeasures:
+(i)~include prompts in the version-pinned model contract;
+(ii)~run prompt regression tests as part of CI;
+(iii)~for critical paths, run self-consistency or majority-voting
+across several paraphrases of the same prompt.
 
-Distinguishing these regimes empirically is difficult and error-prone.
+\subsection{Sampling and Decoding}
 
-\subsection{Evaluation Pitfalls}
+Given logits $\mathbf{z} \in \mathbb{R}^V$ at each step, the
+conditional distribution after temperature $T$ scaling is
+\begin{equation}
+p_T(i) \;=\; \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}.
+\end{equation}
+$T \to 0$ recovers greedy (argmax), $T = 1$ recovers the model's
+native distribution, $T > 1$ flattens it.
 
-Common evaluation failures include:
+\subsubsection{Greedy and Beam}
+
+\textbf{Greedy} takes the argmax each step. Deterministic, cheap, and
+frequently degenerate on open-ended generation (loops, repetition)
+\citep{holtzman2020curious}. \textbf{Beam search} maintains the
+top-$B$ partial hypotheses by cumulative log-probability and returns
+the highest-scoring completion. Beam is effective for
+\emph{constrained} generation (translation, code completion with a
+finite correct answer) but produces bland, generic text on open-ended
+tasks because the joint log-probability it maximizes is a poor
+proxy for human-preferred output.
+
+\subsubsection{\texorpdfstring{Top-$k$ and Top-$p$ (Nucleus)}{Top-k and Top-p (Nucleus)}}
+
+\textbf{Top-$k$} \citep{fan2018hierarchical}: restrict the softmax to
+the $k$ highest-probability tokens, renormalize, sample.
+
+\textbf{Top-$p$ (nucleus)} \citep{holtzman2020curious}: let
+\begin{equation}
+\label{eq:week5-nucleus}
+\mathcal{V}^{(p)}
+ \;=\; \mathrm{smallest~set}\ S \subseteq V
+       \ \mathrm{s.t.}\ \sum_{i \in S} p_T(i) \ge p,
+\end{equation}
+restrict the distribution to $\mathcal{V}^{(p)}$, renormalize,
+sample. Nucleus adapts the candidate set size to the distribution's
+concentration: sharp distributions (confident contexts) have small
+$|\mathcal{V}^{(p)}|$; flat distributions (ambiguous contexts) have
+large $|\mathcal{V}^{(p)}|$.
+
+\subsubsection{\texorpdfstring{Min-$p$}{Min-p}}
+
+\citet{nguyen2024minp} introduced \emph{min-$p$} sampling: keep any
+token whose probability is at least $\alpha \cdot p_{\max}$, where
+$p_{\max}$ is the top-1 probability and $\alpha \in (0, 1)$. This
+handles heavy-tail distributions more robustly than top-$p$ at high
+temperatures and has seen rapid adoption in 2024--2025 local-model
+inference stacks.
+
+\subsubsection{Repetition Penalty}
+
+A post-hoc logit modification:
+\begin{equation}
+\tilde z_i \;=\; \begin{cases}
+z_i / \rho & \text{if $i$ has appeared in the context}, \\
+z_i        & \text{otherwise},
+\end{cases}
+\end{equation}
+with $\rho > 1$ discouraging exact repetition. Simple, effective on
+loopy generations, but can degrade fluent text. Cleaner alternatives
+include \emph{frequency} and \emph{presence penalties} (OpenAI API)
+and \emph{DRY} (don't repeat yourself) penalty scoped to recent
+context.
+
+\subsubsection{Decoding Decision Matrix}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Decoder & When appropriate & When not \\
+\hline
+Greedy           & Verifiable task, cheap baseline & Open-ended generation \\
+Beam ($B = 4{-}8$) & Translation, code, constrained  & Creative writing \\
+Top-$k$          & Legacy; partial fix for tail     & Low-entropy contexts \\
+Top-$p$          & General open-ended default        & Very heavy-tail distributions \\
+Min-$p$          & High-$T$ local inference          & Conservative contexts \\
+Temp $< 1$       & Structured outputs, JSON          & Brainstorming \\
+Temp $= 1$       & Chat, reasoning                   & -- \\
+Temp $> 1$       & Exploration, creative             & Production-facing UX \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Emergence: Real or Metric Artefact?}
+
+\citet{wei2022emergent} reported that several LLM capabilities
+exhibit sharp, unpredictable jumps as model scale increases, which
+they termed \emph{emergent abilities}. \citet{schaeffer2023mirage}
+replied that ``emergence'' is largely a consequence of choosing
+\emph{discontinuous metrics} (e.g., exact match) -- switching to a
+continuous, calibrated metric (log-likelihood, token-level accuracy)
+usually reveals smooth scaling trajectories predicted by the scaling
+laws of \S\,Scaling Laws.
+
+The engineering takeaway: when a capability appears to ``emerge''
+during scale-up, first check whether the metric you are using is
+continuous in the underlying distribution. If not, switch metrics
+before making causal claims. For safety-relevant claims (e.g., ``the
+model cannot do $X$ at our scale''), conservative practice assumes
+smooth scaling and budgets for the predicted performance of a
+larger model under the same metric.
+
+\subsection{Memorization and Extraction}
+
+\citet{carlini2021extracting} demonstrated that a 1.5\,B-parameter
+GPT-2 could be induced to emit verbatim strings from its training
+corpus, including PII. \citet{carlini2023quantifying} quantified the
+memorization rate as a function of:
+(i)~model scale (larger models memorize more),
+(ii)~data duplication (repeated strings memorize more), and
+(iii)~prompt length (longer prompts extract more).
+
+Empirically, memorization of a string of length $\ell$ scales roughly
+as
+\begin{equation}
+\Pr[\text{verbatim recall}]
+  \;\approx\; \left(\frac{N}{N_0}\right)^{a}\!\cdot
+              \left(\frac{k}{k_0}\right)^{b}\!\cdot
+              \left(\frac{\ell}{\ell_0}\right)^{c},
+\end{equation}
+with parameter count $N$, duplication count $k$, and length $\ell$,
+and fitted exponents $a, b, c > 0$. This has three operational
+consequences:
 \begin{itemize}
-  \item data contamination,
-  \item overly narrow benchmarks,
-  \item prompt overfitting,
-  \item interpreting fluency as correctness.
+  \item Aggressive deduplication is \emph{the} first-line memorization
+        defence.
+  \item Red-team extraction attacks must be part of V\&V for
+        PII-sensitive workloads.
+  \item Output filters alone are insufficient: the training data
+        itself must be treated as a privacy asset.
 \end{itemize}
-
-Careless evaluation can dramatically overestimate capability.
+Week~10 (Governance) returns to memorization as a residual risk in
+the assurance case.
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Clear separation between training and evaluation data
-  \item Reproducible prompting protocols
-\end{itemize}
-
-\textbf{Architecture}
-\begin{itemize}
-  \item Prompt templates as system artifacts
-  \item Versioning of prompts and decoding parameters
-\end{itemize}
-
-\textbf{Verification \& Validation}
-\begin{itemize}
-  \item Hold-out evaluation
-  \item Prompt robustness testing
-\end{itemize}
-
-\textbf{Operations}
-\begin{itemize}
-  \item Monitor prompt drift
-  \item Guard against prompt injection
-\end{itemize}
+\begin{center}
+\begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
+\hline
+V-model stage & Pretraining / ICL property & System requirement or activity \\
+\hline
+Requirements & Data provenance & Per-document log, license metadata,
+   opt-out respect. \\
+ & Eval contamination & 13-gram check against every held-out
+   benchmark. \\
+\hline
+Architecture & Decoder-only autoregressive
+             & Default unless bidirectional representations are
+               needed. \\
+ & Packing + block-diagonal mask
+             & Required for throughput; must be unit-tested. \\
+ & Sequence-length schedule & Long-context phase near end of
+   pretraining. \\
+\hline
+Implementation & Prompt templates & Version-pin with model and
+   tokenizer. \\
+ & Sampler parameters & Part of the model contract,
+   not a hidden UX knob. \\
+\hline
+V\&V & Prompt robustness tests & Paraphrases, orderings, label
+   variants; assert accuracy is stable to within tolerance. \\
+ & Memorization / extraction red team
+     & Quantify verbatim-recall rate on PII probes. \\
+ & Emergent-claim sanity check & Continuous metric before
+   causal claims. \\
+\hline
+Operations & Prompt drift & Snapshot prompts in logs; alert on
+   silent template changes. \\
+ & Contamination monitoring & New benchmarks vs training
+   cutoff; disclose cutoff. \\
+\hline
+\end{tabular}
+\end{center}
 
 \subsection{Human Factors and Failure Modes}
 
-Humans naturally anthropomorphize in-context learning as “understanding.”
-
-Failure modes include:
 \begin{itemize}
-  \item assuming persistent learning,
-  \item overtrusting few-shot performance,
-  \item neglecting distribution shift.
+  \item \textbf{Anthropomorphizing ICL}. Users perceive the model as
+        ``learning'' their preferences from examples; the model
+        forgets across turns unless the examples are re-included.
+  \item \textbf{Overtrusting few-shot performance}. Few-shot results
+        are order-sensitive and model-version-sensitive; silent
+        regressions occur on API upgrades.
+  \item \textbf{Fluency as correctness}. Fluent-but-wrong outputs
+        read more plausibly than hesitant-but-right outputs;
+        calibration probes (Week~1) are essential.
+  \item \textbf{Contamination-as-capability}. A benchmark the model
+        has already seen can create the illusion of generalization.
+        Cutoff-date discipline matters.
+  \item \textbf{Extraction surprise}. Users who paste sensitive
+        strings into prompts of a third-party API should treat the
+        strings as disclosed; the training loop is a ratchet.
+\end{itemize}
+
+\subsection{Bridges to Later Chapters}
+
+\begin{itemize}
+  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: Chinchilla-optimal
+        $(N, D)$ planning interacts with MoE compute/quality tradeoffs.
+  \item \textbf{Week 7 (Adaptation)}: ICL is ``soft adaptation''; LoRA
+        and instruction tuning are ``hard adaptation.''
+  \item \textbf{Week 8 (Alignment)}: the SFT stage starts from a
+        pretrained model of the kind built here; RLHF/DPO targets the
+        next-token distribution we trained.
+  \item \textbf{Week 9 (LLM Systems)}: RAG is a principled way to
+        sidestep in-weights memorization; evaluation harnesses
+        extend the $k$-shot evaluation protocols introduced here.
+  \item \textbf{Week 10 (Governance)}: data provenance, contamination
+        audits, and extraction red-teams become assurance-case
+        evidence.
+  \item \textbf{Week 11 (Modern Access)}: API parameters like
+        \texttt{temperature}, \texttt{top\_p}, \texttt{frequency\_penalty}
+        are the direct UI over the sampling math above.
 \end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{radford2018improving} — GPT
-  \item \citet{brown2020language} — GPT-3 and in-context learning
+  \item \citet{radford2018improving}, \citet{radford2019language},
+        \citet{brown2020language} --- GPT/GPT-2/GPT-3.
+  \item \citet{devlin2019bert} --- BERT / masked LM.
+  \item \citet{raffel2020t5} --- T5 and span corruption.
+  \item \citet{hoffmann2022chinchilla} --- compute-optimal scaling.
+  \item \citet{gao2020pile}, \citet{redpajama2023},
+        \citet{lee2022deduplicating} --- data pipelines and
+        deduplication.
+  \item \citet{xie2022explanation}, \citet{olsson2022induction},
+        \citet{garg2022transformers}, \citet{vonoswald2023transformers},
+        \citet{dong2023survey} --- ICL theory.
+  \item \citet{lu2022fantastically}, \citet{min2022rethinking} ---
+        prompt sensitivity.
+  \item \citet{holtzman2020curious}, \citet{fan2018hierarchical},
+        \citet{nguyen2024minp} --- sampling strategies.
+  \item \citet{wei2022emergent}, \citet{schaeffer2023mirage} ---
+        emergence debate.
+  \item \citet{carlini2021extracting}, \citet{carlini2023quantifying}
+        --- memorization and extraction.
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS224N — Language models and pretraining  
-  \url{https://web.stanford.edu/class/cs224n/}
-
-  \item Stanford CS324 — Foundation models  
-  \url{https://stanford-cs324.github.io/winter2022/}
+  \item Stanford CS224N --- language models and pretraining,
+        \citet{stanford_cs224n}.
+  \item Stanford CS324 --- Foundation models, pretraining module,
+        \citet{stanford_cs324}.
+  \item MIT 6.S191 --- self-supervised learning, \citet{mit_6s191}.
+  \item Berkeley CS182 --- language modeling, \citet{berkeley_cs182}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week05/week05\_lab\_pretraining\_incontext.ipynb}.
+\begin{enumerate}
+  \item \textbf{Mini-pipeline}. Download a 100\,MB Common Crawl WARC
+        slice, run language-ID, perplexity filtering, and MinHash-LSH
+        dedup. Report retention rates at each stage.
+  \item \textbf{Eval contamination check}. For a small open model,
+        compute the rate at which 13-grams from MMLU test items
+        appear in its training data (proxy: Pile). Relate to
+        reported benchmark deltas.
+  \item \textbf{Batch packing}. Implement document packing with a
+        block-diagonal mask; verify numerically that a packed
+        sequence yields the same loss as the same documents unpacked.
+  \item \textbf{Few-shot order sensitivity}. Choose a classification
+        benchmark. Run 24 random permutations of the same 4-shot
+        prompt; plot accuracy distribution.
+  \item \textbf{Induction-head discovery}. On a 12-layer open model
+        (Pythia-70M suffices), identify a head that matches the
+        induction-head signature and confirm it via attribution
+        patching.
+  \item \textbf{Sampling sweep}. For a single open-ended prompt,
+        generate 100 samples each at $T \in \{0.3, 0.7, 1.0, 1.3\}$
+        and $p \in \{0.7, 0.9, 0.95\}$. Compute distinct-$n$ and
+        self-BLEU; plot the diversity-quality Pareto frontier.
+  \item \textbf{Emergence stress test}. Pick a ``emergent'' task
+        reported in \citet{wei2022emergent}. Replace exact-match with
+        token-level log-likelihood; re-examine the scaling curve.
+  \item \textbf{Memorization probe}. For a small open model with a
+        known training corpus, probe for verbatim recall of 50-token
+        strings. Plot recall rate vs duplication count.
+\end{enumerate}
 
 \subsection{Week 5 Takeaway}
 
 \begin{quote}
-Pretraining creates a powerful statistical engine; prompting steers it, but does not retrain it.
+Pretraining creates a powerful statistical engine; prompting steers
+it, but does not retrain it. ``In-context learning'' is a misleading
+name for a phenomenon that is better described as distribution-
+conditional generation: the model is inferring which latent task you
+mean from the context, and it makes that inference with the
+biases, brittleness, and memorization residues that its pretraining
+data instilled.
 \end{quote}
-
-
