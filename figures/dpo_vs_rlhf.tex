@@ -1,0 +1,37 @@
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.4cm, minimum height=0.8cm,
+              align=center, font=\footnotesize, fill=black!5},
+  grp/.style={draw, dashed, rounded corners, inner sep=0.3cm, fill=blue!3},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.35cm and 0.45cm
+]
+
+% RLHF (left column)
+\node[font=\small\bfseries] (lbl1) {RLHF (two-stage)};
+\node[box, below=0.3cm of lbl1] (a1) {prefs $(y^+, y^-)$};
+\node[box, below=of a1] (a2) {Reward model $r_\phi$};
+\node[box, below=of a2] (a3) {PPO roll-outs};
+\node[box, below=of a3] (a4) {Policy $\pi_\theta$};
+
+\draw[arrow] (a1) -- (a2);
+\draw[arrow] (a2) -- (a3);
+\draw[arrow] (a3) -- (a4);
+
+\node[font=\scriptsize, right=0.1cm of a3, align=left]
+  {requires\\ref policy\\+ KL pen};
+
+% DPO (right column)
+\node[font=\small\bfseries, right=5.0cm of lbl1] (lbl2) {DPO (one-stage)};
+\node[box, below=0.3cm of lbl2] (b1) {prefs $(y^+, y^-)$};
+\node[box, below=of b1] (b2) {Implicit reward\\$\log\frac{\pi_\theta}{\pi_\text{ref}}$};
+\node[box, below=of b2] (b3) {Closed-form loss\\$-\log \sigma(\cdot)$};
+\node[box, below=of b3] (b4) {Policy $\pi_\theta$};
+
+\draw[arrow] (b1) -- (b2);
+\draw[arrow] (b2) -- (b3);
+\draw[arrow] (b3) -- (b4);
+
+\node[font=\scriptsize, right=0.1cm of b3, align=left]
+  {no RM,\\no roll-outs,\\still needs ref};
+
+\end{tikzpicture}

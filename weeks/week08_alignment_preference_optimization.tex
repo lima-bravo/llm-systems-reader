@@ -1,168 +1,651 @@
 \section{Week 8: Alignment, Instruction Tuning, and Preference Optimization}
 
+\subsection{Introduction: Why Alignment Is Its Own Engineering Discipline}
+
+A pretrained language model (Week~5) is a superb statistical model of
+text on the internet. That is exactly and only what we trained it to
+be. It is not a helpful assistant, not a polite conversational
+partner, not a reliable refuser of harmful requests, and not a
+bounded agent. Everything that separates a ``base model'' from
+``ChatGPT'' is the result of a second training regime, commonly
+referred to as \emph{alignment} or \emph{post-training}, and it is
+where the text-prediction machine is shaped into a deployable
+product.
+
+This chapter treats alignment as an engineering discipline. We will
+distinguish \emph{capability} (what a model can do) from
+\emph{alignment} (how a model behaves when given the choice), derive
+the three canonical post-training stages (SFT, reward modelling,
+RL), work through RLHF and DPO at the level of the objective and
+its gradients, and examine the empirically documented failure modes
+that alignment does and does \emph{not} solve.
+
+Two framings are worth establishing upfront. First: alignment does
+not add new knowledge. It reshapes the output distribution
+conditional on knowledge the model already has. Post-training cannot
+teach a model that a particular drug interaction exists if the
+pretraining corpus never mentioned it; post-training can only
+change how the model responds when the pretraining distribution says
+it does. Engineers who misunderstand this build the wrong
+expectations into their evaluations and often blame the wrong
+training stage for failures.
+
+Second: alignment is inherently \emph{normative}. It encodes a
+decision about what the model should and should not do, which is to
+say a decision about values. ``Aligned'' is not a purely technical
+property; it is always aligned to someone's values, and the
+engineer's job is to know whose, to document them, and to design
+systems that can be audited against them. This chapter deliberately
+mixes technical content with systems and human-factors material
+because alignment fails most often at the seam between them.
+
+The reference pipeline we will trace is summarized in
+Figure~\ref{fig:rlhf-pipeline}: pretraining, then supervised
+fine-tuning, then preference data collection, then either a reward
+model plus reinforcement learning (``classical'' RLHF) or a direct
+preference-optimization loss (DPO and descendants). Every modern
+chat assistant is a variant of this pipeline, with differences
+almost entirely in the data and the preference-optimization step.
+
+\begin{figure}[ht]
+  \centering
+  \input{figures/rlhf_pipeline.tex}
+  \caption{The canonical post-training pipeline. Pretraining produces
+  a base model; supervised fine-tuning teaches it the instruction/response
+  format; preference data drives either a reward model + PPO (RLHF) or a
+  reference-model-based direct loss (DPO, IPO, KTO, SimPO). The SFT
+  stage is usually a LoRA on the base (Week~7); the preference stage
+  is usually a LoRA on the SFT.}
+  \label{fig:rlhf-pipeline}
+\end{figure}
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Explain why pretraining alone is insufficient for safe deployment
-  \item Distinguish capability training from alignment training
-  \item Understand supervised instruction tuning (SFT)
-  \item Understand preference-based optimization (RLHF / DPO-style)
-  \item Identify systems-level and human-factors risks introduced by alignment
+  \item distinguish capability from alignment and explain why
+        pretraining alone is insufficient for deployment;
+  \item describe the three-stage post-training pipeline (SFT,
+        reward modelling, policy optimization) and the role of each
+        stage;
+  \item state the Bradley-Terry preference model and derive the
+        reward-model objective and the DPO loss from it;
+  \item explain PPO's KL penalty and why it is essential for
+        preventing reward-model exploitation;
+  \item compare RLHF, DPO, IPO, KTO, ORPO, and SimPO on the
+        dimensions that matter in production (reference-model need,
+        sample efficiency, stability, compute cost);
+  \item describe constitutional AI and RLAIF as substitutes for
+        human preference labelling;
+  \item design an alignment evaluation harness that includes
+        helpfulness, harmlessness, honesty, refusal calibration,
+        and jailbreak resistance;
+  \item identify the main alignment failure modes (reward hacking,
+        over-refusal, sycophancy, jailbreak susceptibility,
+        alignment tax, hidden-value ambiguity).
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\subsection{Conceptual Core: Capability vs.\ Alignment}
 
-\textbf{Post-training}
-\begin{itemize}
-  \item Instruction tuning
-  \item Preference learning
-  \item Behavior shaping
-\end{itemize}
+Pretraining optimizes a single objective --- maximize the
+log-likelihood of the next token conditional on preceding tokens
+--- over a corpus chosen to be representative of ``text on the
+internet.'' This is a \emph{descriptive} objective: the model is
+penalized for being wrong about what a random web page says next.
 
-\textbf{Human interface}
-\begin{itemize}
-  \item Human feedback loops
-  \item Normative objectives
-  \item Value encoding
-\end{itemize}
+Alignment optimizes a fundamentally different kind of objective.
+There is no ground-truth ``next token'' for a prompt like ``Summarize
+my meeting notes'' or ``Is this medication safe?''. What we want is
+the response a careful, honest, helpful person would give. That
+target is defined by human preferences, expressed as comparisons or
+constraints, not by natural co-occurrence in text. Alignment
+training takes a model with enormous latent capability and
+restricts, reshapes, and rebalances its output distribution against
+this preference signal.
 
-\subsection{Conceptual Core: Capability vs Alignment}
+The distinction matters in three ways.
 
-Pretraining optimizes for:
-\begin{quote}
-\emph{Statistical prediction of text}
-\end{quote}
+\paragraph{Capability persists under alignment; alignment does not
+persist under capability shift.} Fine-tuning for helpfulness does
+not erase the underlying facts the model has learned. Conversely, a
+model whose pretraining distribution changes (a new base, a new
+domain) loses its alignment and must be re-aligned.
 
-Alignment optimizes for:
-\begin{quote}
-\emph{Human-preferred behavior under constraints}
-\end{quote}
+\paragraph{Alignment costs capability.} The ``alignment tax''
+\citep{ouyang2022training} is the empirical observation that
+post-training typically reduces measured capability on academic
+benchmarks, even as it increases user-facing helpfulness. A
+well-designed pipeline manages this trade: some capability loss is
+acceptable; large losses signal over-fitting the preference signal.
 
-These objectives are related but not identical.
+\paragraph{Alignment is evaluation-limited.} Because there is no
+ground truth, alignment quality is known only through the evaluation
+suite. A poorly designed evaluation makes the model ``aligned'' to
+its own gaming strategy. This is the central practical risk of
+alignment engineering and the reason Week~9's evaluation chapter is
+its natural companion.
 
-Alignment does not add new knowledge; it reshapes how existing knowledge is expressed.
+\subsection{Stage 1: Supervised Fine-Tuning (SFT)}
 
-\subsection{Supervised Instruction Tuning (SFT)}
+SFT is the simplest post-training stage. One curates a dataset of
+$(\text{instruction}, \text{response})$ pairs and fine-tunes the
+base model to reproduce the responses using standard next-token
+cross-entropy, masking the loss on the instruction tokens. The goal
+is to teach the model the format and conventions of the assistant
+role: when to produce lists, when to ask clarifying questions, what
+a refusal looks like, what a code block looks like.
 
-SFT fine-tunes a pretrained model on datasets of:
-\[
-(\text{instruction}, \text{desired response})
-\]
+\subsubsection{Data is the training algorithm}
 
-Effects:
-\begin{itemize}
-  \item improves instruction following,
-  \item changes tone and verbosity,
-  \item reduces irrelevant completions.
-\end{itemize}
+The dominant consideration in SFT is the dataset. Three approaches
+are representative.
 
-Limitations:
-\begin{itemize}
-  \item brittle outside training distribution,
-  \item encodes annotator bias,
-  \item scales poorly with task diversity.
-\end{itemize}
+\paragraph{Hand-curated high-quality data.}
+\citet{zhou2023lima} demonstrated the LIMA principle: a curated set
+of 1,000 carefully written (prompt, response) pairs can produce a
+chat assistant whose quality rivals RLHF-trained models on many
+dimensions. The claim is that SFT teaches a \emph{format}, not a
+\emph{corpus}; the base model already knows how to answer questions,
+and SFT simply identifies which of its capabilities to surface. This
+is the strongest argument for investing in small, painstakingly
+high-quality SFT data over large, noisy data.
 
-\subsection{Preference-Based Optimization}
+\paragraph{Instruction-tuning mixtures.} The FLAN collection
+\citep{longpre2023flan} assembles thousands of academic NLP tasks
+and reformulates them as instruction/response pairs, producing
+hundreds of millions of training examples. Larger SFT mixtures
+generalize better to unfamiliar task formats but can dilute the
+model's voice and induce format rigidity.
 
-Preference optimization uses comparisons:
-\[
-(\text{prompt}, y^+, y^-)
-\]
+\paragraph{Self-generated and synthetic data.} Self-Instruct
+\citep{wang2023selfinstruct} uses the base model itself to generate
+candidate instructions and responses, filtered by a small human or
+heuristic pass. Alpaca and later many open assistants were trained
+this way. Synthetic data is cheap but inherits (and sometimes
+amplifies) the generator's biases; a common failure mode is that
+the trained student memorizes surface patterns of the teacher
+rather than learning the underlying behaviour.
 
-where $y^+$ is preferred over $y^-$.
+\subsubsection{Operational properties of SFT}
 
-Approaches include:
-\begin{itemize}
-  \item Reinforcement Learning from Human Feedback (RLHF),
-  \item Direct Preference Optimization (DPO).
-\end{itemize}
+SFT is cheap: a 7B-parameter LoRA-SFT on 10k examples takes minutes
+on a single GPU. It is stable: the loss curves look like standard
+supervised learning. It is \emph{almost} always a prerequisite to
+preference optimization: DPO and RLHF behave pathologically if the
+starting policy does not already produce plausibly-formatted
+responses.
 
-These methods optimize relative preference rather than absolute correctness.
+The main limitation is that SFT cannot encode \emph{negative}
+information well. It teaches the model what to output; it cannot
+easily teach the model what not to output, because there is no
+natural signal for ``this is a bad response.'' That is the gap
+preference optimization fills.
 
-\subsection{What Alignment Changes}
+\subsection{Stage 2: Preference Data and the Bradley-Terry Model}
 
-Alignment tends to change:
-\begin{itemize}
-  \item refusal behavior,
-  \item politeness and tone,
-  \item verbosity,
-  \item safety-related responses.
-\end{itemize}
+Preference data comes in triples $(x, y^+, y^-)$: a prompt and two
+candidate responses, with $y^+$ preferred over $y^-$ by a human (or
+by an AI proxy). Where does the scalar ``reward'' come from in an
+RLHF pipeline? It comes from a statistical model that fits these
+preference triples.
 
-It does not:
-\begin{itemize}
-  \item make models truthful,
-  \item eliminate hallucinations,
-  \item guarantee ethical behavior.
-\end{itemize}
+The standard choice is the Bradley-Terry model
+\citep{bradley1952rank}. If $r_\phi(x, y)$ is a learned reward
+function parameterized by $\phi$, then the probability that
+$y^+$ is preferred to $y^-$ under the model is
+\begin{equation}
+  P(y^+ \succ y^- \mid x)
+  \;=\;
+  \sigma\big(r_\phi(x, y^+) - r_\phi(x, y^-)\big),
+  \label{eq:bt}
+\end{equation}
+where $\sigma(\cdot)$ is the logistic sigmoid. One fits $\phi$ by
+maximizing the log-likelihood of observed preferences:
+\begin{equation}
+  \mathcal{L}_\text{RM}(\phi)
+  \;=\;
+  -\mathbb{E}_{(x, y^+, y^-) \sim D}
+  \Big[
+    \log \sigma\big(r_\phi(x, y^+) - r_\phi(x, y^-)\big)
+  \Big].
+  \label{eq:rm-loss}
+\end{equation}
+In practice, $r_\phi$ is a transformer initialised from the SFT
+model, with the final language-model head replaced by a scalar
+head. Training this reward model is an ordinary classification
+problem: each preference is a binary label, and the reward model
+is simply a network that produces a scalar score consistent with
+the observed binary labels.
+
+Three facts about Bradley-Terry reward models matter for practice.
+
+First, the reward is identifiable only up to an additive constant
+per prompt. The likelihood depends only on reward \emph{differences},
+so $r_\phi(x, y) \to r_\phi(x, y) + c(x)$ is invisible to the loss.
+This is why absolute reward values are meaningless; only
+comparisons within a prompt carry information.
+
+Second, the reward model's calibration degrades rapidly outside the
+distribution of prompts and responses it was trained on.
+\citet{gao2023scaling} showed that optimizing against a reward
+model produces a characteristic ``Goodhart curve'': the true
+(held-out) reward rises, peaks, then \emph{falls} as the optimizer
+exploits the reward model's approximation errors. Every production
+RLHF pipeline must manage this with KL regularization, early
+stopping, and periodic RM refreshes.
+
+Third, preference data is expensive and inconsistent. Human
+labellers disagree on roughly 20--30\% of comparisons even on
+carefully designed prompts, and labeller bias (cultural, political,
+stylistic) is systematically baked into the reward model. This is
+the origin of the ``whose values?'' critique and the motivation for
+constitutional AI and RLAIF, which we return to below.
+
+\subsection{Stage 3a: RLHF with PPO}
+
+Classical RLHF \citep{christiano2017deep, ouyang2022training}
+optimizes the post-SFT policy $\pi_\theta$ with the reward model
+$r_\phi$ as the objective, using proximal policy optimization
+\citep{schulman2017ppo} as the RL algorithm.
+
+The key addition is a Kullback-Leibler penalty against the
+reference policy $\pi_\text{ref}$ (usually the SFT policy):
+\begin{equation}
+  J_\text{RLHF}(\theta)
+  \;=\;
+  \mathbb{E}_{x \sim D,\, y \sim \pi_\theta}
+  \Big[
+    r_\phi(x, y) - \beta\, \mathrm{KL}\!\left(\pi_\theta(\cdot \mid x)\,\|\, \pi_\text{ref}(\cdot \mid x)\right)
+  \Big].
+  \label{eq:rlhf}
+\end{equation}
+The KL term does double duty. It prevents the policy from drifting
+too far from a plausible base distribution (which is how reward
+exploitation happens in practice) and it stabilizes the RL dynamics
+against PPO's tendency to collapse the policy onto a narrow mode.
+The coefficient $\beta$ is typically tuned per run; too small and
+the reward model is exploited, too large and the policy barely
+improves.
+
+Operationally, RLHF is expensive. A single training step requires
+generating roll-outs from $\pi_\theta$ (forward passes at inference
+cost), scoring them with $r_\phi$ (another model in memory),
+computing KL against $\pi_\text{ref}$ (a third model in memory), and
+then the PPO gradient update. Holding the reference, reward, and
+policy models in memory simultaneously makes RLHF typically 3--5x
+more expensive per effective update than supervised training. This
+is the single biggest practical reason DPO has displaced RLHF in
+many deployments.
+
+\subsection{Stage 3b: Direct Preference Optimization (DPO)}
+
+\citet{rafailov2023direct} observed that the RLHF optimum has a
+closed-form relationship to the preference data, and that one can
+therefore optimize the policy directly on the preference triples,
+skipping the reward model and the RL loop entirely.
+
+The derivation is short. The KL-regularized RL objective
+(Equation~\ref{eq:rlhf}) has an analytical optimum:
+\begin{equation}
+  \pi^*(y \mid x)
+  \;=\;
+  \frac{1}{Z(x)}\, \pi_\text{ref}(y \mid x)\, \exp\!\left(\frac{1}{\beta}\, r(x, y)\right).
+  \label{eq:dpo-optimum}
+\end{equation}
+Inverting this gives $r(x, y)$ as a function of $\pi^*$ and
+$\pi_\text{ref}$:
+\begin{equation}
+  r(x, y) \;=\; \beta \log \frac{\pi^*(y \mid x)}{\pi_\text{ref}(y \mid x)} + \beta \log Z(x).
+  \label{eq:implicit-reward}
+\end{equation}
+The normalizer $Z(x)$ depends only on the prompt, not the
+response, so it cancels in Bradley-Terry differences
+(Equation~\ref{eq:bt}). Substituting into the reward-model loss
+(Equation~\ref{eq:rm-loss}) and setting $\pi^* = \pi_\theta$ yields
+the \emph{DPO loss}:
+\begin{equation}
+  \mathcal{L}_\text{DPO}(\theta)
+  \;=\;
+  -\mathbb{E}_{(x, y^+, y^-) \sim D}
+  \Big[
+    \log \sigma\Big(\beta \log \tfrac{\pi_\theta(y^+ \mid x)}{\pi_\text{ref}(y^+ \mid x)}
+                 - \beta \log \tfrac{\pi_\theta(y^- \mid x)}{\pi_\text{ref}(y^- \mid x)}\Big)
+  \Big].
+  \label{eq:dpo}
+\end{equation}
+This is a supervised loss on the preference data. No reward model,
+no roll-outs, no PPO. The reference policy is still needed in
+memory for the $\log(\pi_\theta / \pi_\text{ref})$ terms, which is
+the one remaining operational cost.
+
+Figure~\ref{fig:dpo-vs-rlhf} contrasts the two pipelines.
+
+\begin{figure}[ht]
+  \centering
+  \input{figures/dpo_vs_rlhf.tex}
+  \caption{RLHF vs.\ DPO. RLHF maintains three models in memory and
+  runs a full RL loop; DPO folds the reward model into the policy
+  loss and trains in a single supervised step, at the cost of
+  slightly less flexible optimization dynamics.}
+  \label{fig:dpo-vs-rlhf}
+\end{figure}
+
+Empirically, DPO matches or beats RLHF on most benchmarks at a
+fraction of the cost, with the caveat that it is more sensitive to
+the quality of the preference data (no reward model smooths out
+noise) and to the choice of $\beta$. Weaknesses to be aware of:
+DPO has a mild tendency to under-regularize, pushing the policy
+away from $\pi_\text{ref}$ even on preferences where the gap is
+small; and it can overfit to the particular preference pair
+structure if the dataset is not diverse.
+
+\subsection{Preference-Optimization Variants}
+
+A small zoo of post-DPO methods has appeared. A working engineer
+should be able to distinguish them on a few key axes.
+
+\paragraph{IPO} \citep{azar2023general} replaces DPO's log-sigmoid
+loss with a squared-error formulation that is more robust when many
+preferences are near 50/50. IPO matters when the preference signal
+is weak and the Bradley-Terry assumption is a stretch.
+
+\paragraph{KTO} \citep{ethayarajh2024kto} removes the pairwise
+assumption entirely: it works with \emph{unpaired} (prompt,
+response, thumbs-up/thumbs-down) labels. This is operationally
+useful because most real product feedback is in this unpaired
+form. KTO is derived from prospect theory and adds a mild risk-
+aversion on the negative side.
+
+\paragraph{ORPO} \citep{hong2024orpo} combines SFT and preference
+optimization into a single objective, eliminating the reference
+model at training time. This makes ORPO cheap to run but sacrifices
+some of DPO's tight control over the KL distance to $\pi_\text{ref}$.
+
+\paragraph{SimPO} \citep{meng2024simpo} reformulates DPO to use an
+\emph{average} log-probability across tokens rather than a
+total-log-probability, normalizing by response length and removing
+the reference policy. SimPO is competitive with DPO while needing
+only the policy model in memory, a major operational win.
+
+\paragraph{RLAIF and Constitutional AI.} \citet{bai2022constitutional}
+and \citet{lee2023rlaif} replace the human preference signal with
+an AI model's judgment, either directly (RLAIF) or via a set of
+principles and AI-generated critiques (Constitutional AI). The
+argument is that the quality cost is small if the judge is a
+capable model, and the scale benefit is enormous --- billions of
+synthetic preferences are cheap, millions of human preferences are
+not. Used carefully, CAI and RLAIF are the scaling strategy for
+alignment data; used carelessly, they propagate the judge's biases.
+
+\subsection{Alignment Failure Modes}
+
+Alignment is not a solved problem. The following failure modes are
+documented in the literature and routinely observed in deployment.
+
+\paragraph{Reward hacking and Goodhart drift.}
+The most fundamental failure mode of RLHF. The policy finds
+responses that score highly under $r_\phi$ but are in fact worse
+than the training distribution \citep{gao2023scaling}. Typical
+symptoms: extreme verbosity, obsequious language, formulaic
+agreement with the user, and creative interpretation of ambiguous
+instructions. The defense is the KL penalty, periodic reward-model
+refreshes, and alarm metrics that track response-length and
+user-satisfaction divergence during RL.
+
+\paragraph{Over-refusal.}
+Safety training can produce a model that refuses benign requests
+that superficially resemble harmful ones (``how do I kill a
+Python process?''). The cause is usually a heavy diet of safety
+SFT examples without matched helpful-but-not-harmful counter-examples.
+Over-refusal is a product-quality failure, often the most visible
+one, and is the reason modern alignment suites explicitly include
+``benign-but-trigger-y'' prompts.
+
+\paragraph{Sycophancy.}
+The aligned model agrees with whatever the user asserts, even when
+the user is wrong. Sycophancy emerges from preference data in
+which labellers preferred responses that did not contradict them.
+\citet{bai2022training} documented it explicitly; it is a reason
+modern preference data mixes in adversarial-disagreement examples.
+
+\paragraph{Jailbreaks.}
+Adversarial prompts that bypass safety training
+\citep{wei2023jailbroken, zou2023universal}. The existence of
+transferable jailbreaks --- strings that cause many independently
+trained models to misbehave --- suggests that current safety
+training does not deeply alter the model's behaviour; it merely
+shifts which prompts trigger it. Defence in depth (input filters,
+output filters, structured post-generation review) is the
+operational response, alongside continued adversarial training.
+
+\paragraph{Alignment tax.}
+Post-training measurably degrades academic benchmark performance
+\citep{ouyang2022training}. A modest tax (1--3 points on common
+benchmarks) is expected; a large tax (5+ points) signals
+over-optimization of the preference signal at the cost of general
+capability and is an argument to tune down $\beta$, thin the SFT
+data, or both.
+
+\paragraph{Hidden-value ambiguity.}
+Preference data always encodes somebody's values. The labellers'
+cultural, political, professional, and age demographics shape the
+resulting ``aligned'' behaviour. In production systems, this is
+documented (labeller demographics, principal guidelines, refusal
+taxonomy) and made auditable; it is not eliminated.
+\citet{anwar2024foundational} and \citet{casper2023open} provide
+extensive surveys of these open problems.
+
+\subsection{Instruction Tuning as a Product Engineering Discipline}
+
+Beyond the training recipes, alignment is also a \emph{data}
+engineering problem that most organizations solve badly. Five
+practical patterns make the difference between a well-aligned
+product and a poorly aligned one.
+
+\paragraph{Taxonomy.} Every production assistant needs an explicit
+taxonomy of supported and refused behaviours, maintained jointly
+with product, legal, and trust-and-safety teams. The taxonomy drives
+both the training data composition (quotas per category) and the
+evaluation suite (test cases per category). Without a taxonomy, the
+SFT/preference data is implicitly defined by whoever is writing it
+this week.
+
+\paragraph{Data quality over quantity.}
+The LIMA principle \citep{zhou2023lima} applies in production: a few
+thousand carefully-authored, diverse-but-consistent examples beat a
+million noisy ones. Invest in author training, style guides, and
+inter-annotator agreement checks.
+
+\paragraph{Red teaming as a continuous process.}
+\citet{ganguli2022redteaming} and \citet{perez2022redteaming}
+established red teaming as a first-class alignment activity. A
+modern program runs human red teams against every candidate
+release, automates adversarial probe generation, and treats the
+resulting failures as training data for the next iteration. Red
+teaming is a cost of doing business, not a pre-release checkbox.
+
+\paragraph{Evaluation with multiple dimensions.}
+The HHH framework --- helpful, harmless, honest
+\citep{askell2021general} --- is the canonical starting point. A
+modern eval suite adds refusal calibration (refuse when and only
+when appropriate), instruction adherence, factual accuracy, and
+product-specific quality metrics. Single-number ``alignment score''
+metrics hide far more than they reveal.
+
+\paragraph{Versioning and rollback.}
+Alignment deltas are LoRA adapters (Week~7). They should be
+versioned, signed, canary-deployed, and reversible within minutes.
+An aligned model is never ``done''; it is a continuously updated
+artefact, and the supporting infrastructure must be built for
+incremental change.
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Predictable behavior under sensitive prompts
-  \item Transparency about limitations
-\end{itemize}
+\textbf{Requirements.}
+Predictable behaviour under sensitive prompts. Clear and documented
+refusal policy. Measured trade-offs between helpfulness and
+safety. Reproducibility of a given aligned model from its training
+data and seed.
 
-\textbf{Architecture}
-\begin{itemize}
-  \item Separation of base model and alignment layers
-  \item Auditable post-training pipeline
-\end{itemize}
+\textbf{Architecture.}
+Separate, auditable post-training pipeline downstream of the base
+model (Week~5) and the PEFT stack (Week~7). A distinct evaluation
+harness --- not the same machines as training --- to guarantee
+independent assessment. A red-team input path that feeds both the
+training data and the evaluation suite.
 
-\textbf{Verification \& Validation}
-\begin{itemize}
-  \item Red-teaming
-  \item Behavioral regression testing
-\end{itemize}
+\textbf{Verification and validation.}
+HHH evaluation plus refusal calibration, jailbreak resistance, and
+product-specific quality metrics. Held-out preference data against
+which the reward model (or implicit DPO reward) is verified to
+generalize. Shadow deployment before any public rollout.
 
-\textbf{Operations}
-\begin{itemize}
-  \item Continuous monitoring for drift
-  \item Incident response processes
-\end{itemize}
+\textbf{Operations.}
+Continuous drift monitoring on the alignment axes (refusal rate,
+response length, helpfulness scores). Incident response playbooks
+for newly discovered jailbreaks and for model-behaviour complaints.
+Adapter rollback within minutes, not hours.
 
 \subsection{Human Factors and Failure Modes}
 
-Alignment introduces new human risks:
-\begin{itemize}
-  \item overtrust due to polite fluency,
-  \item false sense of safety,
-  \item normative opacity (whose values?).
-\end{itemize}
+Alignment does not eliminate human risks; it introduces new ones.
 
-Human users often conflate:
-\begin{quote}
-Aligned behavior $\neq$ correct or ethical behavior
-\end{quote}
+\paragraph{Over-trust.}
+A polite, fluent assistant is trusted more than an equally-accurate
+less-polite one. This is a documented, large, and consequential
+effect. Product copy, disclaimers, and interaction design should
+push \emph{against} over-trust, not reinforce it. The ``confidence
+of the model output'' is almost never a reliable guide to the
+correctness of the model output; engineers must design the
+interface to make this legible to users.
+
+\paragraph{False sense of safety.}
+Alignment training reduces the frequency of many harms; it does
+not eliminate any of them, and it creates new failure modes (the
+polite falsehood, the over-cautious refusal, the sycophantic
+agreement). Safety teams that treat alignment as a one-time
+hardening pass will be caught by the long tail.
+
+\paragraph{Normative opacity.}
+Whose values? Users of an aligned model are subject to the
+preferences of the labellers, the writers of the principal
+guidelines, and the product owners who chose the taxonomy.
+Transparency about these choices --- published model cards, public
+refusal taxonomies, documented principal guidelines --- is the
+operational answer to the ethical question.
+
+\paragraph{Evaluation capture.}
+Teams under pressure to ship tend to optimize what they measure.
+If the alignment eval suite is narrow, the shipped model will be
+narrowly aligned. The suite must be owned by a separate team from
+the training team, and the cases must be refreshed faster than
+they can be memorised.
+
+\subsection{V-Model View: Alignment Lifecycle}
+
+\begin{center}
+\small
+\begin{tabular}{p{4.3cm}|p{4.3cm}|p{4.3cm}}
+\textbf{V-stage} & \textbf{Artefact} & \textbf{Verification activity}\\\hline
+Requirements & HHH + refusal taxonomy + product guidelines & Legal, T\&S, product sign-off \\
+Data spec & SFT corpus + preference triples + red-team set & Author calibration, inter-annotator agreement, contamination check \\
+Recipe design & SFT-LoRA + DPO/PPO config + reward model (if RLHF) & Ablations on data composition and $\beta$ \\
+Training & Aligned policy $\pi_\theta$ + reward model & Loss curves, KL trajectories, held-out rewards \\
+Evaluation & Eval harness results per HHH + refusal + jailbreak & Independent eval team, unpublished prompts \\
+Deployment & Adapter + model card + rollout plan & Shadow traffic; red-team gate; staged rollout \\
+Operations & Live metrics, incident queue & Drift alerts, complaint triage, adversarial probe monitoring \\
+\end{tabular}
+\end{center}
 
 \subsection{Key References}
 
-\begin{itemize}
-  \item \citet{ouyang2022training} — InstructGPT / RLHF
-  \item \citet{rafailov2023direct} — Direct Preference Optimization
-\end{itemize}
+The three foundational papers are \citet{christiano2017deep}
+(preferences-to-reward, the origin of RLHF),
+\citet{stiennon2020learning} (RLHF at LLM scale applied to
+summarization), and \citet{ouyang2022training} (InstructGPT, the
+first public-facing RLHF-aligned model). DPO \citep{rafailov2023direct}
+and its variants \citep{azar2023general, ethayarajh2024kto,
+hong2024orpo, meng2024simpo} define the modern
+reference-model-based family. Constitutional AI
+\citep{bai2022constitutional} and RLAIF \citep{lee2023rlaif} give
+the AI-feedback scaling strategy. The HHH framework
+\citep{askell2021general} and the Helpful-and-Harmless paper
+\citep{bai2022training} describe the canonical objective
+decomposition. PPO \citep{schulman2017ppo} is the RL algorithm
+underneath RLHF. Red teaming \citep{ganguli2022redteaming,
+perez2022redteaming} and jailbreak analysis
+\citep{wei2023jailbroken, zou2023universal} are essential reading
+for anyone deploying aligned models. The open-problems surveys
+\citep{casper2023open, anwar2024foundational} and the reward-model
+over-optimization paper \citep{gao2023scaling} ground the critical
+view.
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS324 — alignment and foundation models  
-  \url{https://stanford-cs324.github.io/winter2022/}
-
-  \item Berkeley AI Safety lectures  
-  \url{https://aisafety.berkeley.edu}
+  \item Stanford CS324 --- Alignment lectures.
+        \url{https://stanford-cs324.github.io/winter2022/}
+  \item Berkeley AI Safety and Alignment course.
+        \url{https://aisafety.berkeley.edu}
+  \item NYU Center for Data Science --- Sam Bowman on alignment.
+        \url{https://cims.nyu.edu/~sbowman/}
+  \item MIT 6.S099 --- Artificial General Intelligence (seminar on
+        alignment and safety).  \url{https://agi.mit.edu}
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week08/week08\_lab\_alignment\_preference.ipynb}.
+A concrete lab for a team with modest resources:
+\begin{enumerate}
+  \item Start from a 7B base model; run a LoRA SFT against a
+        1,000-example curated dataset (LIMA-style) and a
+        100,000-example mixture (FLAN-style). Compare held-out
+        helpfulness and academic-benchmark scores. Quantify the
+        alignment tax.
+  \item Collect 1,000 preference triples by having two humans rank
+        outputs on a small set of prompts. Measure inter-annotator
+        agreement (expect 70--80\%). Discuss what the
+        disagreements mean.
+  \item Train a DPO LoRA on the preference data on top of the SFT
+        model. Sweep $\beta \in \{0.01, 0.1, 1.0\}$ and record
+        training-set reward, held-out reward, and KL to the
+        reference.
+  \item Train an ORPO LoRA in parallel and compare compute cost.
+  \item Build a small evaluation harness: 50 helpfulness prompts,
+        50 refusal prompts (30 that should be refused, 20 that
+        should not), 20 jailbreak prompts. Run base, SFT, and
+        DPO-aligned models through it; tabulate.
+  \item Introduce one adversarial prompt into the SFT data
+        (``always agree with the user''). Retrain. Observe the
+        sycophancy regression on your eval suite.
+  \item Remove the adversarial example, retrain, confirm recovery.
+        Document this as a case study in evaluation discipline.
+  \item (Stretch) Run a small RLAIF: use a capable model to
+        generate synthetic preferences, run DPO against them,
+        compare to the human-preference DPO. Document quality
+        differences and the cost delta.
+\end{enumerate}
+
+\subsection{Bridges to Other Weeks}
+
+Week~8 depends on pretraining (Week~5) for the base model and on
+adaptation (Week~7) for the LoRA machinery that runs all three
+post-training stages. It connects forward to Week~9, which treats
+evaluation --- the lens through which alignment quality is ever
+measured --- and to Week~10, where the governance framework treats
+post-training lineage as a first-class audit artefact. RAG systems
+(Week~9) substitute \emph{retrieved context} for some of the
+knowledge alignment might otherwise have to encode, and the decision
+of ``align vs.\ retrieve'' recurs throughout the rest of the book.
 
 \subsection{Week 8 Takeaway}
 
 \begin{quote}
-Alignment shapes how models behave, not what they fundamentally know.
+Alignment reshapes the output distribution of a base model to match
+human preferences under constraints. It does not add knowledge, it
+does not make a model truthful, and it does not eliminate risks ---
+it creates different, more subtle risks in exchange for the ones
+pretraining leaves behind. The engineering discipline of alignment
+is continuous: curate data, train a delta, evaluate independently,
+ship carefully, monitor forever, be ready to roll back.
 \end{quote}
-
-

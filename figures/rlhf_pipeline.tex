@@ -1,0 +1,41 @@
+\begin{tikzpicture}[
+  stage/.style={draw, rounded corners, minimum width=3.2cm, minimum height=1.3cm,
+                align=center, font=\footnotesize, fill=black!5},
+  data/.style={draw, dashed, rounded corners, minimum width=3.0cm, minimum height=0.8cm,
+               align=center, font=\footnotesize\itshape, fill=blue!5},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.5cm and 0.7cm
+]
+
+% Stage 1: Pretraining
+\node[stage] (pt) {\textbf{1. Pretraining}\\next-token prediction\\$\sim 10^{13}$ tokens};
+\node[data, above=0.3cm of pt] (ptd) {web / books / code};
+
+% Stage 2: SFT
+\node[stage, right=of pt] (sft) {\textbf{2. SFT}\\supervised on\\(prompt, response) pairs};
+\node[data, above=0.3cm of sft] (sftd) {$\sim 10^4$--$10^5$ pairs\\hand-curated};
+
+% Stage 3: Reward model
+\node[stage, right=of sft] (rm) {\textbf{3. Reward Model}\\Bradley-Terry on\\pairwise preferences};
+\node[data, above=0.3cm of rm] (rmd) {$\sim 10^5$ triples\\(prompt, $y^+$, $y^-$)};
+
+% Stage 4: RL
+\node[stage, below=0.9cm of sft] (rl) {\textbf{4a. PPO / RLHF}\\policy gradient\\with KL penalty};
+\node[stage, below=0.9cm of rm] (dpo) {\textbf{4b. DPO / IPO}\\direct preference loss\\(no explicit RM)};
+
+\draw[arrow] (ptd) -- (pt);
+\draw[arrow] (sftd) -- (sft);
+\draw[arrow] (rmd) -- (rm);
+\draw[arrow] (pt) -- (sft);
+\draw[arrow] (sft) -- (rm);
+\draw[arrow] (sft.south) |- ++(0,-0.4) -| (rl.north);
+\draw[arrow] (rm.south) -- (rl.north east);
+\draw[arrow] (sft.south) |- ++(0,-0.4) -| (dpo.north);
+\draw[arrow, dashed] (rmd) -| (dpo.north east);
+
+\node[font=\footnotesize, below=0.3cm of rl, align=center, text width=3.2cm]
+  {aligned policy $\pi_\theta$};
+\node[font=\footnotesize, below=0.3cm of dpo, align=center, text width=3.2cm]
+  {aligned policy $\pi_\theta$};
+
+\end{tikzpicture}
