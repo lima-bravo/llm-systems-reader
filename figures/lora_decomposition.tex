@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+  mat/.style={draw, thick, minimum width=2.0cm, minimum height=2.0cm,
+              align=center, font=\small},
+  matthin/.style={draw, thick, minimum width=0.7cm, minimum height=2.0cm,
+                  align=center, font=\small},
+  matwide/.style={draw, thick, minimum width=2.0cm, minimum height=0.7cm,
+                  align=center, font=\small},
+  op/.style={font=\Large},
+  node distance=0.4cm and 0.4cm
+]
+
+% Frozen W (blue fill)
+\node[mat, fill=blue!10] (W) {\textbf{$W_0$}\\frozen\\$d \times k$};
+
+\node[op, right=0.3cm of W] (plus) {$+$};
+
+% Delta W = B A
+\node[matthin, right=0.3cm of plus, fill=orange!20] (B) {\textbf{$B$}\\$d \times r$};
+\node[op, right=0.2cm of B] (times) {$\times$};
+\node[matwide, right=0.2cm of times, fill=orange!20] (A) {\textbf{$A$}\\$r \times k$};
+
+\node[font=\footnotesize, below=0.2cm of W] {pretrained};
+\node[font=\footnotesize, below=0.2cm of B] {trained};
+\node[font=\footnotesize, below=0.2cm of A] {trained};
+
+% Input / output
+\node[font=\small\itshape, above=0.5cm of W] (inW) {$x \in \mathbb{R}^k$};
+\node[font=\small\itshape, above=0.5cm of A, xshift=-0.4cm] (inA) {};
+
+% Rank annotation
+\node[font=\footnotesize, below=1.0cm of plus, align=center, text width=5cm]
+  (note) {Update in $r$-dimensional subspace: only $r(d+k)$ trainable parameters instead of $d \cdot k$.};
+
+\end{tikzpicture}

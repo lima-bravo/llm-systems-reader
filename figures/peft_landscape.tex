@@ -1,0 +1,38 @@
+\begin{tikzpicture}[
+  cat/.style={draw, rounded corners, minimum width=3.6cm, minimum height=0.9cm,
+              align=center, font=\footnotesize, fill=black!5},
+  meth/.style={draw, rounded corners, minimum width=3.6cm, minimum height=0.7cm,
+               align=center, font=\footnotesize},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.3cm and 0.6cm
+]
+
+\node[cat] (root) {\textbf{Parameter-Efficient Fine-Tuning}};
+
+% Three branches
+\node[cat, below=1.0cm of root, xshift=-5.2cm] (reparam) {\textbf{Reparameterization}\\(low-rank updates)};
+\node[cat, below=1.0cm of root] (prompt) {\textbf{Prompt-based}\\(soft prompts / prefixes)};
+\node[cat, below=1.0cm of root, xshift=5.2cm] (selective) {\textbf{Selective / additive}};
+
+\draw[arrow] (root) -- (reparam);
+\draw[arrow] (root) -- (prompt);
+\draw[arrow] (root) -- (selective);
+
+% Methods under each branch
+\node[meth, below=of reparam] (lora) {LoRA / QLoRA};
+\node[meth, below=of lora] (adalora) {AdaLoRA};
+\node[meth, below=of adalora] (dora) {DoRA};
+
+\node[meth, below=of prompt] (prompttune) {Prompt tuning};
+\node[meth, below=of prompttune] (prefixtune) {Prefix tuning};
+\node[meth, below=of prefixtune] (ptune) {P-tuning v2};
+
+\node[meth, below=of selective] (adapter) {Houlsby adapters};
+\node[meth, below=of adapter] (bitfit) {BitFit};
+\node[meth, below=of bitfit] (ia3) {$(IA)^3$};
+
+\draw[arrow] (reparam)   -- (lora);
+\draw[arrow] (prompt)    -- (prompttune);
+\draw[arrow] (selective) -- (adapter);
+
+\end{tikzpicture}
