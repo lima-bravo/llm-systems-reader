@@ -1,0 +1,36 @@
+\begin{tikzpicture}[
+  stage/.style={draw, rounded corners, align=center,
+                minimum width=2.6cm, minimum height=0.9cm, font=\small},
+  data/.style={draw, dashed, rounded corners, align=center,
+               minimum width=3.0cm, minimum height=0.75cm, font=\footnotesize\ttfamily},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.9cm and 1.1cm
+]
+
+% --- Stages (top row) ---
+\node[stage] (norm)   {Unicode\\normalization};
+\node[stage, right=of norm]  (pre)    {Pre-tokenization\\(whitespace, bytes)};
+\node[stage, right=of pre]   (vocab)  {Vocabulary\\lookup};
+\node[stage, right=of vocab] (embed)  {Embedding\\matrix $E$};
+
+% --- Data between stages (bottom row) ---
+\node[data, below=0.8cm of norm]  (txt)   {``Hello, world!''};
+\node[data, below=0.8cm of pre]   (subs)  {[``Hello'', ``,'', ``\_world'', ``!'']};
+\node[data, below=0.8cm of vocab] (ids)   {[15496, 11, 995, 0]};
+\node[data, below=0.8cm of embed] (vecs)  {$[\mathbf{e}_1, \mathbf{e}_2, \mathbf{e}_3, \mathbf{e}_4]$};
+
+% --- Flow arrows ---
+\draw[arrow] (txt)  -- (subs);
+\draw[arrow] (subs) -- (ids);
+\draw[arrow] (ids)  -- (vecs);
+
+% --- Stage-to-data associations (dotted) ---
+\draw[dotted] (norm) -- (txt);
+\draw[dotted] (pre)  -- (subs);
+\draw[dotted] (vocab)-- (ids);
+\draw[dotted] (embed)-- (vecs);
+
+% --- Top-level flow label ---
+\node[above=0.3cm of pre, font=\small\itshape] {text $\to$ tokens $\to$ integers $\to$ vectors};
+
+\end{tikzpicture}

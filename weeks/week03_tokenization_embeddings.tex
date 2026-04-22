@@ -1,173 +1,638 @@
 \section{Week 3: Tokenization and Embeddings — From Text to Vectors}
+\label{sec:week3-tokemb}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Explain why tokenization is a design choice, not a neutral preprocessing step
-  \item Compare word-level and subword-level tokenization
-  \item Understand embeddings as learned geometric representations
-  \item Reason about how meaning, similarity, and analogy emerge in vector spaces
-  \item Identify system-level consequences of tokenization decisions
+  \item Walk through the Byte-Pair Encoding (BPE) algorithm end-to-end
+        and trace how a concrete string becomes a token sequence.
+  \item Contrast BPE, WordPiece, and Unigram-LM tokenizers on
+        objective, determinism, reversibility, and failure modes.
+  \item Explain why byte-level BPE defeats the Unicode-normalization
+        problems that plague word- and character-level models.
+  \item Derive the embedding layer mathematically as a one-hot lookup
+        and justify tied input/output embeddings on a memory and
+        regularization basis.
+  \item Describe the distributional hypothesis, explain why analogy
+        vectors sometimes work, and reason about the geometry
+        (clusters, anisotropy, PCA/t-SNE) of learned embeddings.
+  \item Identify bias and fairness risks carried into embeddings from
+        training data, and articulate engineering mitigations.
+  \item Design a tokenizer-versioning policy, including multilingual
+        token-budget planning and vocabulary-drift detection.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
 \textbf{Input representation}
 \begin{itemize}
-  \item Tokenization (word vs subword)
-  \item Vocabulary construction
-  \item Token IDs and special tokens
+  \item Unicode normalization (NFC / NFD / NFKC).
+  \item Pre-tokenization (whitespace, punctuation, byte-fallback).
+  \item Vocabulary construction (BPE, WordPiece, Unigram, byte-level).
+  \item Special tokens (\texttt{<|bos|>}, \texttt{<|pad|>},
+        \texttt{<|eos|>}, chat templates).
 \end{itemize}
 
 \textbf{Representation learning}
 \begin{itemize}
-  \item Embedding layers
-  \item Semantic geometry
-  \item Similarity and clustering
+  \item Embedding layer as a linear map from one-hot to $\mathbb{R}^d$.
+  \item Tied embeddings between the input table and the output softmax.
+  \item Positional encoding as an additive representation.
 \end{itemize}
 
-\subsection{Conceptual Core: Language as Discrete Symbols}
-
-Neural networks operate on vectors in $\mathbb{R}^n$, but natural language is discrete and symbolic.
-Tokenization is the process that defines the mapping:
-
-\[
-\text{text} \rightarrow \text{tokens} \rightarrow \text{integers} \rightarrow \text{vectors}
-\]
-
-This mapping is:
+\textbf{Systems relevance}
 \begin{itemize}
-  \item lossy,
-  \item irreversible,
-  \item and deeply consequential.
+  \item Tokenizer as a versioned model artifact.
+  \item Token-count billing and multilingual fairness.
+  \item Prompt brittleness at token boundaries.
 \end{itemize}
 
-Once tokenized, the model never ``sees'' characters or words again — only token IDs.
+\subsection{Conceptual Core: Discrete Symbols to Vectors}
 
-\subsection{Word-Level Tokenization}
+Neural networks operate on $\mathbb{R}^d$; natural language is discrete,
+hierarchical, and Unicode-encoded. Every LLM pipeline begins with a
+deterministic function
+\begin{equation}
+\label{eq:week3-pipeline}
+\text{text} \;\xrightarrow{\text{normalize}}\;
+\text{code-points} \;\xrightarrow{\text{tokenize}}\;
+\text{token sequence} \;\xrightarrow{\text{vocab}}\;
+\text{integer IDs} \;\xrightarrow{\text{embed}}\;
+\mathbb{R}^{T \times d}.
+\end{equation}
+See Figure~\ref{fig:week3-pipeline}. After embedding, the rest of the
+Transformer (Week~4) operates purely on floats; the model never sees a
+character or a Unicode code-point again. The tokenizer is therefore a
+\emph{model boundary}: it defines the alphabet the rest of the system
+will ever perceive, and it must match exactly between training and
+inference, otherwise the model is effectively reading garbled input.
 
-In word-level tokenization, text is split on whitespace or punctuation.
-This approach is intuitive but brittle:
+\begin{figure}[h]
+\centering
+\input{figures/tokenization_pipeline}
+\caption{The tokenization pipeline: text is normalized, pre-tokenized,
+  mapped to integer IDs via the vocabulary, and projected into
+  $\mathbb{R}^d$ through the embedding matrix $E$.
+  After this step the model operates purely on dense vectors.}
+\label{fig:week3-pipeline}
+\end{figure}
+
+Three engineering claims follow immediately:
 \begin{itemize}
-  \item out-of-vocabulary (OOV) words,
-  \item poor handling of morphology,
-  \item exploding vocabulary size.
+  \item \textbf{The tokenizer is part of the model}. Changing it
+        silently changes semantics; it must be version-pinned alongside
+        the weights.
+  \item \textbf{Tokenization is lossy}. Information absent from the
+        token sequence is unrecoverable downstream (e.g., a
+        capitalization lost in lowercasing).
+  \item \textbf{Tokenization determines the prior}. Tokens are the
+        atomic events in the cross-entropy of Week~1; changing them
+        changes both the likelihood surface and the notion of
+        perplexity.
 \end{itemize}
 
-Early neural language models relied heavily on this approach.
+\subsection{Unicode, Bytes, and Normalization}
 
-\subsection{Subword Tokenization}
-
-Modern LLMs use subword tokenization (e.g.\ Byte Pair Encoding).
-
-Key idea:
+Natural-language text in modern systems is Unicode code-points, not
+bytes. The same visual string can have multiple code-point encodings
+(the ``\'e'' can be one code-point U+00E9 or two code-points
+U+0065~U+0301), and these are \emph{not equal} as integer sequences.
+Normalization forms resolve this:
 \begin{itemize}
-  \item frequent character sequences become tokens,
-  \item rare words are decomposed into smaller units.
+  \item \textbf{NFC} (composed) — merges combining marks into
+        precomposed code-points; preferred for storage.
+  \item \textbf{NFD} (decomposed) — splits precomposed code-points;
+        preferred for collation.
+  \item \textbf{NFKC / NFKD} — additionally merge compatibility
+        variants (e.g., full-width Latin to ASCII).
 \end{itemize}
+A tokenizer trained on NFC text but applied to NFD input will segment
+the input differently, and the model will see out-of-distribution IDs.
+This is a real production bug: production prompts from Windows clipboard
+paste sometimes arrive in a different normalization form than the
+training corpus.
 
-This allows:
+Byte-level tokenizers sidestep part of this problem by working on UTF-8
+byte sequences ($\mathbb{B} = \{0, \ldots, 255\}$), which is canonical
+by construction. The tradeoff is that naive byte tokenization inflates
+token counts by roughly $3\times$ for many scripts; byte-level BPE
+recovers much of this by \emph{merging} byte sequences into higher-level
+tokens while retaining the byte alphabet as a fallback.
+
+\subsection{Word-Level Tokenization and Its Failure Modes}
+
+Word-level tokenization splits on whitespace and punctuation. It is
+intuitive but fails at scale for four reasons.
+
+\begin{enumerate}
+  \item \textbf{Out-of-vocabulary (OOV) tokens.} Any word not in the
+        training vocabulary is mapped to \texttt{<unk>}, destroying
+        information and making the model guess from context. For
+        morphologically rich languages (Finnish, Turkish, Russian),
+        the OOV rate on held-out text can exceed 30\%.
+  \item \textbf{Vocabulary size.} A word-level English vocabulary that
+        covers 99\% of running text requires $\sim\!250{,}000$
+        entries; the embedding table dominates parameter count for
+        small models, and the final softmax becomes the bottleneck
+        for inference latency.
+  \item \textbf{Morphology blindness.} ``run'', ``running'', ``runs'',
+        and ``ran'' share no parameters — the model must learn their
+        relationship from co-occurrence statistics.
+  \item \textbf{Multilingual collapse.} Space-separated tokenization is
+        meaningless for Chinese, Japanese, and Thai; word-level
+        approaches require separate per-language segmenters.
+\end{enumerate}
+
+For these reasons, modern LLMs use subword tokenization.
+
+\subsection{Byte-Pair Encoding (BPE)}
+
+BPE was introduced for data compression \citep{sennrich2016bpe} and
+adapted to neural machine translation; it is the tokenizer underlying
+most modern LLMs.
+
+\subsubsection{Training Algorithm}
+
+Given a training corpus:
+\begin{enumerate}
+  \item \textbf{Initialize} the vocabulary as the set of base symbols
+        (characters, or in byte-level BPE, the 256 bytes) plus a small
+        set of special tokens.
+  \item \textbf{Count adjacent pair frequencies} across all tokenized
+        corpus lines.
+  \item \textbf{Merge} the most frequent pair $(a, b)$ into a single
+        new symbol $ab$, add it to the vocabulary, and record the
+        merge rule.
+  \item \textbf{Repeat} steps~2--3 until the vocabulary reaches a
+        target size $V$ (typical: $32{,}000$--$200{,}000$).
+\end{enumerate}
+The output is (i)~a vocabulary (the set of symbols) and (ii)~an
+\emph{ordered} list of merge rules. Encoding a new string applies the
+merge rules in order, producing a deterministic segmentation.
+
+\subsubsection{Worked Example}
+
+Consider the tiny corpus
+\begin{quote}\ttfamily
+low low low low low\\
+lowest lowest\\
+newer newer newer newer newer newer\\
+wider wider wider
+\end{quote}
+After pre-tokenization (split by whitespace) and character
+decomposition with end-of-word marker \texttt{\_}:
+
+\begin{center}
+\begin{tabular}{|l|r|}
+\hline
+Token sequence & Count \\
+\hline
+\texttt{l o w \_}                  & 5 \\
+\texttt{l o w e s t \_}            & 2 \\
+\texttt{n e w e r \_}              & 6 \\
+\texttt{w i d e r \_}              & 3 \\
+\hline
+\end{tabular}
+\end{center}
+
+Initial pair frequencies:
+\texttt{lo}=7,
+\texttt{ow}=7,
+\texttt{we}=8,
+\texttt{er}=9,
+\texttt{r\_}=9,
+\texttt{w\_}=5, \ldots.
+The most frequent pair (tied) is \texttt{er} or \texttt{r\_}; breaking
+ties by the lexicographic BPE convention, merge \texttt{e r}
+$\to$ \texttt{er}. Recompute:
+
+\begin{center}
+\begin{tabular}{|l|r|}
+\hline
+Token sequence & Count \\
+\hline
+\texttt{l o w \_}                  & 5 \\
+\texttt{l o w e s t \_}            & 2 \\
+\texttt{n e w er \_}               & 6 \\
+\texttt{w i d er \_}               & 3 \\
+\hline
+\end{tabular}
+\end{center}
+
+The next most frequent pair is \texttt{er \_} with count 9; merge to
+\texttt{er\_}. Continue until $V$ is reached. After several iterations
+the vocabulary contains frequent subwords (\texttt{low}, \texttt{er\_},
+\texttt{er}, \texttt{new}, \ldots) plus rare characters (\texttt{i},
+\texttt{s}, \texttt{t}). A new word like \texttt{slower} segments as
+\texttt{s l o w er \_}, exercising both rare characters and learned
+subwords: open-vocabulary by construction.
+
+\subsubsection{Encoding Complexity}
+
+Naive BPE encoding is $O(T \log V)$ per input of length $T$ with a
+priority-queue implementation; the production variant used by
+\texttt{tiktoken}~\citep{openai_tiktoken} uses a precomputed merge
+priority table and runs at roughly $1$\,GB/s on a single core.
+
+\subsection{WordPiece}
+
+WordPiece~\citep{devlin2019bert} replaces BPE's ``most frequent pair''
+criterion with a likelihood-maximization criterion. At each step it
+merges the pair $(a, b)$ that maximizes
+\begin{equation}
+\label{eq:week3-wordpiece}
+\mathrm{score}(a, b) \;=\;
+\frac{\mathrm{count}(ab)}
+     {\mathrm{count}(a)\,\mathrm{count}(b)},
+\end{equation}
+which is proportional to the increase in the unigram likelihood of the
+training corpus under the merged vocabulary. WordPiece prefers merges
+whose constituents are rare on their own but frequent together (i.e.,
+collocations). Encoding uses greedy longest-prefix matching at
+inference time, annotated with the \texttt{\#\#} prefix to mark
+intra-word continuation (``playing'' $\to$ \texttt{play \#\#ing}).
+
+\subsection{Unigram LM and SentencePiece}
+
+\citet{kudo2018unigram} introduced a fundamentally different approach:
+\emph{start} with a large seed vocabulary and \emph{prune} it down. The
+tokenizer maintains a unigram language model over subwords,
+\begin{equation}
+\label{eq:week3-unigram}
+p(\mathbf{x}) \;=\; \prod_{t} p(x_t),
+\end{equation}
+with the per-subword probabilities fit by EM. At each iteration the
+tokenizer removes the subword whose deletion causes the smallest drop
+in corpus log-likelihood, repeating until the desired vocabulary size
+is reached. Encoding uses the Viterbi algorithm to find the highest-
+likelihood segmentation of the input given the pruned vocabulary.
+
+\emph{SentencePiece}~\citep{kudo2018sentencepiece} is an open-source
+implementation that supports both BPE and Unigram-LM and, importantly,
+treats the entire input (including whitespace) as raw byte data by
+default; whitespace is replaced with a sentinel (U+2581, ``\_'') so
+that detokenization is guaranteed reversible. This reversibility is
+not guaranteed by the original BPE formulation, which requires
+language-specific detokenization rules.
+
+\subsection{Comparison of Subword Tokenizers}
+
+\begin{center}
+\begin{tabular}{|p{2.5cm}|p{3.4cm}|p{3.0cm}|p{3.8cm}|}
+\hline
+Tokenizer & Training objective & Encoding & Used by \\
+\hline
+BPE              & Greedy pair frequency            & Deterministic
+                   & GPT-2/3/4, Llama (byte-level) \\
+WordPiece        & Likelihood score Eq.~\eqref{eq:week3-wordpiece}  & Greedy longest-match
+                   & BERT, ALBERT \\
+Unigram LM       & EM pruning, Eq.~\eqref{eq:week3-unigram}         & Viterbi (probabilistic)
+                   & T5, Gemini, many multilingual models \\
+Byte-level BPE   & BPE over bytes                   & Deterministic
+                   & GPT-2 onwards, Llama~2/3 \\
+\hline
+\end{tabular}
+\end{center}
+
+Practical consequences: BPE and WordPiece are deterministic, which
+simplifies caching; Unigram LM can return the $k$-best segmentations,
+useful for data augmentation during training~\citep{kudo2018unigram}.
+Byte-level BPE trades a slightly larger apparent vocabulary for robust
+handling of all Unicode input without special-casing.
+
+\subsection{The GPT Whitespace Oddity and Other Quirks}
+
+GPT-2's tokenizer~\citep{radford2019language,openai_tiktoken} is
+byte-level BPE with one consequential detail: leading whitespace is
+prepended to the following token rather than emitted separately. The
+string ``\ the'' (with a leading space) and ``the'' (without) produce
+different token IDs, and the model has been trained to expect one
+form or the other depending on context.
+
+This has engineering implications:
 \begin{itemize}
-  \item open-vocabulary modeling,
-  \item graceful handling of neologisms,
-  \item shared statistical strength across words.
+  \item Naive prompt concatenation
+        (\texttt{prompt + user\_message}) can produce whitespace
+        boundaries the tokenizer segments unexpectedly, degrading
+        quality.
+  \item Stop sequences must be specified in post-tokenization token
+        IDs, not as raw strings, or they may straddle token boundaries
+        and never match.
+  \item Newlines, tabs, and non-breaking spaces are separate tokens,
+        and small whitespace changes can flip behavior.
 \end{itemize}
+Practitioners resolve these by always tokenizing the fully assembled
+prompt as a single step, logging the resulting token IDs alongside the
+text, and writing assertions that critical prompt prefixes segment
+into a stable number of tokens.
 
 \subsection{Embeddings as Learned Geometry}
 
-Each token ID is mapped to a vector via an embedding matrix:
+\subsubsection{The Embedding Layer is a Linear Map}
 
-\[
-\mathbf{e}_i \in \mathbb{R}^d
-\]
+Given a vocabulary of size $V$ and embedding dimension $d$, the
+embedding layer is parameterized by a matrix $E \in \mathbb{R}^{V \times d}$.
+For a token ID $i$, the input embedding is the $i$-th row:
+\begin{equation}
+\label{eq:week3-embed}
+\mathbf{e}_i \;=\; E^{\top} \mathbf{1}_i,
+\end{equation}
+where $\mathbf{1}_i \in \{0,1\}^{V}$ is the one-hot indicator vector.
+Mathematically, this is nothing other than a linear projection from
+the $V$-dimensional one-hot simplex into $\mathbb{R}^{d}$; the
+``lookup'' is an efficient implementation that skips the $V \times d$
+matrix multiply. The embedding matrix is $O(Vd)$ parameters — for
+$V = 10^5$ and $d = 8{,}000$, this is $8\times 10^8$ parameters, which
+is often the single largest block in a model's parameter count.
 
-These vectors are learned jointly with the rest of the model.
-Distances and directions in embedding space capture statistical regularities of language.
+\subsubsection{Tied Input and Output Embeddings}
 
-Similarity is often measured via cosine similarity:
+The output layer of a language model computes unnormalized logits
+\begin{equation}
+\label{eq:week3-unembed}
+\mathbf{z} \;=\; W_{\mathrm{out}}\,\mathbf{h},
+\qquad
+W_{\mathrm{out}} \in \mathbb{R}^{V \times d},
+\end{equation}
+where $\mathbf{h}$ is the final hidden state and $\mathbf{z}$ is fed
+into the softmax of Week~1. \emph{Tying} weights sets
+$W_{\mathrm{out}} = E$, so the input embedding and the output projection
+share parameters. This halves the embedding parameter budget and,
+empirically, improves perplexity by a small but consistent margin on
+most settings. Tied embeddings are standard in encoder-decoder (T5) and
+most decoder-only (GPT, Llama) architectures. The inductive bias is
+that tokens with similar \emph{use} (appearing in similar contexts)
+should map to similar \emph{output} probabilities, matching the
+distributional hypothesis below.
 
-\[
-\cos(\theta) = \frac{\mathbf{e}_i \cdot \mathbf{e}_j}{\|\mathbf{e}_i\| \|\mathbf{e}_j\|}
-\]
+\subsubsection{Positional Encoding (Preview)}
 
-\subsection{What Embeddings Encode (and What They Do Not)}
+Transformer attention is permutation-equivariant; without extra
+machinery the model cannot distinguish ``dog bites man'' from
+``man bites dog''. Positional encodings restore order information.
+Classical variants (sinusoidal, learned) are additive to the embedding;
+rotary~\citep{su2021rope} and ALiBi~\citep{press2022alibi} are
+multiplicative/additive inside the attention kernel. Positional
+encoding is covered in depth in Week~4.
 
-Embeddings encode:
+\subsection{The Distributional Hypothesis and Analogy Vectors}
+
+\citet{mikolov2013efficient,mikolov2013distributed} operationalized the
+distributional hypothesis — \emph{a word's meaning is characterized by
+the company it keeps} — in the Word2Vec family of models. Given a
+sliding window, Word2Vec trains an embedding $\mathbf{e}_w$ to
+maximize the log-likelihood of observed co-occurrences. The
+famous analogy result is
+\begin{equation}
+\mathbf{e}_{\text{king}} \;-\; \mathbf{e}_{\text{man}}
+\;+\; \mathbf{e}_{\text{woman}}
+\;\approx\; \mathbf{e}_{\text{queen}},
+\end{equation}
+which suggests that gender-semantic offsets are encoded as a
+consistent direction in embedding space. GloVe~\citep{pennington2014glove}
+refined the objective to directly target a logarithm of co-occurrence
+ratios.
+
+\emph{Cautionary notes for practitioners:}
 \begin{itemize}
-  \item distributional similarity,
-  \item syntactic and semantic regularities,
-  \item task-relevant biases from training data.
+  \item LLM embeddings from modern models are trained jointly with the
+        rest of the network, not with a Word2Vec objective; analogy
+        vectors are not guaranteed to work.
+  \item The analogy result is sensitive to normalization; it typically
+        requires unit-norm vectors and cosine similarity.
+  \item Analogies that ``work'' often reflect dataset statistics rather
+        than semantic structure (see bias discussion below).
 \end{itemize}
 
-They do not encode:
+\subsection{Embedding Geometry}
+
+\subsubsection{Cosine Similarity and Anisotropy}
+
+Similarity between embeddings is conventionally measured by cosine:
+\begin{equation}
+\cos(\mathbf{e}_i, \mathbf{e}_j) \;=\;
+\frac{\mathbf{e}_i \cdot \mathbf{e}_j}
+     {\|\mathbf{e}_i\|\,\|\mathbf{e}_j\|}.
+\end{equation}
+Modern Transformer embeddings are highly \emph{anisotropic}: almost
+all token vectors concentrate in a narrow cone of the $d$-dimensional
+space, so the mean cosine similarity between random tokens is
+typically $0.5$--$0.8$ rather than the $0$ a uniformly-distributed
+embedding would predict. This means raw cosine similarity is
+uninformative without centering or whitening; downstream
+retrieval pipelines (Week~9) routinely apply a mean-subtraction or
+PCA step before comparing embeddings.
+
+\subsubsection{Visualization: PCA and t-SNE}
+
+Two-dimensional visualization of token embeddings is a useful but
+treacherous tool. PCA preserves global linear structure; t-SNE and
+UMAP preserve local neighborhood structure at the expense of global
+geometry. Interpretation rules of thumb:
 \begin{itemize}
-  \item ground truth,
-  \item symbolic meaning,
-  \item explicit ontologies.
+  \item A t-SNE cluster \emph{probably} reflects a local similarity
+        structure, but apparent distances between clusters carry
+        little information.
+  \item PCA directions that explain more than a few percent of
+        variance correspond to coarse semantic axes
+        (part-of-speech, frequency, language).
+  \item Subword tokens (especially rare byte-level fragments) often
+        form a separate ``cruft cluster'' far from content words;
+        this is a property of training, not a bug.
 \end{itemize}
+For production monitoring, a better tool is a \emph{probe}: a small
+linear classifier that predicts a property (e.g., language, sentiment
+polarity) from the embedding. Its accuracy is an operational signal
+for whether the embedding has drifted.
+
+\subsection{Bias and Fairness in Embeddings}
+
+Embeddings inherit the statistical structure of their training
+corpus. \citet{bolukbasi2016man} showed that Word2Vec vectors
+trained on Google News encode gender stereotypes
+(\texttt{computer\_programmer} is closer to \texttt{man} than to
+\texttt{woman}, \emph{etc.}). Similar patterns recur in modern LLM
+embeddings, although now mediated by the much richer contextualized
+representations of the Transformer stack (Week~4).
+
+Three engineering positions on bias in embeddings:
+\begin{itemize}
+  \item \textbf{Do not debias at the embedding layer.} Doing so hides
+        the problem from downstream observability.
+  \item \textbf{Treat embeddings as an audit surface.} Run fairness
+        probes on the embedding layer to detect training-data shifts.
+  \item \textbf{Mitigate at the application layer.} Prompt design,
+        output classifiers, and human review are typically more
+        effective than post-hoc embedding projections.
+\end{itemize}
+This is reinforced in Week~8 (alignment) and Week~10 (governance).
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Tokenization must be stable across training and inference
-  \item Vocabulary changes imply retraining or incompatibility
-\end{itemize}
+\begin{center}
+\begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
+\hline
+V-model stage & Tokenizer / embedding property & System requirement or activity \\
+\hline
+Requirements & Tokenizer is part of the API contract
+             & Version-pin alongside weights; publish hash in model
+               card. \\
+ & Multilingual fairness & Budget token-per-character ratios by
+   language (see \S\,Multilingual below). \\
+\hline
+Architecture & $E$ dominates parameter count at small scale
+             & Share $E$ with $W_{\mathrm{out}}$ (tied embeddings). \\
+ & Byte-level fallback & Prefer byte-level BPE for
+   robustness to user input. \\
+\hline
+Implementation & Whitespace / newline handling
+               & Tokenize fully-assembled prompts, not fragments. \\
+ & Normalization form & Pin NFC (or NFKC) at data ingest. \\
+\hline
+V\&V & Tokenization invariants & Golden-file tests for canonical
+   strings; hash-compare outputs across versions. \\
+ & Embedding drift & Probe-based monitoring, not
+   cosine-of-random-pairs. \\
+\hline
+Operations & Tokenizer versions in logs
+           & Record tokenizer hash per request; alert on mismatch. \\
+ & Vocabulary drift & Reject inputs with excessive
+   \texttt{<unk>} or bytes-tokens rate. \\
+\hline
+\end{tabular}
+\end{center}
 
-\textbf{Architecture}
-\begin{itemize}
-  \item Tokenizers are part of the model contract
-  \item Embedding tables dominate memory footprint at scale
-\end{itemize}
+\subsection{Multilingual and Billing Considerations}
 
-\textbf{Verification \& Validation}
+A BPE vocabulary trained on an English-heavy corpus allocates most of
+its merge rules to English patterns. On other languages the same
+vocabulary segments less aggressively, producing $2$--$5\times$ as
+many tokens per Unicode code-point. The practical effects:
 \begin{itemize}
-  \item Check tokenization invariants
-  \item Inspect embedding drift across versions
+  \item \textbf{Billing disparity}: per-token-priced APIs charge more
+        for the same information content in Thai, Amharic, or Burmese
+        than in English. This is a recognized fairness issue and
+        some frontier tokenizers (e.g., Claude's, Gemini's) widen
+        multilingual coverage explicitly.
+  \item \textbf{Context-window deflation}: a 32k-token window covers
+        far fewer characters in non-dominant languages.
+  \item \textbf{Code behavior}: tokenizers optimized for prose may
+        tokenize source code into inefficient fragments; some
+        tokenizers (GPT-4o, Llama~3) re-train with a code-heavy mix.
 \end{itemize}
-
-\textbf{Operations}
-\begin{itemize}
-  \item Token-level monitoring
-  \item Input distribution shift detection
-\end{itemize}
+When building multilingual applications, measure the token-to-codepoint
+ratio for each target language and plan context budgets accordingly.
 
 \subsection{Human Factors and Failure Modes}
 
-Common failures include:
 \begin{itemize}
-  \item assuming ``word meaning'' is preserved,
-  \item misunderstanding why similar prompts tokenize differently,
-  \item prompt brittleness due to token boundaries.
+  \item \textbf{Assuming token = word}. Users who reason in words are
+        frequently surprised by token counts, cost, and latency.
+  \item \textbf{Prompt brittleness}. Small whitespace or punctuation
+        changes can shift the segmentation, sometimes producing
+        qualitatively different outputs.
+  \item \textbf{``The model doesn't know $X$''}. Sometimes the model
+        knows $X$ but cannot produce it because the relevant subword
+        is rare or absent in the vocabulary (e.g., uncommon API
+        identifiers are sometimes splatted across multiple tokens).
+  \item \textbf{Overreading analogies}. Embeddings encode statistical
+        regularities from training; analogy vectors are not symbolic
+        reasoning and should not be treated as ground truth.
+  \item \textbf{Unicode trickery and prompt-injection}. Homoglyphs and
+        invisible code-points can be used adversarially to smuggle
+        instructions into a prompt. Normalize and log at ingress.
 \end{itemize}
 
-These effects are invisible without explicit inspection.
+\subsection{Bridges to Later Chapters}
+
+\begin{itemize}
+  \item \textbf{Week 4 (Transformer Architecture)}: the embedding
+        matrix $E$ feeds directly into the residual stream; positional
+        encodings (RoPE, ALiBi) are layered on top.
+  \item \textbf{Week 5 (Pretraining \& In-Context)}: the effective
+        dataset size $D$ in the Chinchilla law from Week~2 is measured
+        in \emph{tokens}; a different tokenizer produces a different
+        training compute accounting.
+  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: tied embeddings
+        and byte-level vocabularies keep $V$ manageable; MoE gating
+        operates on post-embedding activations.
+  \item \textbf{Week 7 (Adaptation, LoRA, Quantization)}: embedding
+        tables are quantization hot-spots because of their outsized
+        parameter share; LoRA adaptation typically freezes them.
+  \item \textbf{Week 9 (LLM Systems: RAG, Tools)}: retrieval uses
+        sentence- or document-level embeddings distinct from token
+        embeddings; anisotropy correction matters for cosine-based
+        retrieval.
+  \item \textbf{Week 10 (Governance \& Assurance)}: tokenizer and
+        embedding provenance are artefacts in a model card /
+        datasheet~\citep{mitchell2019modelcards,gebru2021datasheets}.
+\end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{mikolov2013efficient} — word embeddings
-  \item \citet{sennrich2016bpe} — subword tokenization for neural MT
+  \item \citet{sennrich2016bpe} --- Byte-Pair Encoding for neural MT.
+  \item \citet{kudo2018sentencepiece} --- SentencePiece implementation.
+  \item \citet{kudo2018unigram} --- Unigram-LM subword regularization.
+  \item \citet{devlin2019bert} --- BERT and WordPiece.
+  \item \citet{openai_tiktoken} --- \texttt{tiktoken} reference
+        implementation.
+  \item \citet{mikolov2013efficient,mikolov2013distributed} ---
+        Word2Vec and the distributional hypothesis.
+  \item \citet{pennington2014glove} --- GloVe embeddings.
+  \item \citet{bolukbasi2016man} --- gender bias in word embeddings.
+  \item \citet{su2021rope}, \citet{press2022alibi} --- modern
+        positional encoding schemes (previewed here, developed in
+        Week~4).
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS224N — word vectors and embeddings  
-  \url{https://web.stanford.edu/class/cs224n/}
-
-  \item MIT 6.864 — statistical NLP foundations  
-  \url{https://nlp.csail.mit.edu}
+  \item Stanford CS224N --- word vectors, embeddings, and subword
+        models, \citet{stanford_cs224n}.
+  \item Stanford CS324 --- Large Language Models, tokenization
+        module, \citet{stanford_cs324}.
+  \item MIT NLP group resources, \citet{mit_nlp}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week03/week03\_lab\_tokenization\_embeddings.ipynb}.
+\begin{enumerate}
+  \item \textbf{Train a BPE tokenizer}. Using the Hugging Face
+        \texttt{tokenizers} library or a from-scratch implementation,
+        train a $32{,}000$-merge BPE on a 10\,MB text sample. Compare
+        against the same corpus with a $16{,}000$-merge and a
+        $64{,}000$-merge vocabulary.
+  \item \textbf{Reverse-engineer GPT tokenization}. Use
+        \texttt{tiktoken} to tokenize the strings \texttt{"the"},
+        \texttt{" the"}, \texttt{"The"}, \texttt{"\textbackslash nthe"}.
+        Tabulate the resulting token IDs and document which strings
+        surprise you.
+  \item \textbf{Language fairness audit}. Tokenize parallel
+        translations of the UDHR into ten languages with
+        \texttt{tiktoken}. Plot tokens-per-character by language.
+  \item \textbf{Analogy test}. On a pretrained model of your choice,
+        extract the input embeddings for \{king, queen, man, woman\}
+        and compute $\|E_{\text{king}} - E_{\text{man}} +
+        E_{\text{woman}} - E_{\text{queen}}\|$. Compare with a random
+        quadruple.
+  \item \textbf{Anisotropy check}. Sample 10{,}000 random pairs of
+        token embeddings and plot the cosine-similarity histogram.
+        Overlay the histogram after mean-centering.
+  \item \textbf{Tokenizer versioning}. Write a regression test that
+        fails whenever a canonical prompt segments into a different
+        token-ID sequence across tokenizer versions. Integrate it
+        into a CI pipeline.
+\end{enumerate}
 
 \subsection{Week 3 Takeaway}
 
 \begin{quote}
-Tokenization defines the language a model can speak; embeddings define the geometry in which it thinks.
+Tokenization defines the alphabet the model will ever perceive, and
+embeddings define the geometry in which it reasons. Both are
+engineered artifacts — versioned, cached, audit-able — and both carry
+statistical commitments that propagate through every downstream
+stage of the system.
 \end{quote}
-
