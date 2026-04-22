@@ -1,0 +1,35 @@
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.6cm, minimum height=0.9cm,
+              align=center, font=\footnotesize, fill=black!5},
+  tool/.style={draw, rounded corners, minimum width=2.4cm, minimum height=0.8cm,
+               align=center, font=\footnotesize, fill=orange!15},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.55cm and 0.7cm
+]
+
+% Central LLM
+\node[box] (llm) {\textbf{LLM policy}\\$\pi_\theta$};
+
+% Thought, Action, Observation
+\node[box, above=0.6cm of llm] (think) {Thought (CoT)};
+\node[box, right=of llm] (act) {Action call\\(JSON / func)};
+\node[box, below=0.6cm of llm] (obs) {Observation\\(tool result)};
+
+\draw[arrow] (llm) -- (think);
+\draw[arrow] (think.east) -| (act.north);
+\draw[arrow] (act) -- (obs.east);
+\draw[arrow] (obs) -- (llm);
+
+% External tools
+\node[tool, right=of act] (tools) {External tool\\(search / SQL / API)};
+\draw[arrow] (act) -- (tools);
+\draw[arrow] (tools.south) |- (obs.east);
+
+% Termination
+\node[box, left=of llm, fill=green!15] (answer) {Final answer $y$};
+\draw[arrow, dashed] (llm) -- node[midway, above, font=\scriptsize] {when confident} (answer);
+
+\node[font=\footnotesize\itshape, below=0.8cm of tools, align=center, text width=4cm]
+  {Loop: Thought $\to$ Action $\to$ Observation $\to$ next Thought};
+
+\end{tikzpicture}

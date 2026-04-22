@@ -1,0 +1,46 @@
+\begin{tikzpicture}[
+  stage/.style={draw, rounded corners, minimum width=2.6cm, minimum height=1.1cm,
+                align=center, font=\footnotesize, fill=black!5},
+  store/.style={draw, cylinder, shape border rotate=90, aspect=0.25,
+                minimum width=2.2cm, minimum height=1.4cm,
+                align=center, font=\footnotesize, fill=blue!10},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.6cm and 0.7cm
+]
+
+% Top row: query path
+\node[font=\small\itshape] (q) {query $x$};
+\node[stage, right=of q] (embq) {\textbf{Embed}\\$\mathbf{q}=E(x)$};
+\node[stage, right=of embq] (ret) {\textbf{Retrieve}\\top-$k$ neighbours};
+\node[stage, right=of ret] (rerank) {\textbf{Rerank}\\(optional)};
+\node[stage, right=of rerank] (gen) {\textbf{Generate}\\$\pi_\theta(y \mid x, d_{1..k})$};
+\node[font=\small\itshape, right=0.4cm of gen] (y) {answer $y$};
+
+\draw[arrow] (q) -- (embq);
+\draw[arrow] (embq) -- (ret);
+\draw[arrow] (ret) -- (rerank);
+\draw[arrow] (rerank) -- (gen);
+\draw[arrow] (gen) -- (y);
+
+% Vector store
+\node[store, below=1.0cm of ret] (vs) {vector store\\$\{E(d_i)\}$};
+\draw[arrow] (vs) -- (ret);
+
+% Indexing path (bottom)
+\node[font=\small\itshape, left=0.3cm of vs, xshift=-0.4cm] (docs) {corpus $\mathcal{D}$};
+\node[stage, below=0.5cm of embq] (chunk) {\textbf{Chunk}\\split docs};
+\node[stage, below=0.5cm of q] (ingest) {\textbf{Ingest}\\load};
+\node[stage, right=of chunk] (embd) {\textbf{Embed}\\$E(d_i)$};
+
+\draw[arrow] (docs) -| (ingest);
+\draw[arrow] (ingest) -- (chunk);
+\draw[arrow] (chunk) -- (embd);
+\draw[arrow] (embd) -- (vs);
+
+% Labels
+\node[font=\footnotesize\itshape, below=0.1cm of vs, align=center, text width=3cm]
+  {\textbf{offline indexing}};
+\node[font=\footnotesize\itshape, above=0.1cm of embq, align=center, text width=3cm]
+  {\textbf{online inference}};
+
+\end{tikzpicture}
