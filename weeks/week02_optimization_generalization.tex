@@ -1,198 +1,607 @@
 \section{Week 2: Optimization, Generalization, and Scaling Intuition}
+\label{sec:week2-optgen}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Explain why gradient-based optimization behaves counterintuitively in deep networks
-  \item Distinguish optimization failure from generalization failure
-  \item Understand why overparameterization often \emph{helps} generalization
-  \item Reason about learning rates, optimizers, and schedules as system-level design choices
-  \item Connect small-scale experiments to large-scale LLM training behavior
+  \item Derive SGD, momentum, and Adam/AdamW updates from first principles and
+        explain the role of bias correction.
+  \item Reason quantitatively about learning-rate schedules (linear warmup,
+        cosine decay, inverse-square-root) and their engineering tradeoffs.
+  \item Describe why gradient clipping is necessary for deep Transformer
+        stacks and choose a clipping threshold defensibly.
+  \item State the Kaplan and Chinchilla scaling laws and derive the
+        compute-optimal model/data ratio.
+  \item Explain double descent and benign overfitting, and articulate why
+        overparameterization can \emph{improve} generalization in practice.
+  \item Evaluate mixed-precision training, loss scaling, gradient
+        accumulation, and checkpointing as systems-level mechanisms.
+  \item Design a reproducibility protocol (seeds, deterministic kernels,
+        data ordering, regression gates) for production training pipelines.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
 \textbf{Training dynamics}
 \begin{itemize}
-  \item Gradient descent and stochasticity
-  \item Adam / AdamW vs SGD
-  \item Learning-rate schedules
-  \item Overparameterization
+  \item Stochastic gradient estimators and their noise structure.
+  \item First-order adaptive optimizers (Adam, AdamW) and their
+        moment-estimate machinery.
+  \item Learning-rate schedules, warmup, and decay.
+  \item Gradient clipping, gradient accumulation, and loss scaling.
+\end{itemize}
+
+\textbf{Generalization machinery}
+\begin{itemize}
+  \item Overparameterization and implicit regularization.
+  \item Double descent and benign overfitting.
+  \item Flat-vs-sharp minima in the large-batch regime.
 \end{itemize}
 
 \textbf{Systems relevance}
 \begin{itemize}
-  \item Training instability and regressions
-  \item Sensitivity to hyperparameters
-  \item Why scaling laws emerge empirically
+  \item Training instability, divergence, and regressions.
+  \item Reproducibility under distributed training.
+  \item Scaling-law-driven capacity planning.
+  \item Cost / quality tradeoff under fixed compute budgets.
 \end{itemize}
 
 \subsection{Conceptual Core: Optimization Is Not Inference}
 
-Training an LLM is a large-scale numerical optimization problem, not a logical inference procedure.
-The training objective from Week~1 is optimized via variants of stochastic gradient descent (SGD):
-
+Training an LLM is, mechanically, a large-scale numerical optimization
+problem. The learner does not \emph{reason} about the target; it performs a
+long sequence of gradient updates against an empirical risk. The objective
+from Week~1 is the empirical cross-entropy
 \begin{equation}
-\theta_{t+1} = \theta_t - \eta_t \nabla_\theta \mathcal{L}(\theta_t)
+\label{eq:week2-empirical-loss}
+\mathcal{L}(\theta)
+  \;=\; \frac{1}{N} \sum_{i=1}^{N}
+        -\log p_{\theta}\!\left( x^{(i)}_{t_i} \,\middle|\, x^{(i)}_{<t_i} \right),
 \end{equation}
-
-where:
+optimized via variants of stochastic gradient descent:
+\begin{equation}
+\label{eq:week2-sgd}
+\theta_{t+1} \;=\; \theta_t - \eta_t\, g_t,
+\qquad
+g_t \;=\; \frac{1}{B}\sum_{i \in \mathcal{B}_t}
+          \nabla_\theta \bigl[-\log p_{\theta}(x^{(i)} \mid x^{(i)}_{<})\bigr],
+\end{equation}
+where $\eta_t$ is the learning rate and $\mathcal{B}_t$ is a minibatch of
+size $B$. The key features that distinguish LLM optimization from the
+textbook setting are:
 \begin{itemize}
-  \item $\theta$ are model parameters,
-  \item $\eta_t$ is the learning rate,
-  \item $\mathcal{L}$ is the empirical cross-entropy loss.
+  \item \textbf{Dimensionality}: $\theta \in \mathbb{R}^d$ with
+        $d \sim 10^{9}$--$10^{12}$ for frontier models.
+  \item \textbf{Non-convexity}: the loss surface has a combinatorial
+        number of saddle points, plateaus, and basins.
+  \item \textbf{Stochasticity}: $g_t$ is an unbiased but noisy estimator
+        of $\nabla \mathcal{L}$, with variance proportional to $1/B$.
+  \item \textbf{Distributed execution}: gradients are aggregated across
+        thousands of accelerators, making single-step cost high and
+        divergence expensive.
 \end{itemize}
+That modern deep networks reliably converge under these conditions is an
+empirical observation about the loss landscape, not a theorem.
 
-Crucially, this optimization occurs in:
-\begin{itemize}
-  \item very high-dimensional parameter spaces,
-  \item with non-convex loss surfaces,
-  \item using noisy gradient estimates.
-\end{itemize}
+\subsection{Stochastic Gradient Descent and Momentum}
 
-Yet, modern deep networks reliably converge.
+\subsubsection{SGD as a Noisy Dynamical System}
 
-\subsection{Why Overparameterization Does Not Doom Generalization}
+Write the minibatch gradient as the true gradient plus noise,
+$g_t = \nabla \mathcal{L}(\theta_t) + \xi_t$, with
+$\mathbb{E}[\xi_t]=0$ and $\mathrm{Cov}(\xi_t) \approx \Sigma(\theta_t)/B$.
+For small $\eta$, the continuous-time limit of
+Eq.~\eqref{eq:week2-sgd} is the Langevin SDE
+\begin{equation}
+d\theta_t \;=\; -\nabla \mathcal{L}(\theta_t)\, dt
+                + \sqrt{\eta\,\Sigma(\theta_t)/B}\; dW_t,
+\end{equation}
+which reveals two systems-relevant facts:
+(i)~the stationary distribution is \emph{not} concentrated on the loss
+minimum; it is biased toward flatter regions, which correlates with better
+generalization~\citep{keskar2017large};
+(ii)~the effective ``noise temperature'' scales with $\eta/B$, so doubling
+batch size roughly halves gradient noise — this is the basis for the
+linear scaling rule in large-batch training~\citep{goyal2017accurate}.
 
-Classical intuition suggests that models with more parameters than data should overfit catastrophically.
-Empirically, deep networks exhibit \emph{benign overfitting}:
-\begin{itemize}
-  \item training loss goes to (near) zero,
-  \item test loss does not explode,
-  \item larger models often generalize better than smaller ones.
-\end{itemize}
+\subsubsection{Heavy-Ball and Nesterov Momentum}
 
-This behavior is not fully explained theoretically, but several mechanisms are believed to contribute:
-\begin{itemize}
-  \item implicit regularization from optimization dynamics,
-  \item flat minima bias,
-  \item data structure and redundancy,
-  \item early stopping.
-\end{itemize}
+Momentum introduces an exponentially-weighted moving average of past
+gradients:
+\begin{align}
+m_t &= \beta\, m_{t-1} + (1-\beta)\, g_t, \label{eq:week2-momentum-m} \\
+\theta_{t+1} &= \theta_t - \eta_t\, m_t.
+\end{align}
+Geometrically, momentum acts as a low-pass filter on the gradient signal:
+high-frequency noise is attenuated while persistent descent directions
+accumulate. Typical values are $\beta \in [0.9, 0.99]$. Nesterov's
+look-ahead variant evaluates the gradient at the extrapolated point
+$\theta_t - \eta \beta m_{t-1}$, which admits a stronger convergence
+rate on convex problems but offers modest gains on LLM objectives.
 
-For LLMs, this observation underpins the entire scaling paradigm.
+\subsection{Adam and AdamW}
 
-\subsection{Optimizers as Design Choices}
+\subsubsection{Why Adaptive Per-Parameter Rates}
 
-\subsubsection{SGD vs AdamW}
+In a Transformer, embedding vectors for frequent tokens see large,
+frequent gradients while embeddings for rare tokens see small, infrequent
+ones. A single global $\eta$ cannot serve both regimes well: it is
+either too aggressive for frequent tokens (overshooting) or too
+conservative for rare ones (starvation). Adaptive methods scale the
+update for each parameter by an online estimate of its gradient
+magnitude~\citep{kingma2015adam}.
 
-SGD updates parameters using raw gradient estimates.
-Adam-style optimizers maintain adaptive per-parameter learning rates.
+\subsubsection{Adam Update Rule}
 
-AdamW decouples weight decay from gradient updates, improving stability.
+Let $g_t = \nabla_\theta \mathcal{L}(\theta_t)$ be the minibatch
+gradient. Adam maintains two exponential moving averages:
+\begin{align}
+m_t &= \beta_1\, m_{t-1} + (1-\beta_1)\, g_t
+       & \text{(first moment)}, \label{eq:week2-adam-m}\\
+v_t &= \beta_2\, v_{t-1} + (1-\beta_2)\, g_t^2
+       & \text{(second moment)},
+\end{align}
+where $g_t^2$ is elementwise. Because $m_0 = v_0 = 0$, these estimates
+are biased toward zero in the first several steps. Adam corrects this
+bias analytically. Unrolling Eq.~\eqref{eq:week2-adam-m},
+\[
+m_t = (1-\beta_1) \sum_{k=1}^{t} \beta_1^{\,t-k} g_k,
+\qquad
+\mathbb{E}[m_t] = (1-\beta_1^{\,t})\,\mathbb{E}[g_t] + O(\text{drift}),
+\]
+so the debiased estimator is $\hat m_t = m_t / (1-\beta_1^{\,t})$; the
+analogous correction applies to $v_t$. The parameter update becomes
+\begin{equation}
+\label{eq:week2-adam-update}
+\theta_{t+1} \;=\; \theta_t - \eta_t\,\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon},
+\qquad
+\hat m_t = \frac{m_t}{1-\beta_1^{\,t}},
+\quad
+\hat v_t = \frac{v_t}{1-\beta_2^{\,t}},
+\end{equation}
+with default hyperparameters $\beta_1 = 0.9$, $\beta_2 = 0.999$,
+$\epsilon = 10^{-8}$. For large Transformer training, practitioners
+commonly reduce $\beta_2$ to $0.95$ to make the second-moment estimator
+more responsive to nonstationarity.
+
+\subsubsection{AdamW: Decoupled Weight Decay}
+
+Classical L2 regularization adds $\tfrac{\lambda}{2}\|\theta\|^2$ to the
+loss, which introduces a $\lambda \theta$ term into $g_t$. In Adam this
+term is then divided by $\sqrt{\hat v_t}$, so parameters with small
+gradients see disproportionately strong decay — the effective
+regularization is entangled with the gradient magnitude. AdamW
+\emph{decouples} weight decay by applying it directly to the parameters,
+not through the loss gradient~\citep{loshchilov2019decoupled}:
+\begin{equation}
+\label{eq:week2-adamw-update}
+\theta_{t+1} \;=\; \theta_t
+  - \eta_t\!\left(\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon} + \lambda\,\theta_t\right).
+\end{equation}
+This subtle change yields consistently better generalization on
+Transformer workloads and is the default optimizer for essentially all
+production LLM training.
 
 \begin{center}
 \begin{tabular}{|l|l|l|}
 \hline
-Optimizer & Strengths & Risks \\
+Optimizer & Strengths & Risks / Caveats \\
 \hline
-SGD & Simplicity, stability & Slow convergence \\
-Adam & Fast initial progress & Overfitting, sharp minima \\
-AdamW & Better generalization & Sensitive hyperparameters \\
+SGD        & Simple, flatness-biased & Slow without tuning \\
+SGD+Mom.   & Accelerates narrow valleys & Still sensitive to $\eta$ \\
+Adam       & Fast early progress & Sharp minima, weight-decay bug \\
+AdamW      & Decoupled decay, stable & Hyperparameter-sensitive, memory-heavy \\
+Lion/Shampoo & Less memory, competitive & Less mature tooling \\
 \hline
 \end{tabular}
 \end{center}
 
-Large language models almost universally rely on AdamW or closely related variants.
+\subsubsection{Memory Cost of Optimizer State}
+
+AdamW stores $m_t$ and $v_t$ at full precision for every parameter, so
+optimizer state is roughly $2\times$ the size of the parameters (or
+$\sim 8$ bytes/param at fp32). Combined with parameters themselves and
+activation memory, this is what ZeRO-style sharding
+\citep{rajbhandari2020zero} attacks in distributed training (revisited
+in Week~6).
 
 \subsection{Learning Rate Schedules}
 
-The learning rate $\eta_t$ is often the single most important hyperparameter.
+The learning rate $\eta_t$ is the single most important hyperparameter
+for Transformer training. Three families dominate LLM practice.
 
-Common schedules include:
+\subsubsection{Linear Warmup}
+
+Start small and ramp up linearly over $T_w$ steps:
+\begin{equation}
+\eta_t \;=\; \eta_{\max} \cdot \min\!\left(1, \frac{t}{T_w}\right).
+\end{equation}
+Typical settings use $T_w \in [500, 5000]$ steps for models of
+$10^{9}$--$10^{11}$ parameters. Warmup is essential because early
+gradients are dominated by unstructured initialization: a full-size step
+can drive parameters into a bad basin from which Adam's second-moment
+estimator cannot recover quickly.
+
+\subsubsection{Cosine Decay}
+
+After warmup, the rate decays smoothly toward a minimum $\eta_{\min}$:
+\begin{equation}
+\eta_t \;=\; \eta_{\min} + \tfrac{1}{2}(\eta_{\max} - \eta_{\min})
+            \left[1 + \cos\!\left(\pi\,\frac{t - T_w}{T_{\max} - T_w}\right)\right],
+\qquad t > T_w.
+\end{equation}
+Cosine decay avoids the abrupt ``cliffs'' of step schedules and empirically
+matches or exceeds more elaborate alternatives on LLM
+pretraining~\citep{loshchilov2017sgdr}. A common variant holds
+$\eta_{\min} = 0.1\,\eta_{\max}$ so that training never truly stops making
+progress.
+
+\subsubsection{Inverse-Square-Root (Noam) Schedule}
+
+The original Transformer~\citep{vaswani2017attention} used
+\begin{equation}
+\eta_t \;=\; d_{\mathrm{model}}^{-1/2} \cdot
+            \min\!\left(t^{-1/2},\; t\, T_w^{-3/2}\right),
+\end{equation}
+which combines linear warmup with an inverse-square-root decay.
+Although cosine has largely displaced it for pretraining, inverse-sqrt
+remains the default in many fine-tuning recipes.
+
+\subsubsection{Engineering Guidance}
+
+Choose schedules by matching the workload:
+pretraining runs that consume a fixed compute budget pair warmup+cosine;
+continual pretraining and fine-tuning that resume from a checkpoint
+usually want warmup+constant or warmup+linear; very long-horizon runs
+sometimes adopt \emph{one-cycle} / super-convergence
+schedules~\citep{smith2018superconvergence} where $\eta$ rises and falls
+once over the entire run.
+
+\subsection{Gradient Clipping}
+
+Deep Transformer stacks can produce exploding-norm gradients when
+activations or attention logits grow during early training. Gradient
+clipping bounds the global step size:
+\begin{equation}
+\label{eq:week2-gradclip}
+g_t \;\leftarrow\; g_t \cdot \min\!\left(1, \frac{c}{\|g_t\|_2}\right),
+\qquad c \in [0.5, 2.0].
+\end{equation}
+With the $\min$, the update direction is preserved while the magnitude
+is capped at $c$. This is strictly preferable to elementwise clipping,
+which distorts direction. Empirically, $c = 1.0$ is the default for
+large LLM pretraining. Clipping is a cheap, principled defense against
+rare but catastrophic optimizer divergence~\citep{pascanu2013difficulty},
+and its activation rate is a useful operational telemetry signal: a
+sudden increase typically precedes a loss spike by a few hundred steps.
+
+\subsection{Mixed Precision, Loss Scaling, and Accumulation}
+
+\subsubsection{Mixed-Precision Arithmetic}
+
+LLM training uses mixed precision to increase throughput and reduce
+memory~\citep{micikevicius2018mixed}: activations and gradients are held
+in 16-bit (fp16 or bf16), while a ``master copy'' of parameters and
+optimizer state is held in fp32. The chain is
+\[
+\theta_{\mathrm{fp32}} \xrightarrow{\text{cast}} \theta_{\mathrm{fp16}}
+\xrightarrow{\text{forward/backward}} g_{\mathrm{fp16}}
+\xrightarrow{\text{cast}} g_{\mathrm{fp32}}
+\xrightarrow{\text{optimizer}} \theta_{\mathrm{fp32}}.
+\]
+The optimizer step is performed in fp32 to avoid accumulation error on
+$m_t$, $v_t$. Bf16 is preferred over fp16 on modern hardware because its
+wider exponent eliminates the need for loss scaling.
+
+\subsubsection{Loss Scaling}
+
+When using fp16 (not bf16), small gradients underflow to zero. Loss
+scaling multiplies the loss by $s \in \{2^{10}, 2^{24}\}$ before
+backpropagation, then divides gradients by $s$ before the optimizer
+step. \emph{Dynamic} loss scaling halves $s$ whenever an $\mathrm{NaN}$
+or $\mathrm{Inf}$ is detected and doubles it periodically otherwise.
+This is an instance of adaptive numerical conditioning at the systems
+layer, invisible to the mathematical model.
+
+\subsubsection{Gradient Accumulation}
+
+When the desired effective batch size exceeds accelerator memory,
+gradients from $K$ micro-batches are summed in place before a single
+optimizer step:
+\[
+g_t \;=\; \frac{1}{K}\sum_{k=1}^{K} g_t^{(k)}.
+\]
+Accumulation is algebraically equivalent to a $K$-times-larger batch at
+the cost of $K$ extra forward/backward passes per update. It is the
+primary mechanism by which organizations match the effective batch
+sizes in published recipes while running on smaller clusters.
+
+\subsubsection{Activation Checkpointing}
+
+Activation memory dominates GPU usage. Activation checkpointing
+\citep{chen2016training} trades compute for memory by discarding
+intermediate activations during the forward pass and recomputing them
+during backprop, typically saving $\sqrt{L}$ activation memory for $L$
+layers at a $\sim 30\%$ compute overhead. This is how multi-hundred-billion
+parameter models fit on realistic hardware.
+
+\subsection{Overparameterization, Double Descent, and Benign Overfitting}
+
+Classical statistical learning
+theory~\citep{vapnik1998statistical,bishop2006prml} suggests that models
+with more parameters than data should overfit catastrophically. Modern
+deep networks contradict this: with $d \gg N$, training loss goes to
+zero and test loss \emph{continues to improve}.
+
+\subsubsection{Double Descent}
+
+Plotted as a function of model size, test error exhibits the classical
+U-curve up to the \emph{interpolation threshold} where training error
+reaches zero. Beyond that threshold, test error descends
+again~\citep{belkin2019reconciling,nakkiran2020double}. Three regimes:
 \begin{itemize}
-  \item constant learning rate,
-  \item linear warmup + decay,
-  \item cosine decay.
+  \item \textbf{Underparameterized}: bias dominates; more capacity helps.
+  \item \textbf{Interpolation threshold}: variance is maximized;
+        test error spikes.
+  \item \textbf{Overparameterized}: implicit regularization dominates;
+        more capacity continues to help.
 \end{itemize}
+LLMs live deep in the third regime, which is why ``just train a bigger
+model'' has been such a reliable strategy.
 
-Warmup phases are especially critical for large models to avoid early divergence.
+\subsubsection{Why Bigger Is Not Worse}
 
-\subsection{Empirical Scaling and Its Consequences}
-
-Empirical scaling laws show that loss decreases smoothly as a function of:
+Several mechanisms are believed to contribute to benign overfitting:
 \begin{itemize}
-  \item model size,
-  \item dataset size,
-  \item compute budget.
+  \item SGD has an implicit bias toward low-norm, flat
+        minima~\citep{keskar2017large}, which correlate with
+        generalization;
+  \item high-dimensional parameter spaces admit many zero-training-loss
+        solutions, of which the optimizer tends to pick well-behaved
+        ones;
+  \item training data is structured and redundant, so capacity is used
+        for coverage rather than memorization.
 \end{itemize}
+None of these arguments is a full theory, but together they justify the
+engineering decision to scale up rather than regularize down.
 
-These relationships hold over many orders of magnitude and motivate:
+\subsection{Scaling Laws}
+
+\subsubsection{Kaplan Scaling}
+
+\citet{kaplan2020scaling} observed that cross-entropy loss follows
+smooth power laws in model size $N$, dataset size $D$, and compute $C$:
+\begin{equation}
+\label{eq:week2-kaplan}
+L(N) \;\approx\; \left(\frac{N_c}{N}\right)^{\alpha_N},
+\qquad
+L(D) \;\approx\; \left(\frac{D_c}{D}\right)^{\alpha_D},
+\qquad
+L(C) \;\approx\; \left(\frac{C_c}{C}\right)^{\alpha_C},
+\end{equation}
+with fitted exponents $\alpha_N \approx 0.076$,
+$\alpha_D \approx 0.095$, and $\alpha_C \approx 0.05$. Equivalently,
+\[
+\log L \;=\; \mathrm{const} - \alpha_N \log N,
+\]
+so on log--log axes loss is a straight line in $N$ over six orders of
+magnitude. This predictability is what makes LLM training an
+engineering discipline rather than a craft.
+
+\subsubsection{Chinchilla Scaling}
+
+\citet{hoffmann2022chinchilla} refitted the joint law with better
+hyperparameter tuning and reached a very different conclusion. Their
+form is
+\begin{equation}
+\label{eq:week2-chinchilla}
+L(N, D) \;=\; E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}},
+\end{equation}
+with approximately $\alpha \approx 0.34$, $\beta \approx 0.28$,
+$E \approx 1.69$. Given a fixed compute budget $C \approx 6\,N D$ FLOPs,
+minimizing $L(N,D)$ subject to $C$ yields the \emph{compute-optimal}
+ratio
+\begin{equation}
+\label{eq:week2-chinchilla-opt}
+N^\star \propto C^{a},
+\qquad
+D^\star \propto C^{b},
+\qquad a \approx b \approx 0.5,
+\end{equation}
+i.e.\ model parameters and tokens should scale roughly equally with
+compute. The Kaplan recommendation of ``scale model size faster than
+dataset'' was an artifact of undertuned baselines. The practical
+implication is dramatic: for any fixed compute budget there is a
+\emph{cost-optimal} model size, and training a larger model on fewer
+tokens is strictly worse than training a smaller model on more tokens.
+
+\subsubsection{What Scaling Laws Do and Do Not Tell You}
+
+Scaling laws predict \emph{training loss} as a function of resources.
+They do \emph{not} predict:
 \begin{itemize}
-  \item predictability of returns on compute investment,
-  \item industrial-scale training pipelines,
-  \item architectural choices that prioritize scalability.
+  \item emergent capabilities (discussed in Week~5 via
+        \citet{wei2022emergent} and \citet{schaeffer2023mirage});
+  \item performance on specific downstream tasks;
+  \item the effect of data quality, deduplication, or mixture ratios.
 \end{itemize}
+They are compute-planning tools, not capability forecasts.
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Training must be stable and repeatable
-  \item Failures must be detectable early
-\end{itemize}
+\begin{center}
+\begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
+\hline
+V-model stage & Optimizer / training property & System requirement or activity \\
+\hline
+Requirements & Fixed compute budget & Use Chinchilla law to size $N, D$. \\
+ & Reproducibility target & Seeded data order, deterministic kernels. \\
+\hline
+Architecture & AdamW state $\sim 2\times$ params & Budget optimizer memory (ZeRO). \\
+ & fp16 vs bf16 & Choose based on hardware and stability. \\
+ & Activation memory & Plan recompute vs sharding. \\
+\hline
+Implementation & Warmup + cosine & Expose schedule params to config. \\
+ & Gradient accumulation & Log effective vs nominal batch. \\
+\hline
+V\&V & Loss spikes and plateaus & Divergence alarms; checkpoint rollback. \\
+ & Clip activation rate & Telemetry feed into regression gates. \\
+ & Small-scale proxies & Shadow runs at $10^{-3}\times$ compute
+   \citep{wortsman2023stable}. \\
+\hline
+Operations & Regressions between runs & Rerun on fixed seed + data; bisect. \\
+ & Cost / quality tracking & Dollars per perplexity point. \\
+\hline
+\end{tabular}
+\end{center}
 
-\textbf{Architecture}
-\begin{itemize}
-  \item Gradient clipping
-  \item Learning-rate warmup
-  \item Checkpointing and rollback
-\end{itemize}
+\subsection{Reproducibility in Distributed Training}
 
-\textbf{Verification \& Validation}
+Deterministic training under data-parallel, tensor-parallel, and
+pipeline-parallel execution is substantially harder than it sounds.
+Common sources of nondeterminism:
 \begin{itemize}
-  \item Loss curve monitoring
-  \item Seed sensitivity testing
-  \item Small-scale proxy experiments
+  \item asynchronous all-reduce summation order;
+  \item nondeterministic cuDNN kernels (e.g., convolutions);
+  \item dataloader worker scheduling;
+  \item mixed-precision dynamic loss scaling decisions;
+  \item floating-point non-associativity across restart boundaries.
 \end{itemize}
-
-\textbf{Operations}
-\begin{itemize}
-  \item Automated regression detection
-  \item Cost–quality tradeoff tracking
-\end{itemize}
+A defensible reproducibility protocol fixes:
+(i)~the random seed for parameter init, data shuffling, and dropout;
+(ii)~the global data order (checkpoint the dataloader state);
+(iii)~the kernel selection via deterministic-mode flags;
+(iv)~the loss-scale trajectory (deterministic schedule rather than
+dynamic halving).
+Even then, \emph{bit-exact} reproducibility across hardware generations
+is rarely achievable; the practical goal is \emph{statistical}
+reproducibility, i.e., loss curves within noise bands across reruns.
 
 \subsection{Human Factors and Failure Modes}
 
-A recurring human failure mode is attributing training behavior to ``model intelligence''
-rather than optimization dynamics.
-
-Examples:
+A recurring failure mode is the attribution of \emph{training behavior}
+to \emph{model intelligence}. Loss plateaus, loss drops after restarts,
+apparent ``insight moments'' — all of these are best explained as
+optimization dynamics. Concrete examples:
 \begin{itemize}
-  \item ``The model learned reasoning'' vs ``the loss surface permits generalizing minima''
-  \item Overinterpreting early training instability
+  \item Attributing a mid-training loss jump to a capability emerging,
+        when the actual cause was an inadvertent change in data
+        ordering after a checkpoint restore.
+  \item Interpreting a flat training loss as ``the model has learned
+        everything it can,'' when the actual cause is a learning-rate
+        schedule that has decayed too far.
+  \item Overreading the output of small-scale probes: noise at
+        $10^9$ parameters does not monotonically forecast behavior at
+        $10^{11}$ parameters.
 \end{itemize}
+The countermeasure is disciplined telemetry: track gradient norm,
+clip-rate, parameter norm, activation statistics, and token-ordering
+hash on every run. Most training ``mysteries'' resolve to an operator
+mistake that better instrumentation would have caught.
 
-Understanding optimization mechanics is essential for realistic expectations.
+\subsection{Bridges to Later Chapters}
+
+\begin{itemize}
+  \item \textbf{Week 3 (Tokenization and Embeddings)}: embedding tables
+        are the largest single contributor to optimizer state memory;
+        tokenizer choice directly affects the effective $D$ in
+        Eq.~\eqref{eq:week2-chinchilla}.
+  \item \textbf{Week 4 (Transformer Architecture)}: the layer
+        normalization placement (pre-LN vs post-LN)
+        \citep{xiong2020onlayer} interacts with warmup schedule length.
+  \item \textbf{Week 5 (Pretraining \& In-Context)}: the scaling-law
+        formulas set the budget; emergent capability claims must be
+        checked against them for confounds~\citep{schaeffer2023mirage}.
+  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: ZeRO
+        \citep{rajbhandari2020zero} and pipeline parallelism
+        \citep{narayanan2021efficient} are direct responses to the
+        optimizer-memory constraint derived here.
+  \item \textbf{Week 7 (Adaptation, LoRA, Quantization)}: adaptation
+        methods replace a full-fidelity optimizer over $10^{11}$
+        parameters with one over $\le 10^{7}$, tracing back to the
+        cost equation laid out in \S\,Scaling Laws.
+  \item \textbf{Week 10 (Governance \& Assurance)}: reproducibility
+        protocols become evidence in an assurance case; training
+        regression detection is an operational-safety control.
+\end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{goodfellow2016dl} — optimization and generalization in deep learning
-  \item \citet{zhang2017understanding} — empirical study of overparameterization
+  \item \citet{goodfellow2016dl} — canonical treatment of optimization
+        and generalization in deep learning.
+  \item \citet{kingma2015adam} — original Adam paper.
+  \item \citet{loshchilov2019decoupled} — AdamW, decoupled weight
+        decay.
+  \item \citet{loshchilov2017sgdr} — cosine-decay schedules.
+  \item \citet{goyal2017accurate} — large-batch warmup and the linear
+        scaling rule.
+  \item \citet{pascanu2013difficulty} — origin of gradient clipping.
+  \item \citet{micikevicius2018mixed} — mixed-precision training.
+  \item \citet{chen2016training} — activation checkpointing.
+  \item \citet{kaplan2020scaling} — scaling laws for neural language
+        models.
+  \item \citet{hoffmann2022chinchilla} — compute-optimal scaling.
+  \item \citet{nakkiran2020double}, \citet{belkin2019reconciling} —
+        double descent and benign overfitting.
+  \item \citet{keskar2017large} — large-batch training and flat
+        minima.
+  \item \citet{zhang2017understanding} — empirical study of
+        overparameterization.
+  \item \citet{wortsman2023stable} — small-scale proxies for
+        large-training instabilities.
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item MIT 6.S191 — optimization and deep learning practice  
-  \url{https://introtodeeplearning.mit.edu}
-
-  \item Berkeley CS182 — deep learning foundations  
-  \url{https://cs182.berkeley.edu}
-
-  \item Stanford CS229 — gradient descent and generalization  
-  \url{https://cs229.stanford.edu}
+  \item MIT 6.S191 --- optimization and deep learning practice,
+        \citet{mit_6s191}.
+  \item Berkeley CS182 --- deep learning foundations,
+        \citet{berkeley_cs182}.
+  \item Stanford CS229 --- gradient descent and generalization,
+        \citet{stanford_cs229}.
+  \item Stanford CS324 --- Large Language Models, module on training
+        dynamics, \citet{stanford_cs324}.
+  \item Caltech CS/CNS/EE~156 --- Learning from Data,
+        \citet{caltech_cs156}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week02/week02\_lab\_optimization\_generalization.ipynb}.
+\begin{enumerate}
+  \item \textbf{Optimizer comparison.} Train a $\sim\!10$\,M-parameter
+        Transformer on WikiText-2 with SGD, SGD+momentum, Adam, and
+        AdamW. Plot training and validation loss; report steps-to-target
+        and final perplexity.
+  \item \textbf{Bias correction.} Remove the
+        $1-\beta_1^{\,t}, 1-\beta_2^{\,t}$ terms from
+        Eq.~\eqref{eq:week2-adam-update}. Measure the impact on the first
+        500 steps.
+  \item \textbf{LR sweep.} Sweep $\eta_{\max} \in \{1, 3, 10, 30, 100\}
+        \times 10^{-5}$ with a warmup+cosine schedule. Plot loss at step
+        1{,}000 vs $\eta_{\max}$ to locate the instability knee.
+  \item \textbf{Gradient clipping telemetry.} Log the clip activation
+        rate and gradient norm $\|g_t\|_2$ every step. Correlate spikes
+        in $\|g_t\|_2$ with subsequent loss jumps.
+  \item \textbf{Mini-Chinchilla.} At fixed compute $C$, train
+        $(N, D)$ pairs $(N, 20 N)$ and $(2N, 10 N)$ and $(N/2, 40 N)$.
+        Verify that $(N, 20 N)$ yields the lowest loss.
+  \item \textbf{Reproducibility audit.} Run the same training script
+        twice with the same seed; diff the loss curves. Identify and
+        eliminate all nondeterminism sources until the curves match to
+        within numerical tolerance.
+\end{enumerate}
 
 \subsection{Week 2 Takeaway}
 
 \begin{quote}
-Training behavior in LLMs is governed less by ``intelligence'' than by optimization dynamics operating in very high dimensions.
+Training behavior in LLMs is governed less by ``intelligence'' than by
+optimization dynamics operating in very high dimensions. Adam/AdamW,
+warmup, cosine decay, gradient clipping, and mixed precision are not
+interchangeable tuning knobs; each responds to a specific pathology of
+large-scale stochastic optimization, and scaling laws turn the resulting
+process into a compute-planning exercise that can be reasoned about
+engineering-first.
 \end{quote}
-
