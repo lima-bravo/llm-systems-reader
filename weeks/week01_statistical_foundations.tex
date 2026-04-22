@@ -1,194 +1,364 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% WEEK 1 -- STATISTICAL LEARNING FOUNDATIONS FOR LLMs
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Week 1: Statistical Learning Foundations for Large Language Models}
+\label{sec:week1}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Formally interpret a Large Language Model (LLM) as a conditional probabilistic model
-  \item Re-derive the cross-entropy loss used in next-token prediction
-  \item Distinguish probability, confidence, and correctness in model outputs
-  \item Explain why LLM behavior must be understood statistically rather than symbolically
-  \item Identify early human-factor risks caused by misinterpreting probabilistic outputs
+  \item Formally interpret a Large Language Model (LLM) as a conditional probabilistic model over sequences of discrete symbols.
+  \item Re-derive the cross-entropy loss used in next-token prediction from first principles, both as a maximum-likelihood estimator and as a consequence of the information-theoretic identity $H(p,q) = H(p) + \KL(p \parallel q)$.
+  \item Work through a softmax computation numerically and show why the logit representation is invariant under additive constant shifts (justifying the log-sum-exp trick).
+  \item Distinguish the three quantities that are routinely conflated in downstream discussions: \emph{probability}, \emph{confidence}, and \emph{correctness}.
+  \item Explain why cross-entropy minimization does not, on its own, imply semantic correctness, and why this is the root cause of several characteristic LLM failure modes.
+  \item Reason quantitatively about model calibration using reliability diagrams, Expected Calibration Error (ECE), and temperature scaling.
+  \item Explain the information-theoretic interpretation of training objectives, including the equivalence between cross-entropy and perplexity.
+  \item State the standard proper scoring rules used in probabilistic forecasting and explain why log-loss is a natural choice.
+  \item Identify the human-factor risks that arise when probabilistic outputs are interpreted as authoritative assertions, and describe first-line mitigations.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
-This week focuses on the statistical substrate underlying all LLM systems.
+This week focuses on the statistical substrate underlying all LLM systems. Every concept introduced here will reappear in later weeks under increasingly engineering-heavy disguises, so the aim is to establish vocabulary and intuition that later chapters can take as given.
 
 \textbf{Modeling and Training}
 \begin{itemize}
-  \item Conditional probability modeling
-  \item Maximum likelihood estimation
-  \item Cross-entropy loss
-  \item Calibration and uncertainty
+  \item Conditional probability modeling over discrete tokens.
+  \item Maximum likelihood estimation (MLE) as a training principle.
+  \item Cross-entropy as the empirical-risk objective.
+  \item Softmax parameterization and logit representation.
+  \item Calibration and uncertainty quantification.
 \end{itemize}
 
 \textbf{Systems Perspective}
 \begin{itemize}
-  \item Interpretation of model outputs
-  \item Implications of probabilistic behavior for downstream system design
+  \item Interpretation of model outputs as distributions rather than assertions.
+  \item Implications of probabilistic behavior for downstream system design, monitoring, and human-in-the-loop review.
 \end{itemize}
 
 \subsection{Conceptual Core: What Kind of Object Is an LLM?}
 
-A Large Language Model defines a probability distribution over sequences of discrete symbols (tokens):
-
+A Large Language Model defines a probability distribution over sequences of discrete symbols drawn from a finite vocabulary $V$. We denote an individual sequence as $x = (x_1, x_2, \ldots, x_T)$ where each $x_t \in V$ and $|V|$ is typically on the order of $10^4$ to $10^5$ tokens for modern subword vocabularies. The object of study is the joint distribution
 \begin{equation}
-P_\theta(x_1, x_2, \ldots, x_T)
+P_\theta(x_1, x_2, \ldots, x_T),
+\label{eq:joint}
 \end{equation}
+parameterized by $\theta \in \R^d$, the collection of all trainable weights of the network.
 
-Using the chain rule of probability, this joint distribution can be factorized as:
-
+Modelling the joint distribution directly is combinatorially infeasible: the sample space has cardinality $|V|^T$, which for even modest context lengths is astronomically large. Instead, using the chain rule of probability, we factor (\ref{eq:joint}) into an ordered product of conditionals:
 \begin{equation}
-P_\theta(x_1, \ldots, x_T) = \prod_{t=1}^{T} P_\theta(x_t \mid x_1, \ldots, x_{t-1})
+P_\theta(x_1, \ldots, x_T) = \prod_{t=1}^{T} P_\theta(x_t \mid x_1, \ldots, x_{t-1}).
+\label{eq:chain}
 \end{equation}
+This identity is exact and holds for any distribution over sequences. An LLM commits to a particular \emph{parameterization} of the conditional $P_\theta(x_t \mid x_{<t})$, where we use the shorthand $x_{<t} = (x_1, \ldots, x_{t-1})$. The chosen parameterization is the neural architecture (Week~4), and the weights $\theta$ are learned by fitting this conditional to empirical text (Week~5). Everything else---including the reasoning-like behavior, the hallucinations, and the striking context sensitivity---is a downstream consequence of this one modelling choice.
 
-Thus, an LLM is trained to model the conditional distribution of the next token given all previous tokens.
+An immediate observation is that an LLM does \emph{not} explicitly store facts, rules, or symbols. It stores numerical parameters that, together with its architecture, implement a family of conditional distributions. The model's ``knowledge'' is whatever makes those conditionals assign high probability to corpus text. This framing is the single most important piece of intuition a systems engineer needs. Many behaviors that look like reasoning failures---confident fabrications, brittle chains of thought, inconsistency under paraphrase---follow directly from reading the model's outputs through a probabilistic lens rather than a symbolic one.
 
-Importantly, an LLM does \emph{not} explicitly store facts, rules, or symbols. Instead, it learns to approximate these conditional distributions from large corpora of text. Many characteristic behaviors of LLMs---including hallucinations, overconfidence, and brittle reasoning failures---follow directly from this probabilistic framing.
+\subsubsection{Why Left-to-Right?}
+
+The chain rule in equation (\ref{eq:chain}) is written left-to-right, but it could just as well be written right-to-left, or in any other ordering. Any particular factorization is mathematically equivalent on the joint. Neural language models nonetheless commit to a canonical ordering---left-to-right for GPT-style autoregressive models, or a masked variant for BERT-style bidirectional encoders---because the \emph{parameter sharing} induced by that ordering is what makes the model tractable. We return to this choice in Week~5, where we contrast autoregressive, masked, and prefix-LM objectives.
 
 \subsection{Maximum Likelihood and Next-Token Prediction}
 
 \subsubsection{Training Objective}
 
-Given a dataset of token sequences
+Suppose we are given a dataset of token sequences
 \[
-\mathcal{D} = \{x^{(i)}_1, \ldots, x^{(i)}_{T_i}\}_{i=1}^N,
+\mathcal{D} = \big\{ x^{(i)} = (x_1^{(i)}, \ldots, x_{T_i}^{(i)}) \big\}_{i=1}^{N}.
 \]
-training proceeds by maximizing the log-likelihood of the observed data:
-
+Under an i.i.d. assumption across sequences, the likelihood of $\mathcal{D}$ under model $P_\theta$ is
 \begin{equation}
-\mathcal{L}(\theta) = \sum_{i=1}^{N} \sum_{t=1}^{T_i} 
-\log P_\theta(x^{(i)}_t \mid x^{(i)}_{<t})
+P_\theta(\mathcal{D}) = \prod_{i=1}^{N} P_\theta(x^{(i)}) = \prod_{i=1}^{N} \prod_{t=1}^{T_i} P_\theta(x^{(i)}_t \mid x^{(i)}_{<t}).
 \end{equation}
-
-Equivalently, this corresponds to minimizing the empirical cross-entropy loss:
-
+Maximum likelihood estimation chooses $\hat\theta = \arg\max_\theta \log P_\theta(\mathcal{D})$. Taking the logarithm makes the product tractable and replaces it with a sum:
 \begin{equation}
-\mathcal{L}_{CE} = - \mathbb{E}_{x \sim \mathcal{D}}
-\left[ \log P_\theta(x_t \mid x_{<t}) \right]
+\hat\theta = \arg\max_\theta \sum_{i=1}^{N} \sum_{t=1}^{T_i} \log P_\theta(x^{(i)}_t \mid x^{(i)}_{<t}).
+\label{eq:mle}
 \end{equation}
+This is the training objective for essentially every modern language model. Every innovation in the last decade---Transformers, sparse mixtures, alignment, retrieval---is layered on top of equation (\ref{eq:mle}).
 
-At each timestep, next-token prediction is mathematically equivalent to multinomial logistic regression over the vocabulary.
+\subsubsection{Equivalence with Cross-Entropy}
 
-\subsubsection{Softmax and Logits}
+Equation (\ref{eq:mle}) is most commonly rewritten in the language of empirical risk minimization. Define the empirical distribution $\hat p$ induced by $\mathcal{D}$: for each context $x_{<t}$ observed in the corpus, $\hat p(\cdot \mid x_{<t})$ is the empirical distribution of tokens following that context. Let $q_\theta(\cdot \mid x_{<t}) := P_\theta(\cdot \mid x_{<t})$. The negative log-likelihood per token is
+\begin{align}
+\mathcal{L}_{\text{NLL}}(\theta)
+  &= -\frac{1}{N_{\text{tok}}} \sum_{i,t} \log q_\theta(x_t^{(i)} \mid x_{<t}^{(i)}) \\
+  &= -\E_{(x_{<t}, x_t) \sim \hat p}\!\left[ \log q_\theta(x_t \mid x_{<t}) \right]
+  = H(\hat p, q_\theta),
+\label{eq:nll-ce}
+\end{align}
+where $N_{\text{tok}} = \sum_i T_i$. The object $H(\hat p, q_\theta)$ is the empirical cross-entropy between $\hat p$ and $q_\theta$. Thus maximizing log-likelihood under the data is \emph{identical} to minimizing cross-entropy against the empirical distribution. This is not a coincidence and is not specific to language modelling: it is a general fact about exponential-family distributions fitted by MLE.
 
-Let $z \in \mathbb{R}^{|V|}$ denote the vector of logits produced by the model for a vocabulary $V$.  
-The softmax function converts logits into probabilities:
-
+To see the connection to KL divergence, note that for any fixed reference $p$,
 \begin{equation}
-P(x_t = v \mid x_{<t}) =
-\frac{\exp(z_v)}{\sum_{v' \in V} \exp(z_{v'})}
+H(p, q) = H(p) + \KL(p \parallel q).
+\label{eq:ce-kl}
 \end{equation}
+Since $H(p)$ does not depend on $\theta$, minimizing cross-entropy against $p$ is equivalent to minimizing $\KL(p \parallel q_\theta)$. In training, $p = \hat p$ is the empirical distribution, so we are driving $q_\theta$ toward the corpus distribution in KL. This is a critical observation with a double edge: on the one hand it tells us that cross-entropy is the ``right'' loss in a principled sense; on the other, it reminds us that the target is the \emph{data} distribution, not the \emph{truth}. If the corpus contains systematic errors or biases, a low-cross-entropy model faithfully reproduces them.
 
-A critical implication is that probabilities are \emph{relative}. Increasing the probability of one token necessarily decreases the probability of others.
+\subsubsection{Softmax Parameterization and Numerical Stability}
 
-\subsection{Information-Theoretic Interpretation}
-
-The cross-entropy between the true data distribution $p$ and the model distribution $q_\theta$ can be decomposed as:
-
+The conditional $q_\theta(\cdot \mid x_{<t})$ is realized by the model as a vector of real-valued \emph{logits} $z \in \R^{|V|}$ computed by the final layer, followed by a softmax:
 \begin{equation}
-H(p, q_\theta) = H(p) + D_{\mathrm{KL}}(p \parallel q_\theta)
+q_\theta(x_t = v \mid x_{<t})
+  = \frac{\exp(z_v)}{\sum_{v' \in V} \exp(z_{v'})}.
+\label{eq:softmax}
 \end{equation}
+Two properties of the softmax deserve attention. First, it is \emph{shift-invariant}: for any constant $c \in \R$, the distribution is unchanged if every logit is shifted by $c$. This invariance is the justification for the \emph{log-sum-exp} (LSE) trick used in every production implementation:
+\begin{equation}
+\log q_\theta(x_t = v \mid x_{<t}) = z_v - \underbrace{\log \sum_{v'} \exp(z_{v'})}_{=:\,\text{LSE}(z)}.
+\end{equation}
+Naively computing $\exp(z_v)$ for large logits overflows 32-bit floats; subtracting $\max_v z_v$ before exponentiating is numerically equivalent and keeps intermediate values bounded.
 
-Since $H(p)$ is fixed, minimizing cross-entropy corresponds to minimizing the Kullback--Leibler divergence between the data distribution and the model distribution.
+Second, softmax couples the probabilities of all tokens: increasing the logit of one token necessarily reduces the probability of every other token (the total must sum to one). This has a subtle consequence for interpretation: a probability of $0.9$ on token $A$ does not mean ``the model is 90\% confident in $A$ as a fact''---it means ``$A$ dominates all other tokens combined by a factor of roughly $9{:}1$ under this parameterization.'' The relative nature of softmax probabilities is the source of many calibration problems we will examine below.
 
-This highlights an important limitation: minimizing loss ensures distributional similarity, not semantic correctness. As a result, fluent but incorrect outputs can score well under the training objective.
+\subsubsection{Worked Example}
+
+Consider a toy vocabulary $V = \{\text{\emph{yes}}, \text{\emph{no}}, \text{\emph{maybe}}\}$ and a context for which the model produces logits $z = (2.0,\ 1.0,\ 0.1)$. The unnormalized exponentials are $(\exp(2),\ \exp(1),\ \exp(0.1)) \approx (7.389,\ 2.718,\ 1.105)$, summing to $\approx 11.212$. The resulting probabilities are
+\[
+q(\text{\emph{yes}}) \approx 0.659,\quad
+q(\text{\emph{no}}) \approx 0.242,\quad
+q(\text{\emph{maybe}}) \approx 0.099.
+\]
+If the ground-truth token is ``yes,'' the per-token cross-entropy contribution is $-\log 0.659 \approx 0.417$ nats. If we now shift every logit by $+1000$, the probabilities are numerically identical, but a naive implementation would overflow immediately. Subtracting the max ($+1002$ after shift) yields shifted logits $(-0,\ -1,\ -1.9)$, which is exactly $z - \max z$ in the original frame. Shift-invariance is therefore not a theoretical nicety; it is a daily engineering tool.
+
+\subsubsection{The Decomposition of Cross-Entropy Into Per-Position Losses}
+
+Training divides cleanly along positions. Because equation (\ref{eq:mle}) sums over positions $t$ as well as over sequences, the total loss on a batch decomposes exactly into a sum of per-position NLL contributions, each equivalent to a multinomial logistic regression problem over $V$. This decomposition is what makes teacher-forcing training efficient: a single forward pass computes the conditional distribution at every position in parallel, and backpropagation distributes the gradient across all of them simultaneously. It also means that a mis-tokenized example (one where a rare token has been split unusually) contributes anomalously large loss spikes to specific positions---a phenomenon we revisit in Week~3.
+
+\subsection{Information-Theoretic Foundations}
+
+To reason about training curves, perplexity benchmarks, and calibration, we need a modest amount of classical information theory. The canonical reference is \citet{cover2006elements}; the textbook treatment is \citet{bishop2006prml} or \citet{murphy2022pml}.
+
+\subsubsection{Entropy}
+
+Let $p$ be a distribution on a discrete set $\mathcal{X}$. Its \emph{entropy} in nats is
+\begin{equation}
+H(p) = -\sum_{x \in \mathcal{X}} p(x) \log p(x)
+     = \E_{x \sim p}[-\log p(x)],
+\end{equation}
+and in bits the definition swaps $\log$ for $\log_2$. Entropy measures the average surprise under $p$: distributions concentrated on a single outcome have $H = 0$; the uniform distribution on $|V|$ outcomes has $H = \log |V|$ (the maximum). \citet{shannon1948} introduced this quantity as the expected number of bits required to encode a random draw from $p$ under the optimal code.
+
+\subsubsection{Cross-Entropy and KL Divergence}
+
+The cross-entropy between $p$ and $q$ is
+\begin{equation}
+H(p, q) = -\sum_{x} p(x) \log q(x) = \E_{x \sim p}[-\log q(x)],
+\end{equation}
+the expected number of bits required to encode samples from $p$ using a code optimized for $q$. The gap between $H(p, q)$ and $H(p)$ is the \emph{Kullback--Leibler divergence}:
+\begin{equation}
+\KL(p \parallel q) = H(p, q) - H(p) = \sum_x p(x) \log \frac{p(x)}{q(x)}.
+\end{equation}
+$\KL$ is non-negative, zero iff $p = q$, and \emph{asymmetric}---a crucial property that reappears in reverse-KL alignment objectives in Week~8.
+
+The equation $H(p, q) = H(p) + \KL(p \parallel q)$ is the identity we used in equation (\ref{eq:ce-kl}). It makes transparent what cross-entropy training accomplishes: it minimizes the additional coding cost incurred by using $q$ in place of the true distribution $p$.
+
+\subsubsection{Mutual Information}
+
+For two random variables $X$ and $Y$ with joint $p(x, y)$ and marginals $p(x), p(y)$, the mutual information is
+\begin{equation}
+I(X; Y) = \KL\!\big(p(x, y) \parallel p(x)p(y)\big) = H(X) - H(X \mid Y).
+\end{equation}
+$I(X; Y)$ quantifies how much uncertainty about $X$ is resolved by observing $Y$. In LLM work, mutual information appears in several guises: in information-bottleneck arguments about representation learning, in the analysis of in-context learning (where the context tokens reduce uncertainty about the continuation), and in retrieval evaluation (where good retrieval increases $I(\text{answer}; \text{context})$).
+
+\subsubsection{Perplexity}
+
+Perplexity is the standard headline metric for language models. It is defined as the exponential of per-token cross-entropy:
+\begin{equation}
+\operatorname{PPL}(q_\theta; \mathcal{D})
+  = \exp\!\left( \frac{1}{N_{\text{tok}}} \sum_{i,t} -\log q_\theta(x_t^{(i)} \mid x_{<t}^{(i)}) \right)
+  = \exp\big( H(\hat p, q_\theta) \big).
+\label{eq:perplexity}
+\end{equation}
+Perplexity has an appealing interpretation: it is the ``effective vocabulary size'' the model is uncertain over at each step. A perplexity of $1$ corresponds to a perfectly deterministic predictor; a perplexity of $|V|$ corresponds to the uniform distribution. Because $\exp$ is monotone, minimizing cross-entropy and minimizing perplexity are the same optimization problem---but perplexity is easier to compare across datasets and model sizes on a log scale.
+
+Two caveats merit explicit mention. First, perplexity is \emph{tokenization-dependent}: a model with a smaller vocabulary mechanically achieves lower per-token perplexity because each token is less informative. Comparing perplexities across models trained with different tokenizers is therefore misleading, and we will see in Week~3 that this is a recurring source of confusion. Second, a low perplexity does not imply high task performance. A model can be excellent at modelling the statistics of Wikipedia prose while still being useless at answering a question. Week~9 is where we confront task-level evaluation directly.
 
 \subsection{Uncertainty, Confidence, and Calibration}
 
-\subsubsection{Probability vs.\ Confidence}
+\subsubsection{Three Quantities That Look the Same and Are Not}
 
-It is essential to distinguish:
+A common source of error in LLM engineering is the collapse of three distinct quantities into a single intuitive notion of ``the model knows.'' They are:
 \begin{itemize}
-  \item \textbf{Probability}: the model-assigned likelihood of a token
-  \item \textbf{Confidence}: the sharpness (entropy) of the output distribution
-  \item \textbf{Correctness}: correspondence with external ground truth
+  \item \textbf{Probability}: the scalar $q_\theta(v \mid x_{<t})$ the model assigns to a specific token $v$ given its parameters and context. This is what the softmax computes.
+  \item \textbf{Confidence}: a summary statistic of the full distribution $q_\theta(\cdot \mid x_{<t})$, typically operationalized as $1 - H(q_\theta) / \log |V|$ (normalized entropy), or as $\max_v q_\theta(v \mid x_{<t})$ (top-1 probability), or as $\log q_\theta(v_1) - \log q_\theta(v_2)$ (log-odds between top-2).
+  \item \textbf{Correctness}: whether the sampled or argmax token matches an external ground truth. Correctness is defined relative to something outside the model---a labeler, a gold answer, a runtime assertion.
 \end{itemize}
+These three can, and routinely do, move independently. A model can assign $0.9$ probability to the correct token (high probability, high confidence, correct); assign $0.9$ to an incorrect token (high probability, high confidence, \emph{incorrect}); or spread probability evenly over five plausible tokens of which one is correct (low confidence, correct-on-average). The difference between the second and third cases is the entire subject of \emph{calibration}.
 
-LLMs are frequently miscalibrated, exhibiting high confidence on incorrect outputs and low confidence on rare but correct ones.
+\subsubsection{Calibration and Reliability Diagrams}
+
+A probabilistic classifier is said to be \emph{perfectly calibrated} if, among the set of predictions on which it outputs probability $p^\star$, the fraction of correct predictions equals $p^\star$. Formally, for any $p^\star \in [0, 1]$,
+\begin{equation}
+\Pr\!\big[\text{correct} \,\big|\, \hat q = p^\star \big] = p^\star.
+\end{equation}
+Perfect calibration is an \emph{extra} property beyond accuracy: a classifier can be accurate but uncalibrated (its confidences misstate the reliability) or calibrated but inaccurate (uniformly low confidence on a hard problem).
+
+Reliability diagrams are the standard visual diagnostic. Bin the predicted probabilities into $K$ bins $B_1, \ldots, B_K$, and for each bin plot the mean predicted probability against the empirical accuracy. Perfect calibration corresponds to points on the diagonal; overconfidence lies below the diagonal (predicted $>$ actual), underconfidence above. Modern deep networks including LLMs are almost invariably \emph{overconfident} in the high-probability regime \citep{guo2017calibration}.
+
+\subsubsection{Expected Calibration Error}
+
+Reliability diagrams are qualitative; to quantify calibration we use the \emph{Expected Calibration Error} (ECE):
+\begin{equation}
+\operatorname{ECE} = \sum_{k=1}^{K} \frac{|B_k|}{N}\,\big| \operatorname{acc}(B_k) - \operatorname{conf}(B_k) \big|,
+\end{equation}
+where $\operatorname{acc}(B_k)$ is the empirical accuracy of predictions in bin $k$, $\operatorname{conf}(B_k)$ is the mean predicted probability in the bin, $|B_k|$ is the bin count, and $N = \sum_k |B_k|$ is the total number of predictions. ECE is a weighted average of absolute calibration gaps. A well-calibrated predictor has $\operatorname{ECE} \approx 0$; values above a few percent indicate a practically significant miscalibration.
+
+ECE has known weaknesses---it is sensitive to binning, it ignores the sign of miscalibration, and it conflates different calibration failure modes. Alternatives include the Brier score,
+\begin{equation}
+\operatorname{Brier} = \frac{1}{N} \sum_{i=1}^{N} \sum_{v \in V} \big( q_i(v) - \mathbb{1}[y_i = v] \big)^2,
+\end{equation}
+and the marginal log-loss, which is simply per-instance NLL. Each of these is a \emph{proper scoring rule} in the sense defined below.
 
 \subsubsection{Temperature Scaling}
 
-During inference, logits are often rescaled by a temperature parameter $T$:
-
+Let $T > 0$ be a scalar. \emph{Temperature scaling} divides logits by $T$ before the softmax:
 \begin{equation}
-P_T(v) \propto \exp(z_v / T)
+q_T(v \mid x_{<t}) = \frac{\exp(z_v / T)}{\sum_{v'} \exp(z_{v'} / T)}.
 \end{equation}
+Temperature $T < 1$ sharpens the distribution (more mass on the top-1); $T > 1$ flattens it; $T \to 0^+$ degenerates to a point mass on the argmax; $T \to \infty$ degenerates to uniform. Crucially, temperature preserves the \emph{ordering} of all tokens---it cannot turn a low-probability token into the most probable one.
 
-Lower temperatures ($T < 1$) sharpen distributions, while higher temperatures ($T > 1$) increase entropy. Temperature modifies uncertainty but does not introduce new knowledge.
+Temperature scaling is the simplest and most common post-hoc calibration method. A single $T$ is fit on held-out data to minimize NLL; because $T$ is scalar, it does not change argmax predictions, and it has been shown empirically to recover most of the calibration deficit in image classifiers and language models \citep{guo2017calibration}. Temperature is also the primary decoding-time knob in inference stacks: the same mathematical operation that fixes calibration can be used to trade off diversity for determinism in generation. Temperature does not introduce new knowledge; it redistributes existing mass.
+
+\subsubsection{Proper Scoring Rules}
+
+A scoring rule $S(q, y)$ assigns a score to a predicted distribution $q$ in light of an observed outcome $y$. A scoring rule is \emph{proper} if reporting the true distribution is, in expectation, optimal:
+\begin{equation}
+\E_{y \sim p}[S(p, y)] \le \E_{y \sim p}[S(q, y)] \quad \text{for all } q.
+\end{equation}
+(The inequality is with respect to losses; reverse it if $S$ is a gain.) Proper scoring rules incentivize honest uncertainty reporting; improper ones reward overconfident predictions. Log-loss ($S(q, y) = -\log q(y)$) and the Brier score are the two most common proper scoring rules in classification. The log-loss we minimize during training is therefore not merely convenient; it is provably proper. The canonical survey is \citet{gneiting2007strictly}.
+
+This is the theoretical backstop for cross-entropy training: we are not just minimizing some arbitrary convex surrogate; we are minimizing a proper scoring rule that is optimal \emph{in expectation} when $q = p$. Equivalently, the uniquely optimal strategy under log-loss is to report the true conditional distribution. The gap between that optimum and what a trained model actually does tells us how far we are from the optimum---and, informally, where there is room to grow.
+
+\subsection{Sampling and Decoding as Probabilistic Objects}
+
+Once the model has computed $q_\theta(\cdot \mid x_{<t})$, we must choose a token. This step is frequently treated as incidental, but it materially shapes system behavior.
+
+\begin{itemize}
+  \item \textbf{Greedy decoding} selects $\arg\max_v q_\theta(v \mid x_{<t})$. It is deterministic but pathological in long sequences, as it cannot recover from early mistakes and tends to produce repetitive, degenerate text \citep{holtzman2020curious}.
+  \item \textbf{Stochastic sampling} draws $x_t \sim q_\theta(\cdot \mid x_{<t})$. This yields diverse outputs but can produce low-probability (and low-quality) tokens in the distribution's long tail.
+  \item \textbf{Top-$k$ sampling} restricts sampling to the $k$ highest-probability tokens, renormalizes, and samples. It cuts the tail but ignores the shape of the head.
+  \item \textbf{Top-$p$ (nucleus) sampling} restricts to the smallest set whose cumulative mass exceeds a threshold $p$, and samples from that set. It adapts to the shape of the distribution: sharp distributions yield small nuclei, flat distributions yield large ones.
+  \item \textbf{Temperature} modifies any of the above by pre-scaling the logits. $T \to 0^+$ recovers greedy; $T \to \infty$ flattens to uniform.
+\end{itemize}
+
+A useful mental model is that decoding strategies define a \emph{second distribution} over outputs, layered on top of the model's learned conditional. The question ``what does the model say?'' is therefore under-specified without a decoding strategy. Week~5 treats decoding more formally; for now, the point is that sampling is a first-class design choice with measurable effects on calibration, diversity, and downstream task performance.
+
+\subsection{Common Probabilistic Failure Modes}
+
+With the probabilistic framing in place, several characteristic LLM failure modes resolve into familiar statistical pathologies.
+
+\paragraph{Confident fabrication (hallucination).}
+The model assigns high probability to a token sequence that happens to be factually wrong. Under the probabilistic lens this is unremarkable: the training objective (\ref{eq:mle}) rewards high probability on \emph{corpus-likely} sequences, and a fluent fabrication can be corpus-likely if the corpus contains many fluent fabrications in adjacent contexts. No component of cross-entropy training pushes the model toward truth; truth is not a variable in the optimization.
+
+\paragraph{Overconfidence in rare events.}
+Modern deep networks tend to concentrate mass aggressively. In the extreme, argmax probabilities drift toward 1 as models are scaled and trained longer---beyond what the empirical accuracy in that bin justifies. This is the phenomenon that reliability diagrams expose and temperature scaling partially corrects.
+
+\paragraph{Token-boundary brittleness.}
+Because cross-entropy is computed per token and tokenization is lossy (Week~3), semantically equivalent inputs can produce very different logit trajectories. The model may be confident on one phrasing of a prompt and unsure on a paraphrase. This is a calibration failure expressed at the level of inputs rather than outputs.
+
+\paragraph{Exposure bias.}
+During training the model always conditions on \emph{ground-truth} prefixes (teacher forcing). At inference it conditions on its own generations. Any small probability mass on wrong tokens at position $t$ compounds over positions $t+1, t+2, \ldots$, leading to distributional drift that the loss itself did not penalize. This is a structural consequence of the decomposition in equation (\ref{eq:mle}) and is one reason why long-form generation is harder than short-form.
+
+\paragraph{Calibration drift after alignment.}
+Post-training techniques (instruction tuning, RLHF; Week~8) reliably reshape \emph{which} tokens get probability mass without preserving \emph{how much} mass they get. Aligned models are often less calibrated than their base counterparts---the confidence signal that was useful in the base model becomes misleading after alignment. This is a critical consideration in production pipelines and is one of the motivations for retrieval-augmented and tool-using systems (Week~9).
+
+\paragraph{A worked overconfidence vignette.}
+Suppose a factual QA benchmark shows that an LLM's top-1 answer has $88\%$ average top-1 probability but only $71\%$ top-1 accuracy. The $17$-percentage-point gap is the calibration error. If a downstream system uses the top-1 probability as a confidence-for-abstention signal---abstaining whenever probability is below $0.7$---it will never abstain on the hard cases, because probability clusters above $0.7$ even when accuracy is poor. Fixing this is primarily a calibration task (temperature scaling on a held-out split), not a model-capacity task. A useful system-design principle follows: \emph{if a downstream decision depends on a threshold on model probability, validate that the probability is calibrated on the operating distribution before deployment.}
 
 \subsection{Systems Engineering Implications}
 
-From a systems engineering standpoint, an LLM should be treated as a stochastic subsystem with opaque internal state and non-stationary performance.
+From a systems engineering standpoint, an LLM should be treated as a stochastic subsystem with an opaque internal state and non-stationary performance. The following table summarizes the consequences of the statistical framing for each phase of a standard V-model:
 
 \begin{center}
-\begin{tabular}{|l|l|}
+\begin{tabular}{|L{3.4cm}|L{8.0cm}|}
 \hline
-\textbf{Assumption} & \textbf{Consequence} \\
+\textbf{Phase / Concern} & \textbf{Consequence of the Statistical Framing} \\
 \hline
-Outputs are probabilistic & Variance must be managed \\
-Training data is finite & Distribution shift is inevitable \\
-No truth guarantee & External verification is required \\
+Requirements & Specifications must admit probabilistic outputs; ``the system shall return the correct answer'' is not enforceable against a probabilistic model. \\
+\hline
+Architecture & Downstream components must tolerate variance. Verification layers, retrieval, tool use, and human-in-the-loop review are architectural patterns motivated directly by the probabilistic substrate. \\
+\hline
+Verification \& Validation & Evaluation must report distributions, not point estimates. Calibration metrics (ECE, Brier) belong in V\&V alongside accuracy. \\
+\hline
+Operations & Distribution shift is inevitable: input distributions change over time. Continuous monitoring of loss, entropy, and acceptance rates is the operational analogue of calibration. \\
+\hline
+Incident Response & Failures are rarely deterministic bugs. Root-cause analysis must consider rare-event tail behavior and distributional assumptions. \\
 \hline
 \end{tabular}
 \end{center}
 
-These properties motivate architectural patterns such as verification layers, retrieval augmentation, and human-in-the-loop review.
+These properties motivate the architectural patterns---verification layers, retrieval augmentation, structured output formats, and human-in-the-loop review---that Weeks 8 through 10 will develop in detail.
 
 \subsection{Human Factors and Failure Modes}
 
-A common early failure mode in LLM systems is automation bias:
-
+A common early failure mode in LLM systems is \emph{automation bias}:
 \begin{quote}
 ``The model sounds confident, therefore it must be correct.''
 \end{quote}
+This arises from a mismatch between human epistemic intuitions---where confident assertions come from knowledgeable interlocutors---and probabilistic text generation, where confidence is a statistical property of the next-token distribution. Humans infer reliability from tone; models produce tone as a by-product of fitting tone-heavy text. The fluency heuristic is a cousin: the more coherent the output reads, the more we trust it, independent of whether it is correct.
 
-This arises from a mismatch between human epistemic intuitions and probabilistic text generation. Effective mitigations include structured outputs, confidence visualization, and explicit source attribution.
+Effective first-line mitigations include structured outputs with explicit confidence fields, uncertainty visualization in user interfaces, and source attribution (retrieval citations, tool-call traces). We return to these in Week~9 in the context of system design and in Week~10 in the context of assurance cases.
+
+\subsection{Bridges to Later Chapters}
+
+The statistical machinery of this chapter is revisited, refined, or challenged in every subsequent week. Explicit bridges worth keeping in mind:
+\begin{itemize}
+  \item \textbf{Week 2 (Optimization)} studies how we actually find $\hat\theta$ in practice, and why the optimization dynamics of cross-entropy over deep networks defy the intuition of classical statistics.
+  \item \textbf{Week 3 (Tokenization \& Embeddings)} makes precise what $x_t$ is as an object: a token rather than a word, and embedded in a vector space rather than a categorical index.
+  \item \textbf{Week 4 (Transformers)} specifies how the conditional $q_\theta(\cdot \mid x_{<t})$ is computed from the prefix, filling in the black box that the derivations above took for granted.
+  \item \textbf{Week 5 (Pretraining \& ICL)} revisits perplexity, decoding, and the emergence of in-context adaptation as a property of the pretraining objective.
+  \item \textbf{Week 7 (Adaptation)} and \textbf{Week 8 (Alignment)} change $q_\theta$ after pretraining. Both typically \emph{reduce} calibration relative to the base model, which forces the discussion from this chapter to be revisited operationally.
+  \item \textbf{Week 9 (RAG \& Tools)} substitutes $q_\theta(y \mid x)$ with $q_\theta(y \mid x, d)$ where $d$ is retrieved evidence, converting a pure language-modelling task into a conditional inference task with grounded context.
+  \item \textbf{Week 10 (Governance \& Assurance)} treats probabilistic performance as an assurance-case claim and asks what evidence is needed to justify it.
+\end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{bishop2006prml} — \emph{Pattern Recognition and Machine Learning}
-  \item \citet{murphy2012mlpp} — \emph{Machine Learning: A Probabilistic Perspective}
-  \item \citet{shannon1948} — \emph{A Mathematical Theory of Communication}
+  \item \citet{bishop2006prml} --- \emph{Pattern Recognition and Machine Learning}; definitive treatment of probabilistic modelling and calibration.
+  \item \citet{murphy2012mlpp} and \citet{murphy2022pml} --- \emph{Machine Learning: A Probabilistic Perspective} and the updated \emph{Probabilistic Machine Learning}; covers MLE, exponential families, and information theory.
+  \item \citet{shannon1948} --- \emph{A Mathematical Theory of Communication}; the foundational paper introducing entropy, cross-entropy, and the source-coding theorems that underpin perplexity.
+  \item \citet{cover2006elements} --- \emph{Elements of Information Theory}; the canonical reference for information-theoretic quantities.
+  \item \citet{vapnik1998statistical} --- \emph{Statistical Learning Theory}; classical PAC framework for generalization, useful background for Week~2.
+  \item \citet{guo2017calibration} --- empirical study of calibration in modern neural networks; introduces temperature scaling.
+  \item \citet{gneiting2007strictly} --- survey of proper scoring rules in forecasting.
+  \item \citet{holtzman2020curious} --- shows that maximum-likelihood decoding fails in open-ended generation; motivates the decoding toolkit.
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Caltech CS156 — \emph{Learning From Data}  
-  \url{https://www.youtube.com/playlist?list=PLD63A284B7615313A}
-
-  \item MIT 6.036 — \emph{Introduction to Machine Learning (OCW)}  
-  \url{https://ocw.mit.edu/courses/6-036-introduction-to-machine-learning-fall-2020/}
-
-  \item Stanford CS229 — \emph{Machine Learning} (probability and optimization sections)  
-  \url{https://cs229.stanford.edu/}
+  \item Caltech CS156 --- \emph{Learning From Data} \citep{caltech_cs156}.
+  \item MIT 6.036 --- \emph{Introduction to Machine Learning} \citep{mit_6036}.
+  \item Stanford CS229 --- \emph{Machine Learning}, particularly the probability and optimization sections \citep{stanford_cs229}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-\textbf{Objective:} Implement multinomial logistic regression for a toy sequence task using Python and PyTorch.
+\textbf{Objective}: implement multinomial logistic regression for a toy next-token task and observe probabilistic behavior first-hand.
 
-\textbf{Tasks:}
+\textbf{Tasks}:
 \begin{enumerate}
-  \item Train a simple next-token classifier
-  \item Inspect output probability distributions
-  \item Measure accuracy, entropy, and calibration error
+  \item Train a simple next-token classifier on a short corpus.
+  \item Inspect the output probability distributions on held-out inputs; plot entropies and top-$k$ gaps.
+  \item Measure accuracy, entropy, and calibration error (ECE) on a held-out split.
+  \item Fit a scalar temperature on a validation split; re-measure ECE; verify that accuracy is unchanged.
+  \item Sample generations at $T \in \{0.2, 0.7, 1.0, 1.4\}$ and qualitatively compare.
+  \item Construct a case where top-1 probability exceeds $0.9$ but the top-1 prediction is wrong; discuss what a downstream system should do in response.
 \end{enumerate}
 
-\textbf{Deliverable:}
-\begin{itemize}
-  \item Jupyter notebook
-  \item One-page reflection on probabilistic intuition failures
-\end{itemize}
+\textbf{Deliverable}: a Jupyter notebook with code and plots, plus a one-page reflection titled ``Where my probabilistic intuition failed.''
+
+See \texttt{labs/week01/week01\_lab\_probabilistic\_foundations.ipynb}.
 
 \subsection{Week 1 Takeaway}
 
 \begin{quote}
-An LLM is not a knowledge base or a reasoner; it is a probabilistic sequence model trained on text.
+An LLM is not a knowledge base or a reasoner; it is a probabilistic sequence model trained by minimizing cross-entropy against a corpus distribution. Cross-entropy is a proper scoring rule, which makes it a principled training target---but it measures distributional fidelity, not truth. Everything downstream, from hallucination to overconfidence to the surprising power of prompting, is a consequence of reading the model's outputs as probabilities and not as assertions.
 \end{quote}
 
-All subsequent components---Transformers, alignment, retrieval, tools, and agents---build on this foundation.
-
+All subsequent components---Transformers, scaling, adaptation, alignment, retrieval, tools, agents, and governance---build on this foundation.
