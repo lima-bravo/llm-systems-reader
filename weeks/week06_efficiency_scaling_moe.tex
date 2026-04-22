@@ -1,169 +1,564 @@
 \section{Week 6: Efficiency, Scaling, and Mixture-of-Experts}
+\label{sec:week6-moe}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Explain why efficiency dominates modern LLM design
-  \item Understand the tradeoff between model capacity and compute cost
-  \item Describe Mixture-of-Experts (MoE) architectures and routing
-  \item Identify new failure modes introduced by conditional computation
-  \item Reason about MoE from a systems-engineering perspective
+  \item Decompose an LLM workload along the three axes of compute,
+        memory, and bandwidth, and identify which one is binding.
+  \item Characterize data, tensor, pipeline, sequence (ring), and
+        expert parallelism and pick a sensible composite for a given
+        cluster.
+  \item Derive the ZeRO staging (P/OS/G/activations) and relate it to
+        the AdamW optimizer-state bookkeeping from Week~2.
+  \item Write the MoE forward pass, including top-$k$ gating,
+        load-balancing auxiliary loss, and token capacity factor.
+  \item Contrast the Switch Transformer, GShard, and Mixtral
+        architectural choices.
+  \item Describe all-to-all communication in expert parallelism and
+        its latency/bandwidth tradeoffs.
+  \item Reason about the memory-vs-FLOPs regime shift in inference
+        (MoE buys FLOPs but not memory).
+  \item Enumerate MoE-specific failure modes (expert collapse, router
+        instability, token drop, capacity starvation) and their
+        operational signatures.
+  \item Connect hardware (HBM vs SRAM, NVLink vs InfiniBand) to model
+        design decisions.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
-\textbf{Scaling and efficiency}
+\textbf{Distributed training and serving}
 \begin{itemize}
-  \item Dense vs sparse computation
-  \item Conditional parameter activation
-  \item Compute–memory tradeoffs
+  \item Data, tensor, pipeline, sequence, expert parallelism.
+  \item ZeRO and FSDP memory sharding.
+  \item Activation recomputation and selective checkpointing.
 \end{itemize}
 
-\textbf{Architectural patterns}
+\textbf{Sparse-activation architecture}
 \begin{itemize}
-  \item Mixture-of-Experts layers
-  \item Routing networks
-  \item Load balancing mechanisms
+  \item MoE FFN layers.
+  \item Top-$k$ routing and load-balancing losses.
+  \item Expert parallelism and all-to-all.
 \end{itemize}
 
-\subsection{Conceptual Core: Why Efficiency Matters}
-
-Modern LLMs are constrained not by parameter count alone, but by:
+\textbf{Systems relevance}
 \begin{itemize}
-  \item training compute,
-  \item inference latency,
-  \item memory bandwidth,
-  \item energy consumption.
+  \item Hardware-aware design (HBM, L2, NVLink, RDMA).
+  \item Latency budgets and tail-latency guards.
+  \item New failure modes from conditional compute.
 \end{itemize}
 
-A dense Transformer activates \emph{all} parameters for \emph{every} token.
-This scales cost linearly with model size.
+\subsection{Conceptual Core: Three Axes of Scale}
 
-Mixture-of-Experts (MoE) architectures decouple:
+A deployed LLM is constrained simultaneously by three resources:
+\begin{center}
+\begin{tabular}{|p{2.6cm}|p{3.4cm}|p{8.0cm}|}
+\hline
+Axis & Unit & What binds it \\
+\hline
+Compute   & FLOPs / s   & Forward + backward passes; matmul
+                          throughput per GPU. \\
+Memory    & bytes       & Weights + optimizer state + activations +
+                          KV cache. \\
+Bandwidth & bytes / s   & HBM-to-SRAM and inter-GPU interconnect;
+                          often the true bottleneck. \\
+\hline
+\end{tabular}
+\end{center}
+
+Training a dense Transformer activates \emph{all} weights for every
+token -- cost scales linearly with parameter count on the FLOPs axis
+\emph{and} the memory axis \emph{and} the bandwidth axis.
+Mixture-of-Experts (MoE) breaks this coupling:
 \begin{quote}
-\textbf{model capacity} from \textbf{per-token compute}.
+MoE decouples \textbf{model capacity} (parameters that \emph{exist})
+from \textbf{per-token compute} (parameters that \emph{activate}).
 \end{quote}
+A 1T-parameter MoE model with top-2 routing may activate only 30B
+parameters per token, yielding the representational reach of a 1T
+model at the inference FLOPs cost of a 30B model -- \emph{but with the
+memory footprint of the 1T model}. This asymmetry drives most of what
+is interesting about MoE at the systems level.
 
-\subsection{Dense vs Sparse Computation}
+\subsection{Parallelism: The Five Axes}
 
-In a standard Transformer, the feed-forward block computes:
+See Figure~\ref{fig:week6-parallelism-axes}. In modern training
+stacks these axes compose multiplicatively.
 
-\[
-\mathrm{FFN}(x) = W_2 \sigma(W_1 x)
-\]
+\begin{figure}[h]
+\centering
+\input{figures/parallelism_axes}
+\caption{Six parallelism dimensions layered in modern LLM training.
+  Production stacks typically compose three or four of them
+  simultaneously; expert parallelism applies only to MoE layers.}
+\label{fig:week6-parallelism-axes}
+\end{figure}
 
-In an MoE layer, this becomes:
+\subsubsection{Data Parallelism (DP)}
 
-\[
-\mathrm{MoE}(x) = \sum_{i \in \mathcal{E}(x)} g_i(x) \cdot \mathrm{Expert}_i(x)
-\]
+Each GPU holds a full copy of the model and processes a disjoint
+microbatch. After the backward pass, gradients are averaged across
+replicas via all-reduce. Scaling is near-linear on the compute axis
+for batch sizes under the noise threshold of
+\citet{mccandlish2018empirical}, and cheap to implement. Weakness: it
+replicates parameters, so memory cost is $O(N)$ per replica and does
+not benefit from cluster size.
 
-where:
+\subsubsection{Tensor (Model) Parallelism (TP)}
+
+Introduced at scale by Megatron-LM
+\citep{shoeybi2019megatron,narayanan2021efficient}. Within a single
+block, each linear layer $y = W x$ is split either row-wise or
+column-wise across GPUs. For a column-wise split
+$W = [W_1 \,|\, W_2]$,
+\begin{equation}
+y = W x = \begin{bmatrix} W_1 x \\ W_2 x \end{bmatrix},
+\end{equation}
+each GPU computes its slice locally and the results are concatenated
+via an all-gather. TP requires fast intra-node interconnect (NVLink
+or NVSwitch) because every forward and backward pass must exchange
+activations; it is typically bounded to intra-node (8 GPUs on
+current H100/H200 nodes).
+
+\subsubsection{Pipeline Parallelism (PP)}
+
+Different \emph{layers} live on different GPUs. A microbatch flows
+forward through the stages, then backward.
+GPipe~\citep{huang2019gpipe} and the 1F1B/interleaved schedules of
+Megatron keep pipelines full by running many microbatches
+concurrently at different stages. The residual idle time is the
+\emph{pipeline bubble}, which scales as $(P - 1) / M$ for $P$ stages
+and $M$ microbatches; large $M$ (i.e., large effective batch) shrinks
+the bubble.
+
+\subsubsection{Sequence / Ring Parallelism (SP)}
+
+For long contexts, even a single sequence may exceed per-GPU
+activation memory. Sequence
+parallelism~\citep{li2023sequence,korthikanti2023reducing} shards
+the sequence axis; \emph{Ring Attention}~\citep{liu2023ringattention}
+arranges GPUs in a ring and rotates the $K$/$V$ blocks around the
+ring so that every query sees every key without materializing the
+full attention matrix anywhere. SP is what enables million-token
+context training.
+
+\subsubsection{Expert Parallelism (EP)}
+
+Specific to MoE. Different \emph{experts} live on different GPUs.
+When a token is routed to expert $i$, its activations must travel to
+the GPU that holds $E_i$ -- this is the all-to-all communication
+pattern (\S\,Expert Parallelism below).
+
+\subsubsection{Composing the Axes}
+
+A real 512-GPU Llama-3 training might decompose as $\mathrm{DP}=32$,
+$\mathrm{TP}=4$, $\mathrm{PP}=4$, with $\mathrm{SP}=4$ inside TP for
+long-context runs. The scheduling is typically expressed as a 3D
+mesh and optimized by the framework (Megatron, DeepSpeed). The
+engineering artifact that matters is the \emph{configuration file}
+listing this decomposition, because it determines throughput, the
+bubble size, and the blast radius of a single-GPU failure.
+
+\subsection{ZeRO and FSDP}
+
+Pure data parallelism replicates parameters, gradients, optimizer
+state, and activations on every GPU -- memory is $O(N)$ per device
+even on huge clusters. The Zero Redundancy Optimizer
+(ZeRO)~\citep{rajbhandari2020zero} shards these tensors across data-
+parallel ranks, reconstructing them only when needed:
 \begin{itemize}
-  \item $\mathcal{E}(x)$ is a small subset of experts,
-  \item $g_i(x)$ are gating weights,
-  \item only selected experts are evaluated.
+  \item \textbf{ZeRO-1}: shard the optimizer state (the $m_t, v_t$ of
+        AdamW from Week~2). Memory per device drops by the DP degree
+        with only an additional all-gather per step.
+  \item \textbf{ZeRO-2}: additionally shard the gradients.
+  \item \textbf{ZeRO-3}: additionally shard the parameters themselves;
+        each forward pass all-gathers the needed shard, runs locally,
+        then discards.
+\end{itemize}
+ZeRO-3 is memory-equivalent to tensor parallelism for the
+parameter axis, but uses only DP-style all-gather communication
+(typically over the higher-bandwidth fabric). PyTorch FSDP
+\citep{zhao2023fsdp} is an open-source implementation of
+ZeRO-3-style full sharding and has become the default for
+open-source LLM training.
+
+\subsubsection{Activation Recomputation}
+
+Even after sharding parameters and optimizer state, activation memory
+often dominates. Activation recomputation \citep{chen2016training}
+(Week~2) drops intermediate activations and re-computes them in the
+backward pass. \citet{korthikanti2023reducing} refined this to
+\emph{selective} recomputation -- keep the activations for
+compute-heavy blocks (attention, FFN) and recompute the cheap ones
+(normalizations, reshapes) -- recovering most of the memory savings
+at a $\sim 5\%$ compute overhead rather than the classical $\sim 33\%$.
+
+\subsection{MoE Forward Pass}
+
+\subsubsection{Layer Structure}
+
+A dense Transformer block has an FFN:
+$\mathrm{FFN}(x) = W_2\,\sigma(W_1 x)$. An MoE block replaces this
+with an ensemble of experts $\{E_1, \ldots, E_N\}$ plus a router:
+\begin{align}
+\label{eq:week6-moe-router}
+\mathbf{s}(x)        &= \mathrm{softmax}(W_r x)\in \Delta^{N-1}, \\
+\label{eq:week6-moe-topk}
+\mathcal{T}_k(x)     &= \mathrm{top}_k(\mathbf{s}(x)), \\
+\label{eq:week6-moe-out}
+y \;=\; \mathrm{MoE}(x)
+  &= \sum_{i \in \mathcal{T}_k(x)} \tilde g_i(x)\,E_i(x),
+\end{align}
+with $W_r \in \mathbb{R}^{N \times d}$ the router projection and
+$\tilde g_i(x) = s_i(x) / \sum_{j \in \mathcal{T}_k(x)} s_j(x)$ the
+renormalized gate. Top-1 routing
+\citep{fedus2021switch} activates one expert per token; top-2
+\citep{shazeer2017outrageously, lepikhin2021gshard,jiang2024mixtral}
+activates two. Figure \ref{fig:week6-moe-routing} diagrams the
+operation.
+
+\begin{figure}[h]
+\centering
+\input{figures/moe_routing}
+\caption{MoE routing. Each token $x_t$ is independently scored by
+  the router, the top-$k$ experts are selected, their outputs are
+  combined by the (renormalized) gate weights, and the result is
+  passed on. The dashed arrows represent inactive experts for this
+  particular token.}
+\label{fig:week6-moe-routing}
+\end{figure}
+
+\subsubsection{Capacity Factor}
+
+In a distributed implementation, each expert has a fixed buffer size.
+The \emph{capacity} per expert is
+\begin{equation}
+\label{eq:week6-capacity}
+C = \lceil f \cdot k \cdot B / N \rceil,
+\end{equation}
+with $B$ the total tokens in the batch, $N$ the number of experts,
+$k$ the top-$k$, and $f \ge 1$ the \emph{capacity factor}. If more
+than $C$ tokens are routed to a given expert in a step, the overflow
+tokens are either \emph{dropped} (their contribution is zero) or
+routed to a backup expert. $f \in [1.0, 1.25]$ is typical. $f < 1$
+saves compute but increases drop rate; large $f$ wastes compute on
+empty slots.
+
+\subsubsection{Load-Balancing Auxiliary Loss}
+
+Routing is discrete and the router receives no direct gradient
+through $\mathrm{top}_k$; without an auxiliary signal, the router can
+collapse onto a few experts (``the rich get richer''). Switch
+Transformer introduces
+\begin{equation}
+\label{eq:week6-load-balance}
+\mathcal{L}_{\mathrm{aux}}
+   \;=\; \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i,
+\end{equation}
+where $f_i$ is the fraction of tokens dispatched to expert $i$ (a
+discrete, non-differentiable measurement) and $P_i = \E[s_i(x)]$ is
+the fraction of router \emph{probability mass} on expert $i$ (a
+differentiable quantity). Minimizing $\mathcal{L}_{\mathrm{aux}}$
+pushes $P_i$ down wherever $f_i$ is large -- if the router is already
+sending many tokens to $E_i$, reduce your confidence in $E_i$.
+Equilibrium is $f_i = P_i = 1/N$, i.e., uniform.
+
+\subsubsection{\texorpdfstring{Router $z$-Loss}{Router z-Loss}}
+
+\citet{zoph2022stmoe} introduced the router $z$-loss to stabilize
+router logits:
+\begin{equation}
+\label{eq:week6-zloss}
+\mathcal{L}_z \;=\;
+  \beta \cdot \E_x\!\left[\bigl(\log\!\sum_i e^{(W_r x)_i}\bigr)^2\right],
+\end{equation}
+which penalizes the log-sum-exp of the router logits from growing
+unboundedly. Without it, router logits can diverge in bf16 and
+produce router NaNs in long training runs.
+
+\subsection{Expert Parallelism and All-to-All}
+
+In a distributed MoE, expert $i$ lives on GPU $\pi(i)$. When a token
+is routed to $E_i$, its hidden state must \emph{travel} to GPU
+$\pi(i)$. The communication pattern:
+\begin{enumerate}
+  \item \textbf{Dispatch all-to-all}: each GPU sends its outgoing
+        tokens to the appropriate expert GPU.
+  \item \textbf{Local expert compute}: each expert GPU applies its
+        FFN to the tokens it received.
+  \item \textbf{Combine all-to-all}: each GPU pulls back the results
+        for its original tokens and weights them by the gate.
+\end{enumerate}
+All-to-all bandwidth scales as $O(B d)$ per step and saturates
+inter-node interconnect quickly. MoE training is \emph{interconnect-
+bound}, not compute-bound, on typical clusters; DeepSpeed-MoE
+\citep{rajbhandari2022deepspeedmoe} and similar systems engineer
+around this with expert-placement heuristics, communication
+overlap, and hierarchical dispatch.
+
+\subsection{MoE in Inference: Buys FLOPs, Not Memory}
+
+At inference time, MoE still reduces FLOPs per token (only $k$
+experts fire) but \emph{all experts must remain resident in GPU
+memory} because the router can select any subset per token.
+Consequences:
+\begin{itemize}
+  \item \textbf{Mixtral-8x7B} has 47B active parameters per token but
+        a resident footprint of $\sim\!93$\,B parameters; it needs a
+        cluster-memory profile similar to a 70B dense model.
+  \item \textbf{Batch efficiency}: MoE benefits enormously from large
+        batches because load-balancing statistics become tight; at
+        batch size 1 the same expert can be loaded and unloaded from
+        SRAM repeatedly.
+  \item \textbf{Speculative decoding} (\citealt{leviathan2023speculative},
+        Week~7) pairs well with MoE because the cheap draft model
+        generates many candidates and the MoE verifies them in a
+        large batch.
 \end{itemize}
 
-\subsection{Routing and Gating}
+\subsection{Scaling Laws for MoE}
 
-Routing is typically performed by a lightweight network that maps inputs to expert scores.
-
-Common strategies:
+\citet{clark2022unified} fit a unified scaling law across dense and
+routed models of the form
+\begin{equation}
+\label{eq:week6-unified-scaling}
+L(N_{\mathrm{total}}, N_{\mathrm{active}}, D) \;\approx\;
+  E + \frac{A}{N_{\mathrm{total}}^\alpha} +
+      \frac{B}{N_{\mathrm{active}}^\gamma} +
+      \frac{C}{D^\beta},
+\end{equation}
+with dense models recovered as $N_{\mathrm{total}} = N_{\mathrm{active}}$.
+Two empirical takeaways:
 \begin{itemize}
-  \item top-1 routing,
-  \item top-2 routing,
-  \item load-balanced routing.
+  \item At fixed training compute, an MoE with $N$ experts achieves
+        lower loss than the dense model with the same per-token
+        FLOPs.
+  \item Scaling total parameters while holding active parameters
+        fixed has diminishing returns; the ``sweet spot'' is
+        typically 8--16 experts with top-2 routing.
+\end{itemize}
+These observations, combined with Chinchilla's FLOP accounting from
+Week~2, drive the MoE proliferation of 2024--2025 (Mixtral, DeepSeek,
+Qwen-MoE, Grok-1).
+
+\subsection{MoE Failure Modes}
+
+Conditional compute introduces failure modes invisible to dense
+training.
+
+\subsubsection{Expert Collapse}
+
+The router concentrates all traffic on a small subset of experts
+despite the auxiliary loss. Symptom: $f_i \to 0$ for most $i$, with a
+few ``celebrity'' experts absorbing all tokens. Causes: too small
+$\alpha$, router initialization, insufficient warmup on the aux loss,
+distribution shift mid-training.
+
+\subsubsection{Router Instability}
+
+Router logits oscillate, sending a given token to expert 3 on one
+step and expert 7 on the next -- nominally equivalent if $E_3$ and
+$E_7$ are well-balanced, but in practice training slows to a crawl.
+The $z$-loss (Eq.\ \eqref{eq:week6-zloss}) was designed to address
+this; so was the switch to bf16 for router logits specifically.
+
+\subsubsection{Token Drop}
+
+When an expert's capacity $C$ (Eq.\ \eqref{eq:week6-capacity}) is
+exceeded, overflow tokens are dropped. Small drop rates (few percent)
+are benign; large drop rates starve the model of signal. Monitoring
+the drop rate per layer is essential.
+
+\subsubsection{Routing Brittleness at Inference}
+
+A token that was reliably routed to $E_3$ during training may, in a
+distribution-shifted inference context, route to an underfit expert.
+Unlike dense models, MoE quality can vary across input distributions
+in ways that are hard to anticipate.
+
+\subsection{Hardware-Aware Design}
+
+GPU memory has a hierarchy: SRAM (L1/L2/shared, $\sim\!20$\,MB, TB/s),
+HBM (80\,GB, 3\,TB/s), NVLink/NVSwitch intra-node
+($\sim\!900$\,GB/s), InfiniBand inter-node ($\sim\!400$\,GB/s). Cost
+decreases, bandwidth plummets.
+
+Design consequences:
+\begin{itemize}
+  \item \textbf{FlashAttention} (Week~4) exists because
+        materializing $A \in \mathbb{R}^{T \times T}$ in HBM is a
+        bandwidth tax. Its tiling moves the attention compute into
+        SRAM.
+  \item \textbf{Tensor parallelism} lives on NVLink; larger TP
+        degrees work only within a node.
+  \item \textbf{Pipeline and expert parallelism} tolerate InfiniBand
+        because their communication is less frequent but larger.
+  \item \textbf{Cluster topology} (rails, fat-tree, rail-optimized)
+        dictates where to place which parallelism axis.
 \end{itemize}
 
-Routing decisions introduce discreteness into otherwise smooth optimization.
+\subsubsection{The Arithmetic Intensity Lens}
 
-\subsection{Benefits of MoE}
-
-MoE architectures allow:
-\begin{itemize}
-  \item massive parameter counts,
-  \item lower inference cost,
-  \item specialization of sub-networks.
-\end{itemize}
-
-This makes them attractive for frontier-scale models.
-
-\subsection{New Failure Modes}
-
-MoE introduces new challenges:
-\begin{itemize}
-  \item expert collapse,
-  \item load imbalance,
-  \item routing instability,
-  \item harder debugging and reproducibility.
-\end{itemize}
-
-These are \emph{systems problems}, not merely modeling problems.
+A useful planning tool is \emph{arithmetic intensity}: FLOPs per byte
+of memory traffic. An NVIDIA H100 has roughly $1000$ TFLOPs and
+$3$ TB/s HBM, so its ``ridge point'' is near $330$ FLOPs/byte. A
+matmul of size $M \times N \times K$ has arithmetic intensity
+$\approx 2 M N K / (M K + N K + M N) \cdot b$ bytes$^{-1}$; for
+typical LLM matmuls at training (large $M$ from batch) this is
+hundreds of FLOPs/byte and compute-bound. Per-token inference of a
+single prompt has $M = 1$ and is bandwidth-bound -- explaining why
+\emph{batching} is the single largest lever for inference throughput
+(Week~7).
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Predictable latency
-  \item Robust routing under distribution shift
-\end{itemize}
-
-\textbf{Architecture}
-\begin{itemize}
-  \item Expert parallelism
-  \item Routing instrumentation
-\end{itemize}
-
-\textbf{Verification \& Validation}
-\begin{itemize}
-  \item Load balance metrics
-  \item Per-expert activation monitoring
-\end{itemize}
-
-\textbf{Operations}
-\begin{itemize}
-  \item Capacity planning
-  \item Expert health checks
-\end{itemize}
+\begin{center}
+\begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
+\hline
+V-model stage & Efficiency / MoE property & System requirement or activity \\
+\hline
+Requirements & Inference latency budget & Prefer sparse if FLOPs
+   dominate; dense if memory dominates. \\
+ & Training compute budget & Chinchilla for dense, Eq.\,
+   \eqref{eq:week6-unified-scaling} for MoE. \\
+\hline
+Architecture & 3D/4D parallelism mesh & Configure
+   (DP, TP, PP, SP, EP) per workload. \\
+ & Activation recomputation & Selective per Korthikanti et al. \\
+ & ZeRO/FSDP stage & Choose by memory target and
+   comm budget. \\
+\hline
+Implementation & Aux and $z$-losses & Part of training config;
+   sweep $\alpha, \beta$. \\
+ & Capacity factor & $f \in [1.0, 1.25]$ default;
+   log drop rate. \\
+\hline
+V\&V & Per-expert token-count histograms
+     & Alert on $\max f_i / \min f_i > 5$. \\
+ & Routing regression tests & Compare routing decisions across
+   model revisions on a fixed probe set. \\
+\hline
+Operations & Expert health dashboards & $f_i$, drop rate, router
+   $z$-score, expert-specific loss. \\
+ & Cluster topology awareness & Place EP on inter-node fabric; TP
+   on intra-node NVLink. \\
+\hline
+\end{tabular}
+\end{center}
 
 \subsection{Human Factors and Failure Modes}
 
-MoE systems are harder to reason about:
 \begin{itemize}
-  \item behavior may vary subtly across inputs,
-  \item failures may be localized to experts,
-  \item debugging requires new mental models.
+  \item \textbf{MoE hype}. Do not assume MoE always wins; for
+        memory-bound serving on a single-GPU budget, dense may be
+        cheaper at fixed quality.
+  \item \textbf{Behavior drift}. MoE outputs can shift subtly after
+        a routing change; downstream evaluations should include
+        representative distribution coverage.
+  \item \textbf{Debugging overhead}. A failed MoE run can fail at any
+        of: router, aux loss, all-to-all, capacity, expert placement.
+        Dashboards and per-expert logs are non-optional.
+  \item \textbf{Reproducibility}. MoE routing decisions depend on
+        batch composition, so the same input can be processed
+        differently depending on what's in the batch -- a form of
+        non-determinism that surprises new operators.
 \end{itemize}
 
-This increases operational cognitive load.
+\subsection{Bridges to Later Chapters}
+
+\begin{itemize}
+  \item \textbf{Week 7 (Adaptation, LoRA, Quantization)}: MoE
+        interacts with quantization (expert-specific scales) and
+        LoRA (per-expert adapters); serving tools (vLLM, TGI) need
+        special support for MoE layers.
+  \item \textbf{Week 8 (Alignment)}: instruction tuning of MoE models
+        is sensitive to routing changes; aux-loss coefficients
+        sometimes need re-tuning.
+  \item \textbf{Week 9 (LLM Systems)}: batching strategies, prefix
+        caching, and speculative decoding all interact with MoE
+        sparsity.
+  \item \textbf{Week 10 (Governance)}: conditional compute is a
+        residual-risk item (routing under distribution shift); it
+        should appear in the assurance case.
+\end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{shazeer2017outrageously} — original MoE
-  \item \citet{fedus2021switch} — Switch Transformers
+  \item \citet{shazeer2017outrageously} --- original top-$k$
+        sparsely-gated MoE layer.
+  \item \citet{fedus2021switch} --- Switch Transformer (top-1
+        routing, aux loss).
+  \item \citet{lepikhin2021gshard} --- GShard and MoE sharding.
+  \item \citet{jiang2024mixtral} --- Mixtral 8x7B.
+  \item \citet{zoph2022stmoe} --- ST-MoE and router $z$-loss.
+  \item \citet{clark2022unified} --- unified scaling laws for routed
+        models.
+  \item \citet{rajbhandari2022deepspeedmoe} --- DeepSpeed-MoE.
+  \item \citet{rajbhandari2020zero}, \citet{zhao2023fsdp} --- ZeRO
+        and FSDP.
+  \item \citet{shoeybi2019megatron}, \citet{narayanan2021efficient}
+        --- tensor/pipeline parallelism.
+  \item \citet{huang2019gpipe} --- GPipe.
+  \item \citet{korthikanti2023reducing} --- selective activation
+        recomputation.
+  \item \citet{li2023sequence}, \citet{liu2023ringattention} ---
+        sequence and ring parallelism.
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS324 — scaling and efficiency  
-  \url{https://stanford-cs324.github.io/winter2022/}
-
-  \item Berkeley CS182 — systems aspects of deep learning  
-  \url{https://cs182.berkeley.edu}
+  \item Stanford CS324 --- scaling, efficiency, and MoE,
+        \citet{stanford_cs324}.
+  \item Berkeley CS182 --- systems aspects of deep learning,
+        \citet{berkeley_cs182}.
+  \item MIT 6.S191 --- efficient deep learning systems,
+        \citet{mit_6s191}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week06/week06\_lab\_efficiency\_moe.ipynb}.
+\begin{enumerate}
+  \item \textbf{Arithmetic intensity audit}. For one forward pass of
+        a reference LLM at batch sizes $1, 8, 64$, compute
+        arithmetic intensity per matmul. Plot against the ridge
+        point of your GPU.
+  \item \textbf{Data-parallel scaling study}. Train a small model on
+        1, 2, 4, 8 GPUs. Plot throughput vs GPU count; identify
+        where the comm-bound regime starts.
+  \item \textbf{ZeRO stages}. Run ZeRO-1, -2, -3 on the same model
+        and batch. Report peak memory per device and wall clock per
+        step.
+  \item \textbf{MoE from scratch}. Implement Eq.\
+        \eqref{eq:week6-moe-router}--\eqref{eq:week6-moe-out} for a
+        small Transformer. Add Eq.\ \eqref{eq:week6-load-balance}.
+        Train on a toy task.
+  \item \textbf{Capacity factor sweep}. Sweep $f \in \{0.8, 1.0,
+        1.25, 2.0\}$. Log drop rate, load imbalance, and final loss.
+  \item \textbf{Expert-collapse triggering}. Set $\alpha = 0$;
+        confirm the router collapses onto few experts within a few
+        thousand steps.
+  \item \textbf{Router $z$-loss stability}. Train with and without
+        Eq.\ \eqref{eq:week6-zloss}; log the max absolute router
+        logit per step.
+  \item \textbf{MoE serving memory}. Profile peak resident memory
+        for Mixtral-8x7B at batch 1 and batch 32; reconcile with the
+        total-parameter count.
+\end{enumerate}
 
 \subsection{Week 6 Takeaway}
 
 \begin{quote}
-Scaling LLMs is no longer a modeling problem alone — it is a distributed systems problem.
+Scaling LLMs is no longer a modeling problem alone -- it is a
+distributed systems problem. Mixture-of-Experts decouples model
+capacity from per-token compute and so is central to frontier
+training, but it imports every pathology of conditional compute:
+expert collapse, router instability, token drop, and interconnect-
+bound training. The engineering success of MoE is not a question of
+mathematical elegance; it is a question of whether the cluster's
+topology, the aux losses, and the capacity factors have been tuned
+jointly enough to make the sparsity actually pay.
 \end{quote}
-
-

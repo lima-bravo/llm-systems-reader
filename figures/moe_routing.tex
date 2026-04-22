@@ -1,0 +1,56 @@
+\begin{tikzpicture}[
+  tok/.style={draw, rounded corners, minimum width=1.3cm, minimum height=0.7cm,
+              align=center, font=\footnotesize},
+  gate/.style={draw, rounded corners, minimum width=1.6cm, minimum height=0.8cm,
+               align=center, font=\footnotesize, fill=black!5},
+  expert/.style={draw, rounded corners, minimum width=1.5cm, minimum height=0.9cm,
+                 align=center, font=\footnotesize},
+  combine/.style={draw, rounded corners, minimum width=3.0cm, minimum height=0.8cm,
+                  align=center, font=\footnotesize, fill=black!5},
+  arrow/.style={->, thick, >=Stealth},
+  dashedA/.style={->, thick, dashed, >=Stealth},
+  node distance=0.55cm and 0.55cm
+]
+
+% Input tokens
+\node[tok] (t1) {$x_1$};
+\node[tok, right=of t1] (t2) {$x_2$};
+\node[tok, right=of t2] (t3) {$x_3$};
+\node[tok, right=of t3] (t4) {$x_4$};
+
+% Router
+\node[gate, below=0.55cm of t2.east, xshift=0.55cm] (router)
+     {Router $g(\cdot)$};
+
+\draw[arrow] (t1) -- (router);
+\draw[arrow] (t2) -- (router);
+\draw[arrow] (t3) -- (router);
+\draw[arrow] (t4) -- (router);
+
+% Experts
+\node[expert, below=0.9cm of router, xshift=-3.3cm] (e1) {Expert\\$E_1$};
+\node[expert, right=of e1] (e2) {Expert\\$E_2$};
+\node[expert, right=of e2] (e3) {Expert\\$E_3$};
+\node[expert, right=of e3] (e4) {Expert\\$E_4$};
+
+% Top-2 routing: active (solid), inactive (dashed gray)
+\draw[arrow]   (router) -- node[midway, left=-1pt, font=\scriptsize] {top-2} (e1);
+\draw[arrow]   (router) -- (e2);
+\draw[dashedA, draw=black!40] (router) -- (e3);
+\draw[dashedA, draw=black!40] (router) -- (e4);
+
+% Combine
+\node[combine, below=0.8cm of e2.east, xshift=0.55cm] (comb) {$\sum_i g_i(x)\, E_i(x)$};
+
+\draw[arrow] (e1) -- (comb);
+\draw[arrow] (e2) -- (comb);
+\draw[dashedA, draw=black!40] (e3) -- (comb);
+\draw[dashedA, draw=black!40] (e4) -- (comb);
+
+\node[tok, below=0.55cm of comb] (out) {$y$};
+\draw[arrow] (comb) -- (out);
+
+\node[right=0.7cm of router, font=\footnotesize\itshape, align=left]
+     (note) {Per-token\\top-$k$ gate};
+
+\end{tikzpicture}

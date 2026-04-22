@@ -1,0 +1,14 @@
+\begin{tikzpicture}[
+  ax/.style={draw, rounded corners, minimum width=3.5cm, minimum height=1.5cm,
+             align=center, font=\footnotesize, fill=black!5},
+  node distance=0.4cm and 0.4cm
+]
+
+\node[ax] (dp) {\textbf{Data parallel}\\full model on each GPU,\\different batches};
+\node[ax, right=of dp] (tp) {\textbf{Tensor parallel}\\split matmuls across GPUs};
+\node[ax, right=of tp] (pp) {\textbf{Pipeline parallel}\\split layers across GPUs};
+\node[ax, below=of dp] (sp) {\textbf{Sequence / ring}\\split sequence axis across GPUs};
+\node[ax, below=of tp] (ep) {\textbf{Expert parallel}\\distribute MoE experts};
+\node[ax, below=of pp] (zero) {\textbf{ZeRO / FSDP}\\shard optimizer + params};
+
+\end{tikzpicture}
