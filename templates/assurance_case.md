@@ -1,4 +1,4 @@
-i# AI Assurance Case
+# AI Assurance Case
 
 ## System Description
 - System name:
