@@ -1,181 +1,692 @@
-\section{Week 4: The Transformer — Attention as the Core Computational Primitive}
+\section{Week 4: The Transformer --- Attention as the Core Computational Primitive}
+\label{sec:week4-transformer}
 
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Derive scaled dot-product self-attention
-  \item Explain the roles of queries, keys, and values
-  \item Understand the structure of a Transformer block
-  \item Reason about residual streams and layer normalization
-  \item Explain why Transformers scale better than prior sequence models
+  \item Derive scaled dot-product attention, state the roles of
+        $Q, K, V$, and justify the $\sqrt{d_k}$ scale from a
+        variance-preserving argument.
+  \item Track the matrix shapes through a full Transformer block and
+        compute the FLOP budget for one forward pass.
+  \item Implement a correct causal mask and reason about its
+        interaction with padding and batching.
+  \item Compare pre-norm and post-norm placement and explain why
+        modern LLMs use pre-norm.
+  \item Derive sinusoidal, learned, ALiBi, and rotary (RoPE)
+        positional encodings, including RoPE's relative-position
+        property.
+  \item Contrast multi-head, multi-query (MQA), and grouped-query
+        (GQA) attention on quality, compute, and KV-cache footprint.
+  \item Compute the KV cache memory cost from first principles and
+        articulate the compute/memory regimes that FlashAttention
+        targets.
+  \item Critique attention-as-explanation claims and name the
+        interpretability artefacts that have supplanted raw attention
+        heatmaps.
 \end{itemize}
 
 \subsection{LLM Components Covered}
 
 \textbf{Core architecture}
 \begin{itemize}
-  \item Token embeddings + positional information
-  \item Self-attention (Q, K, V)
-  \item Multi-head attention
-  \item Feed-forward (MLP) blocks
-  \item Residual connections and layer normalization
+  \item Token embeddings plus positional information (sinusoidal,
+        learned, ALiBi, RoPE).
+  \item Scaled dot-product self-attention with causal masking.
+  \item Multi-head attention, MQA, GQA.
+  \item Feed-forward blocks (GeLU, GLU, SwiGLU).
+  \item Pre-norm residual stack, LayerNorm, RMSNorm.
 \end{itemize}
 
 \textbf{Systems relevance}
 \begin{itemize}
-  \item Parallelism and scalability
-  \item Memory and compute tradeoffs
-  \item Attention as content-addressable memory
+  \item FLOP budgeting for training and inference.
+  \item KV-cache memory footprint and GQA mitigation.
+  \item I/O-aware kernels (FlashAttention) and tiling.
+  \item Attention interpretability limits.
 \end{itemize}
 
 \subsection{Conceptual Core: Why Attention Replaced Recurrence}
 
-Prior sequence models (RNNs, LSTMs) process tokens sequentially, limiting:
+Prior sequence models (RNNs, LSTMs, GRUs) compute each hidden state
+$h_t$ from $h_{t-1}$. This imposes three structural limits:
 \begin{itemize}
-  \item parallelism,
-  \item long-range dependency modeling,
-  \item scalability.
+  \item \textbf{Serial compute}: the $t$-th step cannot begin until the
+        $(t-1)$-th step finishes; the per-sequence wall-clock is
+        $\Theta(T)$ even on infinite parallelism.
+  \item \textbf{Long-range signal decay}: gradients propagate through
+        $T$ multiplicative updates, producing vanishing or exploding
+        long-range signals.
+  \item \textbf{Limited effective memory}: the hidden state is a
+        compressed summary of the past and has fixed capacity.
 \end{itemize}
-
-Transformers eliminate recurrence entirely.
-Instead, they allow each token to attend directly to every other token in the context window.
+The Transformer \citep{vaswani2017attention} eliminates recurrence
+entirely. Each token attends directly to every other token in the
+context window via a content-addressable lookup. The resulting
+architecture is fully parallel across the sequence axis, has
+constant-depth signal paths, and has an ``effective memory'' equal to
+the full context length $T$.
 
 \subsection{Scaled Dot-Product Self-Attention}
 
-Given an input sequence represented as vectors
-\[
-X \in \mathbb{R}^{T \times d}
-\]
+\subsubsection{Setup}
 
-we compute:
+Let the Transformer see a contextualized input
+$X \in \mathbb{R}^{T\times d}$ (one row per token, $T$ tokens in the
+context, model dimension $d$). Each attention layer projects $X$ into
+\emph{queries}, \emph{keys}, and \emph{values}:
+\begin{equation}
+\label{eq:week4-qkv}
+Q = X W_Q, \qquad
+K = X W_K, \qquad
+V = X W_V,
+\end{equation}
+with $W_Q, W_K \in \mathbb{R}^{d \times d_k}$ and
+$W_V \in \mathbb{R}^{d \times d_v}$. So $Q, K \in \mathbb{R}^{T\times d_k}$
+and $V \in \mathbb{R}^{T\times d_v}$. The output is a weighted
+combination of the value rows:
+\begin{equation}
+\label{eq:week4-attn}
+\mathrm{Attn}(Q, K, V)
+  \;=\; \underbrace{\mathrm{softmax}\!\left(\frac{Q K^{\top}}{\sqrt{d_k}} \;+\; M\right)}_{A \in \mathbb{R}^{T\times T}}\,
+        V,
+\end{equation}
+where $M$ is the causal mask (\S\,Causal Masking) with $M_{ij} = 0$
+for $j \le i$ and $M_{ij} = -\infty$ for $j > i$. Figure
+\ref{fig:week4-attn-scores} diagrams the computation.
 
-\[
-Q = XW_Q,\quad K = XW_K,\quad V = XW_V
-\]
+\begin{figure}[h]
+\centering
+\input{figures/attention_scores}
+\caption{Scaled dot-product attention.
+  Queries $Q$ and keys $K^{\top}$ multiply to form the attention
+  score matrix $Q K^{\top} \in \mathbb{R}^{T \times T}$, which is
+  scaled by $\sqrt{d_k}$, masked, softmax-normalized, and finally
+  used as weights against the values $V$.}
+\label{fig:week4-attn-scores}
+\end{figure}
 
-Attention weights are:
+\subsubsection{\texorpdfstring{Why $\sqrt{d_k}$?}{Why sqrt(d\_k)?}}
 
-\[
-A = \mathrm{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right)
-\]
+Assume $Q_{ij}$ and $K_{ij}$ are independent with zero mean and unit
+variance. Then each entry of $QK^{\top}$ is a sum of $d_k$ independent
+products:
+\begin{equation}
+(QK^{\top})_{ij} \;=\; \sum_{m=1}^{d_k} Q_{im} K_{jm},
+\qquad
+\mathrm{Var}\!\left[(QK^{\top})_{ij}\right] = d_k.
+\end{equation}
+Without rescaling, the logit magnitudes grow with $\sqrt{d_k}$; after
+softmax, this drives attention toward hard one-hot distributions for
+even moderately-sized models and \emph{kills} the gradient through the
+softmax. Dividing by $\sqrt{d_k}$ keeps the variance of each score at
+unity regardless of head dimension, preserving a usable gradient.
+This is a dimensional-analysis argument and it holds whether or not
+the initialization satisfies the unit-variance assumption exactly --
+the practical effect is consistent across head sizes.
 
-and outputs:
+\subsubsection{Interpretation: Differentiable Lookup}
 
-\[
-\mathrm{Attention}(Q,K,V) = AV
-\]
-
-Interpretation:
+Row $i$ of $A$ is a probability distribution over context positions;
+row $i$ of the output is the convex combination of value rows weighted
+by that distribution. Pedagogically:
 \begin{itemize}
-  \item Queries ask questions
-  \item Keys advertise content
-  \item Values carry information
+  \item \emph{queries} ask ``what information do I need?'',
+  \item \emph{keys} advertise ``I carry this kind of information'',
+  \item \emph{values} carry the information itself.
 \end{itemize}
+Attention is therefore a differentiable, content-addressable read
+against a key-value store of size $T$.
 
-This is best understood as \emph{learned, differentiable lookup}.
+\subsubsection{Compute and Memory}
+
+For a single attention head the forward pass costs:
+\begin{itemize}
+  \item $Q, K, V$ projections: $3 T d\, d_k$ FLOPs.
+  \item $Q K^{\top}$: $T^2 d_k$ FLOPs.
+  \item Softmax: $O(T^2)$ FLOPs.
+  \item $A V$: $T^2 d_v$ FLOPs.
+\end{itemize}
+Total: $O(T d\, d_k + T^2 d_k)$. The quadratic $T^2$ term dominates
+for long contexts; the $T d d_k$ term dominates for short contexts.
+Memory is $O(T^2)$ for the attention matrix $A$ -- the target of
+FlashAttention (\S\,FlashAttention below).
+
+\subsection{Causal Masking}
+
+For autoregressive language modeling, token $i$ must not attend to
+tokens at position $j > i$, otherwise training leaks the target.
+The canonical mask is
+\begin{equation}
+M_{ij} \;=\;
+\begin{cases}
+0            & j \le i, \\
+-\infty      & j > i,
+\end{cases}
+\end{equation}
+added to the pre-softmax logits. Adding $-\infty$ before softmax zeros
+the corresponding weight. Two practical gotchas:
+\begin{itemize}
+  \item \textbf{Padding masks} must also be applied so that padded
+        positions cannot be attended to \emph{or} attend out, or the
+        padding token's hidden state will corrupt neighbors during
+        training. The combined mask is the elementwise max of the
+        causal and padding masks (after mapping ``masked'' to
+        $-\infty$).
+  \item \textbf{Block-diagonal masks} are used when multiple
+        independent sequences are packed into a single batch (common
+        in pretraining for throughput); without the block-diagonal
+        pattern tokens leak across document boundaries.
+\end{itemize}
+Incorrect masking is an insidious failure mode: training loss looks
+fine for a while but generalization collapses. Mask correctness is
+worth a unit test.
 
 \subsection{Multi-Head Attention}
 
-Instead of a single attention operation, Transformers use multiple heads:
+A single attention head can only attend through one learned
+$(Q, K, V)$ decomposition at a time. Multi-head attention
+\citep{vaswani2017attention} runs $H$ heads in parallel with different
+projections and concatenates the results:
+\begin{align}
+h_i &= \mathrm{Attn}(X W_Q^{(i)}, X W_K^{(i)}, X W_V^{(i)}),
+      \qquad i = 1, \ldots, H, \\
+\mathrm{MHA}(X) &= \bigl[h_1 \,|\, h_2 \,|\, \cdots \,|\, h_H\bigr]\, W_O,
+\label{eq:week4-mha}
+\end{align}
+with $W_O \in \mathbb{R}^{H d_v \times d}$. Typically $d_k = d_v = d/H$
+so the parameter count matches a single full-size head. Figure
+\ref{fig:week4-mha} illustrates.
 
-\[
-\mathrm{MHA}(X) = \mathrm{Concat}(h_1,\dots,h_H)W_O
-\]
+\begin{figure}[h]
+\centering
+\input{figures/multihead_attention}
+\caption{Multi-head attention. $H$ independent attention heads operate
+  in parallel over the same input $X$; their outputs are concatenated
+  along the feature axis and projected back to model dimension $d$ by
+  $W_O$.}
+\label{fig:week4-mha}
+\end{figure}
 
-Each head can learn a different relational pattern:
+Empirically, heads specialize \citep{elhage2021mathematical}: some
+attend to adjacent positions (n-gram heads), some to syntactic
+dependencies, some to previously-seen tokens of the same type
+(induction heads, \citealt{olsson2022induction}, revisited in
+Week~5). This specialization is not engineered in; it emerges from
+training.
+
+\subsubsection{Multi-Query and Grouped-Query Attention}
+
+At inference time, multi-head attention keeps a separate key/value
+cache per head (see \S\,KV Cache), which dominates memory. Two
+architectural mitigations:
 \begin{itemize}
-  \item syntax,
-  \item coreference,
-  \item positional relationships.
+  \item \textbf{Multi-Query Attention (MQA)} \citep{shazeer2019fast}:
+        share a single $K, V$ pair across all $H$ heads; each head
+        keeps its own $Q$. Reduces KV cache by $H\times$ with modest
+        quality loss.
+  \item \textbf{Grouped-Query Attention (GQA)}
+        \citep{ainslie2023gqa}: partition the $H$ query heads into
+        $G$ groups, each sharing a single $(K, V)$; recovers most of
+        the quality of MHA while keeping KV cache size at $G$-per-token.
+        $G \in \{4, 8\}$ is common in modern LLMs (Llama~2/3, Mistral).
 \end{itemize}
+GQA is essentially always the better engineering default for
+inference-optimized models: the quality cost is small and the
+memory win on long contexts is substantial.
 
-\subsection{The Transformer Block}
+\subsection{Feed-Forward Blocks}
 
-A decoder-style Transformer block consists of:
+Between attention layers each position is transformed independently
+by a two-layer feed-forward network (FFN):
+\begin{equation}
+\label{eq:week4-ffn-classic}
+\mathrm{FFN}(x) \;=\; W_2 \,\sigma(W_1 x + b_1) + b_2,
+\end{equation}
+with $W_1 \in \mathbb{R}^{d_f \times d}$, $W_2 \in \mathbb{R}^{d \times d_f}$,
+and typically $d_f = 4d$. The activation $\sigma$ started as ReLU and
+has been superseded by smoother variants (GeLU, Swish/SiLU) for
+training stability.
 
-\begin{enumerate}
-  \item LayerNorm
-  \item Masked self-attention
-  \item Residual connection
-  \item LayerNorm
-  \item Feed-forward network (MLP)
-  \item Residual connection
-\end{enumerate}
+\subsubsection{GLU Variants and SwiGLU}
 
-The residual stream allows information to flow across layers with minimal degradation.
+\citet{shazeer2020glu} showed that \emph{gated} linear units improve
+quality with no extra parameters if the hidden size is rescaled
+appropriately:
+\begin{equation}
+\label{eq:week4-swiglu}
+\mathrm{SwiGLU}(x)
+ \;=\; \bigl(W_g x \odot \mathrm{Swish}(W_u x)\bigr) W_2,
+\qquad
+\mathrm{Swish}(z) = z\,\sigma(z),
+\end{equation}
+where $\sigma$ is the sigmoid and $\odot$ is elementwise. SwiGLU is
+the default in Llama, PaLM, and most modern decoder-only models. It
+uses three projection matrices ($W_g, W_u, W_2$) per layer rather
+than two; to keep parameter count fixed, $d_f$ is typically reduced
+from $4d$ to $\tfrac{8}{3}d$.
 
-\subsection{Why Positional Information Is Required}
+The FFN performs most of the parameter count of a Transformer layer
+(roughly $2/3$ of the layer parameters in a classical block). In
+current interpretability work it is viewed as a key-value memory:
+the first matrix's rows act as ``keys'' matched against the
+residual-stream activation, and the second matrix's columns act as
+``values'' written back.
 
-Attention is permutation-invariant.
-Without positional encoding, token order is lost.
+\subsection{The Transformer Block, Pre-Norm vs Post-Norm}
 
-Position information is injected via:
+\subsubsection{Pre-Norm is the Modern Default}
+
+The original Transformer used post-norm (normalize after the residual
+add):
+\begin{equation}
+x_{\ell+1} \;=\; \mathrm{LN}\bigl(x_\ell + \mathrm{Sublayer}(x_\ell)\bigr).
+\end{equation}
+The \emph{pre-norm} variant, now standard, moves the normalization
+inside the residual branch:
+\begin{equation}
+\label{eq:week4-prenorm}
+x_{\ell+1} \;=\; x_\ell + \mathrm{Sublayer}\bigl(\mathrm{LN}(x_\ell)\bigr).
+\end{equation}
+\citet{xiong2020onlayer} showed that pre-norm yields stable training
+without the warmup phase that post-norm requires, because the residual
+path remains an identity map at initialization. Pre-norm is the
+configuration used by GPT-2 onwards, Llama, PaLM, and essentially all
+modern LLMs. Figure \ref{fig:week4-block} shows a pre-norm block.
+
+\begin{figure}[h]
+\centering
+\input{figures/transformer_block}
+\caption{A pre-norm Transformer block. Layer normalization is applied
+  before each sublayer; the residual connections bypass the
+  normalization so the residual stream remains an identity at
+  initialization.}
+\label{fig:week4-block}
+\end{figure}
+
+\subsubsection{LayerNorm and RMSNorm}
+
+Layer normalization \citep{ba2016layernorm} normalizes each token's
+activation along the feature dimension:
+\begin{equation}
+\mathrm{LN}(x) \;=\; \gamma \odot \frac{x - \mu(x)}{\sigma(x) + \epsilon} + \beta,
+\end{equation}
+with $\mu, \sigma$ the per-token mean and std. RMSNorm
+\citep{zhang2019rmsnorm} drops the mean-centering:
+\begin{equation}
+\label{eq:week4-rmsnorm}
+\mathrm{RMSNorm}(x) \;=\; \gamma \odot \frac{x}{\mathrm{RMS}(x) + \epsilon},
+\qquad
+\mathrm{RMS}(x) = \sqrt{\tfrac{1}{d}\sum_j x_j^2},
+\end{equation}
+saving $\sim\!7\%$ of the normalization compute with no quality loss
+in practice. Llama family models use RMSNorm.
+
+\subsubsection{The Residual Stream}
+
+A useful mental model, crystallized in
+\citet{elhage2021mathematical}: the residual stream is a
+$d$-dimensional vector per token, carried unchanged across layers
+\emph{except} that each attention or FFN sublayer \emph{reads} from it
+(via the pre-norm) and \emph{writes} back into it (via the residual
+add). This additive structure is what makes Transformers
+interpretable-ish: circuits are built by decomposing writes into the
+residual stream.
+
+\subsection{Positional Encoding}
+
+Attention is permutation-equivariant: a permutation of rows of $X$
+permutes the rows of $\mathrm{Attn}(Q, K, V)$ identically. Without
+positional information the model cannot tell ``dog bites man'' from
+``man bites dog''. There are four common approaches.
+
+\subsubsection{Sinusoidal (Absolute)}
+
+The original Transformer \citep{vaswani2017attention} adds a fixed
+sinusoid to the token embedding:
+\begin{equation}
+\label{eq:week4-sinusoidal}
+\mathrm{PE}(t, 2i)     = \sin\!\Bigl(t \,/\, 10000^{2i/d}\Bigr),
+\quad
+\mathrm{PE}(t, 2i+1)   = \cos\!\Bigl(t \,/\, 10000^{2i/d}\Bigr).
+\end{equation}
+Different feature dimensions correspond to different wavelengths,
+spanning roughly $2\pi$ to $10000 \cdot 2\pi$. The motivation:
+$\sin(A+B)$ and $\cos(A+B)$ can be written as linear combinations of
+$\{\sin A, \cos A, \sin B, \cos B\}$, so the model can represent
+relative offsets by linear operations on the encoding. Sinusoidal
+encodings support extrapolation (a form never seen at training time
+is still a valid sinusoid), but only weakly.
+
+\subsubsection{Learned Absolute}
+
+BERT \citep{devlin2019bert} and early GPT models use a learned
+$T_{\max} \times d$ table of positional vectors, looked up like an
+embedding. Simple and effective up to the training $T_{\max}$, but
+cannot extrapolate beyond it.
+
+\subsubsection{ALiBi}
+
+Attention with Linear Biases \citep{press2022alibi} adds a
+\emph{fixed} linear penalty to the attention scores based on relative
+distance:
+\begin{equation}
+\label{eq:week4-alibi}
+\mathrm{Score}(i, j) \;=\; \frac{q_i^{\top} k_j}{\sqrt{d_k}}
+  \;-\; m_h\,|i - j|,
+\end{equation}
+with a head-specific slope $m_h > 0$. ALiBi adds \emph{no} extra
+parameters and extrapolates naturally to sequences longer than
+training.
+
+\subsubsection{Rotary Position Embedding (RoPE)}
+
+RoPE \citep{su2021rope}, the default in Llama, Mistral, and many
+contemporary LLMs, encodes position by \emph{rotating} the query and
+key vectors in 2-D subspaces by angles that depend on position.
+Partition the head dimension into $d_k / 2$ pairs. For position $t$
+and pair index $i$, define
+\begin{equation}
+\theta_i \;=\; 10000^{-2i/d_k},
+\qquad
+R_{t, i} \;=\; \begin{pmatrix}
+\cos(t\theta_i) & -\sin(t\theta_i) \\
+\sin(t\theta_i) &  \cos(t\theta_i)
+\end{pmatrix}.
+\end{equation}
+The RoPE-rotated query is $\tilde q_t = R_t q_t$; similarly for $k_t$.
+The critical property is that
+\begin{equation}
+\label{eq:week4-rope-relative}
+(\tilde q_t)^{\top} \tilde k_s
+\;=\; q_t^{\top} R_t^{\top} R_s k_s
+\;=\; q_t^{\top} R_{s-t} k_s,
+\end{equation}
+i.e., the attention score depends only on the \emph{relative}
+position $s - t$, not on the absolute positions. This is the key
+formal property RoPE guarantees: relative-position information is
+baked into every pre-softmax score, without adding parameters. RoPE
+interacts cleanly with FlashAttention (the rotation is applied to
+$q$ and $k$ before the score, so the kernel does not see it) and has
+become the de facto standard.
+
+\subsubsection{Positional Encoding Decision Matrix}
+
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+\hline
+Scheme & Relative? & Extrapolates? & Parameters? \\
+\hline
+Sinusoidal abs. & weakly & weakly  & no \\
+Learned abs.    & no     & no      & $T_{\max}\,d$ \\
+Relative (Shaw) & yes    & limited & small \\
+ALiBi           & yes    & yes     & $H$ slopes \\
+RoPE            & yes    & yes (with scaling) & no \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{The KV Cache}
+
+Autoregressive generation produces one token at a time. At step $t+1$
+the model needs to compute $Q_{t+1} K_{1:t+1}^{\top}$ and
+$A_{t+1} V_{1:t+1}$. Re-computing $K$ and $V$ for all preceding
+tokens at every step is $O(T^2)$ redundant work. The KV cache
+\emph{stores} the key/value tensors from previous steps and appends
+the current step's $(K_t, V_t)$:
+\begin{equation}
+\label{eq:week4-kvcache}
+K_{1:t} \;\leftarrow\; \begin{bmatrix} K_{1:t-1} \\ k_t \end{bmatrix},
+\qquad
+V_{1:t} \;\leftarrow\; \begin{bmatrix} V_{1:t-1} \\ v_t \end{bmatrix}.
+\end{equation}
+Per-token inference then costs $O(T d_k)$ for attention (one row of
+$Q$ against a $T$-row $K$), down from $O(T^2 d_k)$.
+
+\subsubsection{KV Cache Memory Math}
+
+The cache stores $K$ and $V$ for every position, layer, and head.
+Memory per token is
+\begin{equation}
+\label{eq:week4-kvbytes}
+\text{bytes/token} \;=\; 2 \cdot L \cdot H \cdot d_k \cdot b,
+\end{equation}
+with $L$ layers, $H$ heads, $d_k$ per-head dim, $b$ bytes per element
+($b = 2$ for fp16/bf16). For a 70\,B-parameter GQA model with
+$L = 80$, $H = 64$, $d_k = 128$, $G = 8$ (GQA with 8 KV heads),
+Eq.~\eqref{eq:week4-kvbytes} becomes
+$2 \cdot 80 \cdot 8 \cdot 128 \cdot 2 \approx 0.33$\,MB per token.
+A 128\,k context then requires $\sim\!42$\,GB of KV cache
+\emph{per request} -- roughly the same as the weights themselves.
+This is why GQA, KV quantization, and KV eviction policies
+(e.g., StreamingLLM, attention-sink attention) have become
+first-order engineering concerns.
+
+\subsection{FlashAttention}
+
+A naive attention implementation materializes the full
+$T \times T$ score matrix $A$ in HBM (GPU global memory) and reads it
+back to compute $AV$. For large $T$, memory bandwidth -- not FLOPs --
+is the bottleneck. FlashAttention \citep{dao2022flashattention,
+dao2023flashattention2} restructures the computation to avoid
+materializing $A$:
 \begin{itemize}
-  \item sinusoidal encodings,
-  \item learned embeddings,
-  \item rotary position encodings (conceptually).
+  \item Tile $Q, K, V$ into blocks that fit in on-chip SRAM.
+  \item Compute each output row's attention in place using an
+        \emph{online softmax} that maintains a running max and sum,
+        updating them as new key-tiles arrive.
+  \item Write only the final $O \in \mathbb{R}^{T \times d_v}$ back
+        to HBM.
 \end{itemize}
+The result is I/O-optimal up to a constant; it is also
+\emph{exact} (not an approximation). FlashAttention provides
+$2\text{--}4\times$ speedups on long contexts and more importantly
+reduces activation memory from $O(T^2)$ to $O(T)$, unlocking
+longer-context training. It is an object lesson in systems
+engineering: no change to the mathematical model, a large change in
+performance, achieved by matching computation to the memory
+hierarchy.
+
+\subsection{Attention Patterns and Interpretability Pitfalls}
+
+Visualizing the attention matrix $A$ is a common interpretability
+practice: plot attention weights on a heatmap, highlight what each
+token ``looks at.'' \citet{jain2019attention} argued that such
+visualizations are \emph{not} reliable explanations because there
+exist adversarial attention distributions that produce the same
+output for different attention patterns.
+
+Three more principled alternatives, developed largely in the
+Transformer circuits line of work
+\citep{elhage2021mathematical, olsson2022induction}:
+\begin{itemize}
+  \item \textbf{Weight-space analysis}: examine
+        $W_Q^{\top} W_K$ and $W_O W_V$ matrices and their interaction
+        through the residual stream.
+  \item \textbf{Induction-head discovery}: an algorithmic signature
+        of in-context learning is a two-layer composition that copies
+        the token following a previous occurrence of the query.
+  \item \textbf{Attribution patching}: replace activations at each
+        layer with a counterfactual and measure the change in the
+        output logit, yielding a causal (not just correlational)
+        attribution.
+\end{itemize}
+For production purposes: \emph{do not} claim attention heatmaps
+explain model behaviour to users or regulators. Use them as
+engineering telemetry (are heads degenerate? do heads attend to
+\texttt{<bos>} excessively -- a known ``attention sink'' phenomenon?),
+not as causal claims.
+
+\subsection{Shape Inventory for One Block}
+
+Taking $T = 2048$, $d = 4096$, $H = 32$, $d_k = d_v = 128$,
+$d_f = 11008$ (Llama-2-7B):
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+Tensor & Shape & Parameters (if learned) \\
+\hline
+$X$                    & $T \times d$        & -- \\
+$W_Q, W_K, W_V$        & $d \times d$        & $3\,d^2$ \\
+$W_O$                  & $d \times d$        & $d^2$ \\
+$A$                    & $T \times T$        & -- \\
+$W_g, W_u$ (SwiGLU)    & $d_f \times d$      & $2\,d\,d_f$ \\
+$W_2$ (SwiGLU)         & $d \times d_f$      & $d\,d_f$ \\
+LN/RMSNorm $\gamma$    & $d$                 & $d$ (x2 per block) \\
+\hline
+\end{tabular}
+\end{center}
+
+Total parameters per block: $4d^2 + 3 d\, d_f + 2d$, dominated by the
+attention-plus-FFN term. For Llama-2-7B this is
+$4 (4096)^2 + 3 (4096)(11008) \approx 2.02 \times 10^{8}$ parameters
+per block; with 32 blocks plus embeddings, we hit $\sim\!7\times 10^9$
+total -- matching the model name.
 
 \subsection{Systems Engineering Implications}
 
-\textbf{Requirements}
-\begin{itemize}
-  \item Efficient parallel computation
-  \item Stable training across depth
-\end{itemize}
-
-\textbf{Architecture}
-\begin{itemize}
-  \item Attention scales as $O(T^2)$
-  \item KV-cache reduces inference cost
-\end{itemize}
-
-\textbf{Verification \& Validation}
-\begin{itemize}
-  \item Inspect attention patterns
-  \item Check masking correctness
-\end{itemize}
-
-\textbf{Operations}
-\begin{itemize}
-  \item Context window management
-  \item Memory and latency monitoring
-\end{itemize}
+\begin{center}
+\begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
+\hline
+V-model stage & Transformer property & System requirement or activity \\
+\hline
+Requirements & $O(T^2)$ attention
+             & Specify context budget and maximum sequence length. \\
+ & KV cache & Budget inference memory per concurrent request. \\
+\hline
+Architecture & Pre-norm residuals
+             & Default for stability; no warmup hacks. \\
+ & GQA for inference & Default unless quality bar forces full MHA. \\
+ & RoPE for positions & Default; cleanest relative-position story. \\
+ & FlashAttention kernel & Required for long-context training. \\
+\hline
+Implementation & Causal mask correctness
+               & Unit-test the mask; assert no leakage across
+                 document boundaries in packed batches. \\
+ & fp16/bf16 softmax numerics
+               & Subtract row max before exp; log-sum-exp. \\
+\hline
+V\&V & Attention heatmap telemetry
+     & Use for degeneracy detection, not as explanation. \\
+ & Head-specialization probes & Detect training regressions. \\
+\hline
+Operations & Prompt length vs cache size
+           & Enforce per-request context caps; evict or
+             compress aged entries. \\
+ & KV-cache quantization & fp8/int8 cache for 4x memory reduction. \\
+\hline
+\end{tabular}
+\end{center}
 
 \subsection{Human Factors and Failure Modes}
 
-Common misunderstandings:
 \begin{itemize}
-  \item ``Attention equals explanation'' (it does not)
-  \item Overinterpreting attention visualizations
+  \item \textbf{``Attention is explanation''}. As discussed, it is
+        not. Users and reviewers should not treat attention heatmaps
+        as mechanistic accounts.
+  \item \textbf{Context-length marketing}. Quoted ``context windows''
+        often lose effective quality long before the advertised
+        maximum because of KV-cache approximations, anisotropy in
+        positional encoding, and loss-landscape artefacts at train
+        time. Measure on your workload; don't trust datasheet claims.
+  \item \textbf{Attention sinks}. Models trained with pre-norm tend
+        to dump residual mass onto the first few tokens (especially
+        \texttt{<bos>}); removing them at inference produces drastic
+        quality loss. This is a known, not-fully-understood phenomenon.
+  \item \textbf{Positional brittleness}. RoPE extrapolation beyond the
+        training length (``long context'') requires interpolation
+        tricks (NTK-aware, YaRN) -- quality is not automatic.
 \end{itemize}
 
-Attention weights reflect internal computation, not human-interpretable reasoning.
+\subsection{Bridges to Later Chapters}
+
+\begin{itemize}
+  \item \textbf{Week 5 (Pretraining \& In-Context)}: induction heads
+        and in-context learning mechanisms
+        \citep{olsson2022induction, xie2022explanation} live inside
+        this architecture.
+  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: MoE replaces the
+        dense FFN with a sparse mixture; attention remains dense.
+  \item \textbf{Week 7 (Adaptation)}: LoRA adapts $W_Q, W_V$ projections
+        with low-rank updates; quantization targets $W_1/W_2$ where
+        most parameters live.
+  \item \textbf{Week 9 (LLM Systems)}: KV-cache management, prefix
+        caching, speculative decoding -- all are consequences of the
+        attention structure derived here.
+\end{itemize}
 
 \subsection{Key References}
 
 \begin{itemize}
-  \item \citet{vaswani2017attention} — Transformer architecture
+  \item \citet{vaswani2017attention} --- the Transformer.
+  \item \citet{ba2016layernorm} --- LayerNorm.
+  \item \citet{zhang2019rmsnorm} --- RMSNorm.
+  \item \citet{xiong2020onlayer} --- pre-norm vs post-norm.
+  \item \citet{shazeer2020glu} --- GLU variants and SwiGLU.
+  \item \citet{su2021rope}, \citet{press2022alibi} --- RoPE and ALiBi.
+  \item \citet{shazeer2019fast}, \citet{ainslie2023gqa} --- MQA and
+        GQA.
+  \item \citet{dao2022flashattention}, \citet{dao2023flashattention2}
+        --- FlashAttention.
+  \item \citet{elhage2021mathematical},
+        \citet{olsson2022induction} --- Transformer circuits.
+  \item \citet{jain2019attention} --- attention is not explanation.
+  \item \citet{shaw2018relative} --- early relative-position
+        Transformer.
 \end{itemize}
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS224N — Transformers and attention  
-  \url{https://web.stanford.edu/class/cs224n/}
-
-  \item MIT 6.S191 — Attention mechanisms  
-  \url{https://introtodeeplearning.mit.edu}
+  \item Stanford CS224N --- Transformers and attention,
+        \citet{stanford_cs224n}.
+  \item Stanford CS324 --- Large Language Models, Transformer module,
+        \citet{stanford_cs324}.
+  \item MIT 6.S191 --- attention mechanisms, \citet{mit_6s191}.
+  \item Berkeley CS182 --- deep learning foundations,
+        \citet{berkeley_cs182}.
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week04/week04\_lab\_transformer\_blocks.ipynb}.
+\begin{enumerate}
+  \item \textbf{Minimal attention implementation}. Code Eq.\,
+        \eqref{eq:week4-attn} in under 30 lines of PyTorch/JAX. Verify
+        numerically that it matches \texttt{torch.nn.MultiheadAttention}
+        on a small input.
+  \item \textbf{$\sqrt{d_k}$ ablation}. Remove the scaling. Measure
+        gradient norms into $W_Q, W_K$ over the first 100 training
+        steps for $d_k \in \{16, 64, 256, 1024\}$. Demonstrate the
+        vanishing gradient as $d_k$ grows.
+  \item \textbf{Causal mask unit test}. Write a test that asserts the
+        output at position $t$ is a function only of inputs at
+        positions $\le t$, by perturbing input position $t+1$ and
+        checking the output at position $t$ is unchanged.
+  \item \textbf{RoPE relative-position check}. Confirm Eq.\,
+        \eqref{eq:week4-rope-relative} empirically: rotate both $q$
+        and $k$ by the same absolute offset and verify that
+        $q^{\top}k$ is unchanged.
+  \item \textbf{KV cache memory budget}. For a model of your choice,
+        compute Eq.~\eqref{eq:week4-kvbytes} and verify against
+        measured GPU memory during generation at $T \in \{1k, 8k,
+        32k, 128k\}$.
+  \item \textbf{FlashAttention benchmark}. Compare FlashAttention-2
+        against naive attention across $T \in \{512, 2048, 8192,
+        32768\}$ on training throughput and peak memory.
+  \item \textbf{Pre-norm vs post-norm}. Train a 4-layer toy
+        Transformer in both configurations without warmup. Plot
+        loss curves and observe divergence under post-norm.
+\end{enumerate}
 
 \subsection{Week 4 Takeaway}
 
 \begin{quote}
-The Transformer turns sequence modeling into parallel, differentiable memory access.
+The Transformer turns sequence modeling into parallel, differentiable
+memory access. Its mathematical simplicity -- a handful of matrix
+multiplies glued together by a softmax and a residual stream -- is
+what makes it scalable, but its engineering surface area is vast:
+positional encoding, normalization placement, head-sharing, KV-cache
+management, and I/O-aware kernels each determine whether a model can
+be trained at scale and served at cost.
 \end{quote}
-

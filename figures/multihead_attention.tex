@@ -1,0 +1,35 @@
+\begin{tikzpicture}[
+  head/.style={draw, rounded corners, align=center, font=\footnotesize,
+               minimum width=2.1cm, minimum height=1.0cm},
+  op/.style={draw, rounded corners, align=center, font=\footnotesize,
+             minimum width=2.2cm, minimum height=0.75cm},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.55cm and 0.55cm
+]
+
+\node[op] (in) {Input $X \in \mathbb{R}^{T\times d}$};
+
+\node[head, below left=1.0cm and 1.7cm of in] (h1) {Head $h_1$\\$W_Q^1, W_K^1, W_V^1$};
+\node[head, below=1.0cm of in]                  (h2) {Head $h_2$\\$W_Q^2, W_K^2, W_V^2$};
+\node[right=0.15cm of h2, font=\footnotesize\itshape]            (dots) {$\cdots$};
+\node[head, right=0.15cm of dots] (hH) {Head $h_H$\\$W_Q^H, W_K^H, W_V^H$};
+
+\draw[arrow] (in) -- (h1);
+\draw[arrow] (in) -- (h2);
+\draw[arrow] (in) -- (hH);
+
+\node[op, below=1.1cm of h2, minimum width=7.6cm]
+     (concat) {Concat $(h_1, h_2, \ldots, h_H) \in \mathbb{R}^{T\times H d_k}$};
+
+\draw[arrow] (h1) -- (concat);
+\draw[arrow] (h2) -- (concat);
+\draw[arrow] (hH) -- (concat);
+
+\node[op, below=0.6cm of concat, minimum width=7.6cm]
+     (wo) {$\cdot W_O \in \mathbb{R}^{T\times d}$};
+\draw[arrow] (concat) -- (wo);
+
+\node[op, below=0.6cm of wo] (out) {Output};
+\draw[arrow] (wo) -- (out);
+
+\end{tikzpicture}

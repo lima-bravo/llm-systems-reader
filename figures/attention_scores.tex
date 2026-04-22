@@ -1,0 +1,43 @@
+\begin{tikzpicture}[
+  node distance=0.6cm and 1.1cm,
+  mat/.style={draw, rounded corners, minimum width=1.8cm, minimum height=1.8cm,
+              align=center, font=\small},
+  op/.style={circle, draw, inner sep=1pt, font=\small},
+  arrow/.style={->, thick, >=Stealth},
+  label/.style={font=\footnotesize}
+]
+
+% Inputs: Q, K, V
+\node[mat] (Q) {$Q$\\[1pt]{\scriptsize $T\times d_k$}};
+\node[mat, right=of Q] (K) {$K^{\top}$\\[1pt]{\scriptsize $d_k\times T$}};
+\node[op, right=0.55cm of K] (mul1) {$\times$};
+\node[mat, right=0.55cm of mul1] (QK) {$QK^{\top}$\\[1pt]{\scriptsize $T\times T$}};
+
+\draw[arrow] (Q) -- (mul1);
+\draw[arrow] (K) -- (mul1);
+\draw[arrow] (mul1) -- (QK);
+
+% Scale
+\node[op, right=0.55cm of QK] (scale) {$/\sqrt{d_k}$};
+\draw[arrow] (QK) -- (scale);
+
+% Mask (dashed optional)
+\node[draw, dashed, rounded corners, right=0.55cm of scale, align=center,
+      minimum width=1.7cm, minimum height=0.9cm, font=\footnotesize]
+      (mask) {Causal\\mask $M$};
+\draw[arrow] (scale) -- (mask);
+
+% Softmax
+\node[op, below=0.9cm of mask] (sm) {\footnotesize softmax};
+\draw[arrow] (mask) -- (sm);
+
+% V and final mul
+\node[mat, left=1.1cm of sm] (V) {$V$\\[1pt]{\scriptsize $T\times d_v$}};
+\node[op, left=0.55cm of V] (mul2) {$\times$};
+\node[mat, left=0.55cm of mul2] (out) {$AV$\\[1pt]{\scriptsize $T\times d_v$}};
+
+\draw[arrow] (sm)  -- (mul2);
+\draw[arrow] (V)   -- (mul2);
+\draw[arrow] (mul2) -- (out);
+
+\end{tikzpicture}

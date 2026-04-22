@@ -1,0 +1,40 @@
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, align=center, font=\footnotesize,
+              minimum width=3.4cm, minimum height=0.75cm},
+  add/.style={circle, draw, inner sep=1pt, font=\footnotesize},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.45cm and 0.6cm
+]
+
+\node[box] (in) {input $x_\ell$};
+
+\node[box, above=of in] (ln1) {LayerNorm / RMSNorm};
+\draw[arrow] (in) -- (ln1);
+
+\node[box, above=of ln1] (mha) {Masked multi-head attention};
+\draw[arrow] (ln1) -- (mha);
+
+\node[add, above=0.7cm of mha] (add1) {$+$};
+\draw[arrow] (mha) -- (add1);
+
+% residual 1
+\draw[arrow, rounded corners]
+  (in.east) -- ++(2.2,0) |- (add1.east);
+
+\node[box, above=0.65cm of add1] (ln2) {LayerNorm / RMSNorm};
+\draw[arrow] (add1) -- (ln2);
+
+\node[box, above=of ln2] (ffn) {FFN (SwiGLU / GLU / GeLU)};
+\draw[arrow] (ln2) -- (ffn);
+
+\node[add, above=0.7cm of ffn] (add2) {$+$};
+\draw[arrow] (ffn) -- (add2);
+
+% residual 2
+\draw[arrow, rounded corners]
+  (add1.east) -- ++(2.2,0) |- (add2.east);
+
+\node[box, above=0.65cm of add2] (out) {output $x_{\ell+1}$};
+\draw[arrow] (add2) -- (out);
+
+\end{tikzpicture}
