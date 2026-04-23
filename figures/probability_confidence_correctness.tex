@@ -1,0 +1,45 @@
+\begin{tikzpicture}[
+  case/.style={draw, rounded corners, minimum width=4.2cm, minimum height=2.2cm,
+               align=left, font=\scriptsize},
+  bar/.style={draw, thick},
+  ok/.style={fill=green!30},
+  bad/.style={fill=red!30},
+  node distance=0.35cm
+]
+
+% Case A: high prob, high confidence, correct
+\node[case, fill=green!6] (A) {
+  \textbf{Case A} (probability, confidence, correctness all aligned)\\[2pt]
+  \textit{Top-1} ``Paris'': $0.92$\\
+  \textit{next} ``Rome'': $0.03$\\
+  \textit{next} ``Berlin'': $0.02$\\[2pt]
+  $\Rightarrow$ correct \& well-calibrated
+};
+
+% Case B: high prob, high confidence, wrong
+\node[case, fill=red!6, right=of A] (B) {
+  \textbf{Case B} (high confidence, \emph{wrong})\\[2pt]
+  \textit{Top-1} ``Sydney'': $0.88$\\
+  \textit{next} ``Canberra'': $0.05$\\
+  \textit{next} ``Melbourne'': $0.04$\\[2pt]
+  $\Rightarrow$ hallucination (overconfident)
+};
+
+% Case C: low confidence, correct-on-average
+\node[case, fill=yellow!10, right=of B] (C) {
+  \textbf{Case C} (low confidence, correct-on-avg)\\[2pt]
+  \textit{Top-1} ``2013'': $0.21$\\
+  \textit{next} ``2012'': $0.20$\\
+  \textit{next} ``2014'': $0.18$\\[2pt]
+  $\Rightarrow$ calibrated uncertainty
+};
+
+% Three-axis legend below
+\node[font=\footnotesize\bfseries, below=0.6cm of B.south] (legend)
+  {Three orthogonal quantities:};
+\node[font=\footnotesize, below=0.05cm of legend]
+  {\textbf{probability} $q_\theta(v\mid x_{<t})$ $\cdot$
+   \textbf{confidence} $\max_v q_\theta$ or $1 - H/\log|V|$ $\cdot$
+   \textbf{correctness} $\mathbb{1}[\hat y = y]$};
+
+\end{tikzpicture}

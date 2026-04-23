@@ -256,7 +256,20 @@ continual pretraining and fine-tuning that resume from a checkpoint
 usually want warmup+constant or warmup+linear; very long-horizon runs
 sometimes adopt \emph{one-cycle} / super-convergence
 schedules~\citep{smith2018superconvergence} where $\eta$ rises and falls
-once over the entire run.
+once over the entire run. Figure~\ref{fig:lr_schedule} overlays the
+three schedules discussed above on a common axis.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/lr_schedule}
+  \caption{Learning rate schedules. Linear warmup to $\eta_{\max}$ at
+           step $t_w$, then (teal) cosine decay to a small floor at
+           $T$, or (magenta, dotted) inverse-square-root decay
+           (Noam). The red dashed constant schedule is shown for
+           contrast; it is the naive default that often diverges
+           during early training on Transformer workloads.}
+  \label{fig:lr_schedule}
+\end{figure}
 
 \subsection{Gradient Clipping}
 
@@ -415,6 +428,22 @@ dataset'' was an artifact of undertuned baselines. The practical
 implication is dramatic: for any fixed compute budget there is a
 \emph{cost-optimal} model size, and training a larger model on fewer
 tokens is strictly worse than training a smaller model on more tokens.
+Figure~\ref{fig:scaling_laws} shows the geometry: each model size
+$N_i$ traces a loss curve in compute, and the compute-optimal
+frontier is the envelope of the minima of those curves.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/scaling_laws}
+  \caption{Conceptual scaling-law picture. Each coloured curve is
+           one model size trained on increasing compute; the
+           dashed red envelope is the compute-optimal frontier
+           along which Chinchilla balances $N$ and $D$. Regions
+           above the envelope (too-big model, under-trained) and
+           below it (too-small model, over-trained) both waste
+           compute relative to the frontier.}
+  \label{fig:scaling_laws}
+\end{figure}
 
 \subsubsection{What Scaling Laws Do and Do Not Tell You}
 

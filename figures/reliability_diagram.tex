@@ -1,0 +1,41 @@
+\begin{tikzpicture}[
+  scale=1.0,
+  axis/.style={->, thick, >=Stealth},
+  bar/.style={fill=blue!30, draw=blue!60},
+  calline/.style={thick, black, dashed},
+  overconf/.style={thick, red, smooth},
+  underconf/.style={thick, teal, smooth},
+  lbl/.style={font=\footnotesize}
+]
+
+% Axes
+\draw[axis] (0,0) -- (6.2,0) node[right, lbl] {confidence $\operatorname{conf}(B_k)$};
+\draw[axis] (0,0) -- (0,6.2) node[above, lbl] {accuracy $\operatorname{acc}(B_k)$};
+
+% Tick marks + labels
+\foreach \x/\t in {0/0, 3/0.5, 6/1} {
+  \draw (\x,0) -- (\x,-0.12) node[below, lbl] {\t};
+  \draw (0,\x) -- (-0.12,\x) node[left, lbl] {\t};
+}
+
+% Perfect calibration diagonal
+\draw[calline] (0,0) -- (6,6) node[pos=0.7, above left, lbl, black] {perfect calibration};
+
+% Overconfident curve (below diagonal): acc < conf in high-confidence region
+\draw[overconf] plot[domain=0:6, samples=60]
+  (\x, {\x - 0.07*\x*\x - 0.003*\x*\x*\x});
+\node[lbl, red, right, align=left] at (5.0, 2.0) {overconfident\\(modern DNNs)};
+
+% Underconfident curve (above diagonal): acc > conf
+\draw[underconf] plot[domain=0:6, samples=60]
+  (\x, {\x + 0.07*\x*(6-\x)});
+\node[lbl, teal, above] at (2.2, 4.2) {underconfident};
+
+% Histogram bars at the bottom showing predicted-prob distribution
+\foreach \i/\h in {0.5/0.12, 1.1/0.18, 1.7/0.22, 2.3/0.22, 2.9/0.25, 3.5/0.32, 4.1/0.40, 4.7/0.55, 5.3/0.78, 5.9/0.95}{
+  \pgfmathsetmacro\hh{\h*0.5}
+  \draw[bar] (\i-0.25,-0.55) rectangle (\i+0.25,-0.55+\hh);
+}
+\node[lbl, below right=0.6cm and -0.3cm of current bounding box.south west] {\textit{density of predictions at each confidence level (toy)}};
+
+\end{tikzpicture}

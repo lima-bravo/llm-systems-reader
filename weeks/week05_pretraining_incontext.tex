@@ -123,6 +123,21 @@ squeezing more signal from each forward pass;
 (iii)~it scales cleanly under the Chinchilla law without
 encoder/decoder partitioning. The engineering convenience -- one
 forward pass, one objective, one KV cache -- dominates.
+Figure~\ref{fig:pretraining_objectives} shows the three objectives
+operating on the same sentence.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/pretraining_objectives}
+  \caption{Three pretraining objectives on the same token
+           sequence. Autoregressive LM predicts each token from
+           its left context; masked LM replaces a single token
+           with a sentinel and uses bidirectional context to
+           predict it; span corruption (T5) replaces contiguous
+           spans with unique sentinels and trains a decoder to
+           emit the sentinel-and-content pairs.}
+  \label{fig:pretraining_objectives}
+\end{figure}
 
 \subsection{The Pretraining Data Pipeline}
 
@@ -412,6 +427,24 @@ Temp $> 1$       & Exploration, creative             & Production-facing UX \\
 \hline
 \end{tabular}
 \end{center}
+
+Figure~\ref{fig:decoding_strategies} visualizes how each strategy
+reshapes the same underlying softmax distribution --- greedy
+collapses to a point, top-$k$ truncates to a fixed set, top-$p$ and
+min-$p$ adapt the cutoff to the shape of the tail, and temperature
+rescales the whole distribution without changing the argmax.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/decoding_strategies}
+  \caption{Decoding strategies as distribution reshaping. Blue
+           bars are tokens kept; grey bars are zeroed out before
+           renormalizing. Top-$p$ and min-$p$ adapt the kept set
+           to the entropy of the distribution; temperature changes
+           the shape of the mass without changing which tokens
+           are above threshold.}
+  \label{fig:decoding_strategies}
+\end{figure}
 
 \subsection{Emergence: Real or Metric Artefact?}
 

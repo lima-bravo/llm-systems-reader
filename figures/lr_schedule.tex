@@ -1,0 +1,47 @@
+\begin{tikzpicture}[
+  scale=1.0,
+  axis/.style={->, thick, >=Stealth},
+  curve/.style={thick, blue!60!black},
+  warm/.style={thick, orange!80!black},
+  cos/.style={thick, teal!60!black},
+  const/.style={thick, red!60!black, dashed},
+  lbl/.style={font=\footnotesize},
+  phase/.style={font=\scriptsize\itshape}
+]
+
+% Axes
+\draw[axis] (0,0) -- (10.3,0) node[right, lbl] {step $t$};
+\draw[axis] (0,0) -- (0,4.3) node[above, lbl] {learning rate $\eta_t$};
+
+% Peak LR reference
+\draw[dotted] (0,3.5) -- (10,3.5);
+\node[lbl, left] at (0,3.5) {$\eta_{\max}$};
+
+% Warmup segment (linear up to t = 1.5)
+\draw[warm] (0,0) -- (1.5, 3.5);
+\node[phase, above, orange!60!black] at (0.75, 1.8) {warmup};
+
+% Cosine decay from 1.5 to 9.5
+\draw[cos] plot[domain=1.5:9.5, samples=70]
+  (\x, { 0.3 + 0.5 * (3.5 - 0.3) * (1 + cos(((\x-1.5)/8)*180)) });
+\node[phase, teal!60!black] at (5.5, 2.6) {cosine decay};
+
+% Final constant tail
+\draw[cos] (9.5,0.3) -- (10,0.3);
+
+% Phase markers
+\draw[dashed] (1.5,0) -- (1.5,3.5);
+\node[phase, below] at (1.5,-0.1) {$t_w$};
+\draw[dashed] (9.5,0) -- (9.5,0.3);
+\node[phase, below] at (9.5,-0.1) {$T$};
+
+% Constant LR (naive) overlay
+\draw[const] (0,3.5) -- (10,3.5);
+\node[lbl, right, red!60!black] at (7.2,3.8) {constant (naive)};
+
+% Inverse-sqrt (Noam) overlay
+\draw[thick, magenta!70!black, dotted] plot[domain=0.1:10, samples=60]
+  (\x, {3.5 * min(\x/1.5, 1/sqrt(\x/1.5))});
+\node[lbl, magenta!70!black, right] at (6.8, 1.5) {inverse-sqrt (Noam)};
+
+\end{tikzpicture}

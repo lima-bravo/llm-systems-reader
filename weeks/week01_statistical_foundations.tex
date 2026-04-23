@@ -187,7 +187,18 @@ A common source of error in LLM engineering is the collapse of three distinct qu
   \item \textbf{Confidence}: a summary statistic of the full distribution $q_\theta(\cdot \mid x_{<t})$, typically operationalized as $1 - H(q_\theta) / \log |V|$ (normalized entropy), or as $\max_v q_\theta(v \mid x_{<t})$ (top-1 probability), or as $\log q_\theta(v_1) - \log q_\theta(v_2)$ (log-odds between top-2).
   \item \textbf{Correctness}: whether the sampled or argmax token matches an external ground truth. Correctness is defined relative to something outside the model---a labeler, a gold answer, a runtime assertion.
 \end{itemize}
-These three can, and routinely do, move independently. A model can assign $0.9$ probability to the correct token (high probability, high confidence, correct); assign $0.9$ to an incorrect token (high probability, high confidence, \emph{incorrect}); or spread probability evenly over five plausible tokens of which one is correct (low confidence, correct-on-average). The difference between the second and third cases is the entire subject of \emph{calibration}.
+These three can, and routinely do, move independently. A model can assign $0.9$ probability to the correct token (high probability, high confidence, correct); assign $0.9$ to an incorrect token (high probability, high confidence, \emph{incorrect}); or spread probability evenly over five plausible tokens of which one is correct (low confidence, correct-on-average). The difference between the second and third cases is the entire subject of \emph{calibration}. Figure~\ref{fig:prob_conf_corr} illustrates the three cases side by side.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/probability_confidence_correctness}
+  \caption{Probability, confidence, and correctness are orthogonal
+           axes. Case A is aligned; Case B is the classic
+           hallucination (high confidence, wrong); Case C is
+           calibrated uncertainty in the presence of genuine
+           ambiguity.}
+  \label{fig:prob_conf_corr}
+\end{figure}
 
 \subsubsection{Calibration and Reliability Diagrams}
 
@@ -197,7 +208,19 @@ A probabilistic classifier is said to be \emph{perfectly calibrated} if, among t
 \end{equation}
 Perfect calibration is an \emph{extra} property beyond accuracy: a classifier can be accurate but uncalibrated (its confidences misstate the reliability) or calibrated but inaccurate (uniformly low confidence on a hard problem).
 
-Reliability diagrams are the standard visual diagnostic. Bin the predicted probabilities into $K$ bins $B_1, \ldots, B_K$, and for each bin plot the mean predicted probability against the empirical accuracy. Perfect calibration corresponds to points on the diagonal; overconfidence lies below the diagonal (predicted $>$ actual), underconfidence above. Modern deep networks including LLMs are almost invariably \emph{overconfident} in the high-probability regime \citep{guo2017calibration}.
+Reliability diagrams are the standard visual diagnostic. Bin the predicted probabilities into $K$ bins $B_1, \ldots, B_K$, and for each bin plot the mean predicted probability against the empirical accuracy. Perfect calibration corresponds to points on the diagonal; overconfidence lies below the diagonal (predicted $>$ actual), underconfidence above. Modern deep networks including LLMs are almost invariably \emph{overconfident} in the high-probability regime \citep{guo2017calibration}. Figure~\ref{fig:reliability} shows the qualitative picture.
+
+\begin{figure}[H]
+  \centering
+  \input{figures/reliability_diagram}
+  \caption{Reliability diagram. The dashed black diagonal is
+           perfect calibration. Red curve: overconfident, the
+           typical regime of deep networks including LLMs. Teal
+           curve: underconfident. The bars below show a toy
+           density of predictions at each confidence level; the
+           diagram is uninformative in bins with few samples.}
+  \label{fig:reliability}
+\end{figure}
 
 \subsubsection{Expected Calibration Error}
 

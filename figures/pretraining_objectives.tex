@@ -1,0 +1,62 @@
+\begin{tikzpicture}[
+  tok/.style={draw, minimum width=0.9cm, minimum height=0.6cm,
+              font=\footnotesize\ttfamily},
+  obs/.style={tok, fill=blue!12},
+  pred/.style={tok, fill=green!20, thick},
+  mask/.style={tok, fill=gray!30, font=\scriptsize\ttfamily},
+  corrupt/.style={tok, fill=red!15},
+  lbl/.style={font=\footnotesize\bfseries},
+  note/.style={font=\scriptsize\itshape},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.08cm
+]
+
+% =================== Autoregressive LM ===================
+\node[lbl] (arlbl) {Autoregressive LM ($P(x_t \mid x_{<t})$)};
+
+\node[obs,  below=0.4cm of arlbl, anchor=west] (a1) {The};
+\node[obs,  right=of a1] (a2) {cat};
+\node[obs,  right=of a2] (a3) {sat};
+\node[obs,  right=of a3] (a4) {on};
+\node[obs,  right=of a4] (a5) {the};
+\node[pred, right=of a5] (a6) {mat};
+
+% Arrow from left context to target
+\draw[arrow] ([yshift=-0.35cm]a1.south) -- ([yshift=-0.35cm]a6.south);
+\node[note, below=0.45cm of a3] {left context only; predict next token};
+
+% =================== Masked LM ===================
+\node[lbl, below=1.7cm of arlbl.south, anchor=west] (mlmlbl) {Masked LM ($P(x_i \mid x_{\neq i})$)};
+
+\node[obs,  below=0.4cm of mlmlbl, anchor=west] (m1) {The};
+\node[obs,  right=of m1] (m2) {cat};
+\node[mask, right=of m2] (m3) {[MASK]};
+\node[obs,  right=of m3] (m4) {on};
+\node[obs,  right=of m4] (m5) {the};
+\node[obs,  right=of m5] (m6) {mat};
+
+\draw[arrow, <->] ([yshift=-0.35cm]m1.south) -- ([yshift=-0.35cm]m3.south);
+\draw[arrow, <->] ([yshift=-0.35cm]m3.south) -- ([yshift=-0.35cm]m6.south);
+\node[note, below=0.45cm of m3] (mn) {bidirectional context; predict masked token only};
+
+% =================== Prefix LM / Span Corruption ===================
+\node[lbl, below=1.6cm of mlmlbl.south, anchor=west] (prelbl) {Span Corruption (T5 / prefix LM)};
+
+\node[obs,     below=0.4cm of prelbl, anchor=west] (p1) {The};
+\node[obs,     right=of p1] (p2) {cat};
+\node[corrupt, right=of p2] (p3) {$\langle X\rangle$};
+\node[obs,     right=of p3] (p4) {on};
+\node[corrupt, right=of p4] (p5) {$\langle Y\rangle$};
+\node[obs,     right=of p5] (p6) {mat};
+
+% Target sequence on the right
+\node[note, right=0.25cm of p6] (arrow) {$\rightarrow$};
+\node[obs, right=of arrow] (t1) {\phantom{.}};
+\node[corrupt, right=0.1cm of t1] (t2) {$\langle X\rangle$};
+\node[obs, right=of t2] (t3) {sat};
+\node[corrupt, right=of t3] (t4) {$\langle Y\rangle$};
+\node[obs, right=of t4] (t5) {the};
+
+\node[note, below=0.3cm of p3] {contiguous spans replaced by sentinels; decoder emits sentinels \& content};
+
+\end{tikzpicture}

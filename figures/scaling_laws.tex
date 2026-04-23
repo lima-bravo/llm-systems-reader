@@ -1,0 +1,49 @@
+\begin{tikzpicture}[
+  scale=1.0,
+  axis/.style={->, thick, >=Stealth},
+  lbl/.style={font=\footnotesize},
+  curv/.style={thick, smooth},
+  frontier/.style={very thick, red!70!black, dashed}
+]
+
+% Axes (log-log conceptual; no numerical ticks)
+\draw[axis] (0,0) -- (9.8,0) node[right, lbl] {compute $C$ (log)};
+\draw[axis] (0,0) -- (0,5.3) node[above, lbl] {test loss $L$ (log)};
+
+% Three "iso-model-size" curves: small, medium, large N
+% Each is a decreasing curve that plateaus when N saturates.
+% Small model N_1: plateau early
+\draw[curv, blue!50!black] plot[domain=0.2:9, samples=70]
+  (\x, {2.6 + 1.6 * exp(-0.45*\x) + 0.0001*\x*\x});
+\node[lbl, blue!50!black] at (8.5, 2.7) {$N_1$ (small)};
+
+% Medium N_2: plateau later
+\draw[curv, orange!70!black] plot[domain=0.4:9, samples=70]
+  (\x, {1.9 + 1.9 * exp(-0.32*\x)});
+\node[lbl, orange!70!black] at (8.5, 2.0) {$N_2$};
+
+% Large N_3: plateaus even later
+\draw[curv, teal!50!black] plot[domain=0.8:9, samples=70]
+  (\x, {1.3 + 2.0 * exp(-0.22*\x)});
+\node[lbl, teal!50!black] at (8.5, 1.35) {$N_3$};
+
+% Even larger N_4
+\draw[curv, purple!60!black] plot[domain=1.2:9, samples=70]
+  (\x, {0.8 + 2.2 * exp(-0.15*\x)});
+\node[lbl, purple!60!black] at (8.5, 0.9) {$N_4$ (large)};
+
+% Compute-optimal frontier (envelope of minima)
+\draw[frontier] plot[domain=0.5:8.8, samples=50]
+  (\x, {2.5 * exp(-0.20*\x) + 0.55});
+
+\node[lbl, red!70!black] at (5.2, 3.2) {compute-optimal frontier};
+\node[lbl, red!70!black] at (5.2, 2.85) {\textit{(Chinchilla: $N \propto C^{0.5}$, $D \propto C^{0.5}$)}};
+
+% Label region above frontier
+\node[lbl, gray] at (2.2, 4.4) {over-sized model, under-trained};
+\node[lbl, gray] at (7.2, 4.0) {(wastes compute)};
+
+% Label region below frontier
+\node[lbl, gray] at (2.5, 0.4) {under-sized, over-trained};
+
+\end{tikzpicture}
