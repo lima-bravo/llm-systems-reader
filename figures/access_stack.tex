@@ -1,0 +1,26 @@
+\begin{tikzpicture}[
+  lay/.style={draw, rounded corners, minimum width=11cm, minimum height=0.85cm,
+              align=center, font=\footnotesize},
+  lbl/.style={font=\footnotesize\itshape, anchor=west},
+  node distance=0.22cm
+]
+
+\node[lay, fill=blue!8]   (w)   {\textbf{Weights \& tokenizer} --- safetensors / GGUF files, vocab, chat template};
+\node[lay, below=of w, fill=cyan!10]   (rt)  {\textbf{Runtime} --- vLLM, TGI, llama.cpp, Ollama; batching, KV cache, speculative decoding};
+\node[lay, below=of rt, fill=teal!10]  (srv) {\textbf{Serving / inference API} --- HTTP+JSON, SSE streaming, OpenAI-compatible schema};
+\node[lay, below=of srv, fill=green!10] (prov){\textbf{Provider endpoint} --- OpenAI, Anthropic, Google, Azure, Bedrock, Vertex, self-hosted};
+\node[lay, below=of prov, fill=yellow!15] (sdk) {\textbf{SDK / client library} --- typed request/response, retries, streaming iterators, tracing};
+\node[lay, below=of sdk, fill=orange!15] (orch){\textbf{Orchestration} --- tool loops, agents, LangGraph / Agent SDK / DSPy};
+\node[lay, below=of orch, fill=red!10]   (host){\textbf{Host application / IDE} --- Claude Code, Cursor, Copilot, custom products};
+\node[lay, below=of host, fill=purple!8] (user){\textbf{End user} --- with a task, a context, and expectations};
+
+\node[lbl, right=0.4cm of w]    {L8 model artefact};
+\node[lbl, right=0.4cm of rt]   {L7 engine};
+\node[lbl, right=0.4cm of srv]  {L6 wire protocol};
+\node[lbl, right=0.4cm of prov] {L5 platform};
+\node[lbl, right=0.4cm of sdk]  {L4 client};
+\node[lbl, right=0.4cm of orch] {L3 control loop};
+\node[lbl, right=0.4cm of host] {L2 product};
+\node[lbl, right=0.4cm of user] {L1 human};
+
+\end{tikzpicture}

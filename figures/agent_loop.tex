@@ -1,0 +1,43 @@
+\begin{tikzpicture}[
+  comp/.style={draw, rounded corners, minimum width=2.8cm, minimum height=1.0cm,
+               align=center, font=\footnotesize},
+  tool/.style={draw, rounded corners, minimum width=2.2cm, minimum height=0.7cm,
+               align=center, font=\scriptsize, fill=green!10},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.9cm and 0.9cm
+]
+
+% Central loop
+\node[comp, fill=orange!12] (llm) {\textbf{LLM}\\reason \& act};
+\node[comp, above=of llm, fill=yellow!15] (plan) {\textbf{Plan / scratchpad}\\state, goals};
+\node[comp, below=of llm, fill=blue!10]  (mem)  {\textbf{Memory}\\short / long};
+\node[comp, left=of llm, fill=red!10]    (in)   {\textbf{Input}\\user task};
+\node[comp, right=of llm, fill=cyan!10]  (out)  {\textbf{Output}\\answer / action};
+
+% Tool row on far right
+\node[tool, right=1.5cm of out, yshift=1.0cm] (t1) {Shell};
+\node[tool, below=0.15cm of t1] (t2) {HTTP / API};
+\node[tool, below=0.15cm of t2] (t3) {File I/O};
+\node[tool, below=0.15cm of t3] (t4) {MCP server};
+
+% Arrows
+\draw[arrow] (in) -- (llm);
+\draw[arrow] (llm) -- (out);
+\draw[arrow] (plan) -- (llm);
+\draw[arrow, dashed] (llm.north) .. controls +(1,0.8) and +(0,0.8) .. (plan.east);
+\draw[arrow] (llm) -- (mem);
+\draw[arrow, dashed] (mem.east) .. controls +(1,-0.4) and +(0,-1.2) .. (llm.south east);
+
+% LLM to tools
+\draw[arrow] (llm.east) .. controls +(2,0.7) and +(-1,0) .. (t1.west);
+\draw[arrow] (llm.east) -- (t2.west);
+\draw[arrow] (llm.east) .. controls +(2,-0.1) and +(-1,0) .. (t3.west);
+\draw[arrow] (llm.east) .. controls +(2,-0.6) and +(-1,0) .. (t4.west);
+
+% Tools back to LLM (observation)
+\draw[arrow, dashed] (t1.west) .. controls +(-0.6,-0.3) and +(2,0.9) .. (llm.north east);
+
+% Caption
+\node[font=\scriptsize\itshape, below=0.6cm of mem] {Loop: observe input $\to$ update plan $\to$ call tool $\to$ observe result $\to$ update memory $\to$ decide next action or terminate.};
+
+\end{tikzpicture}
