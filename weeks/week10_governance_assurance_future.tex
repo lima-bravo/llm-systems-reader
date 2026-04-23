@@ -1,143 +1,728 @@
 \section{Week 10: Governance, Assurance, and the Future of AI Systems}
 
+\subsection{Introduction: From Model to Accountability}
+
+The previous nine chapters described how to build, adapt, align,
+evaluate, and serve a language model. This one asks a different
+question: who is responsible when the resulting system is wrong,
+and what structures make that responsibility operative?
+
+The answer is \emph{governance} --- the set of practices, roles,
+documents, processes, and external obligations that let an
+organization deploy an AI system and be accountable for it.
+Governance is not a separate activity layered on top of
+engineering; it is an engineering discipline in its own right,
+with artefacts (model cards, datasheets, impact assessments,
+assurance cases), tools (audits, red teams, incident databases),
+and regulatory counterparts (NIST AI RMF, the EU AI Act, ISO/IEC
+42001) that this chapter treats with the same rigour as attention
+mechanisms and training loss curves.
+
+We treat four main threads. First, the socio-technical framing:
+an LLM is never merely a model; it is a model plus an operator
+plus users plus a regulatory context plus a failure mode space,
+and governance is concerned with the whole. Second, assurance
+cases in the tradition of safety-critical engineering, adapted
+for the statistical and open-ended behaviour of LLMs. Third, the
+current regulatory landscape --- EU AI Act, NIST AI RMF, ISO/IEC
+42001, and the emerging safety-institute model --- and what
+compliance looks like in practice. Fourth, the honest limits of
+the current paradigm: what alignment and evaluation cannot do,
+where the open problems are, and how an engineer should reason
+about a five-year horizon.
+
+A recurring theme: \textbf{defence in depth}. No single control
+--- alignment training, retrieval grounding, input filtering,
+human review, rollback --- is sufficient on its own. Safety is a
+property of the whole stack, and a credible deployment builds
+overlapping layers whose failure modes are uncorrelated. This
+framing is borrowed wholesale from classical safety engineering
+\citep{leveson2011engineering, perrow1999normal, reason1990human}
+and applies with minimal translation to AI systems.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item Reason about LLMs as socio-technical systems
-  \item Identify governance and risk management needs for AI systems
-  \item Construct a basic AI assurance case
-  \item Distinguish technical risk from organizational and human risk
-  \item Articulate limits of current LLM paradigms
+  \item describe an LLM deployment as a socio-technical system
+        and identify hazards at the model, system, human,
+        organizational, and societal levels;
+  \item build an assurance case in Goal Structuring Notation
+        with claims, strategies, evidence, context, and
+        assumptions;
+  \item map the layered controls (preventive, detective,
+        corrective) onto a concrete deployment and explain how
+        defence in depth applies to LLMs;
+  \item compare the main regulatory frameworks --- the EU AI Act,
+        the US NIST AI RMF and its generative-AI profile, ISO/IEC
+        42001, and the UK / Singapore evaluation frameworks ---
+        and identify which apply to a given deployment;
+  \item author the core documentation artefacts (model card,
+        datasheet, algorithmic impact assessment) with enough
+        completeness to pass an internal audit;
+  \item describe the role of an independent evaluation function
+        and the difference between first-, second-, and
+        third-party audits;
+  \item articulate the limits of current alignment and evaluation
+        techniques, and reason about frontier-risk evaluation
+        and responsible-scaling frameworks;
+  \item translate governance requirements into engineering
+        requirements that can be tested and monitored.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\subsection{LLMs as Socio-Technical Systems}
 
-\textbf{System context}
-\begin{itemize}
-  \item Organizational embedding
-  \item Human–AI interaction
-  \item Lifecycle management
-\end{itemize}
+Treat the following as the system under consideration: not the
+model, not even the model-plus-retrieval-and-tools, but
+$$ \text{Deployment} = (\text{model}, \text{system}, \text{operators}, \text{users}, \text{context}). $$
 
-\textbf{Governance}
-\begin{itemize}
-  \item Assurance cases
-  \item Risk controls
-  \item Accountability mechanisms
-\end{itemize}
+Each component can fail in its own characteristic way. Model
+failures are the subject of Weeks 4--8: hallucination,
+jailbreak, bias, alignment regression. System failures are the
+subject of Week~9: retrieval drift, prompt injection, tool-call
+errors. Operator failures include missing or incorrect
+monitoring, uncontrolled prompt changes, and rushed rollouts.
+User failures include overtrust, misuse, and mistaken
+attribution. Context failures include regulatory changes,
+supply-chain shifts (the model provider changes pricing or
+terms), and adversarial external pressure.
 
-\subsection{Conceptual Core: LLMs as Socio-Technical Systems}
+Governance is the discipline of naming these failure modes,
+assigning accountability for them, and building controls against
+them. The organizational literature
+\citep{perrow1999normal, reason1990human} has half a century of
+thought on how complex socio-technical systems fail, and nearly
+every insight from that literature --- tight coupling amplifies
+errors, active failures reveal latent conditions, human
+operators are the last line of defence and the first line of
+blame --- applies to LLM deployments. \citet{weidinger2021ethical,
+weidinger2023sociotechnical} translate these traditions to
+language models specifically; \citet{bommasani2021opportunities}
+makes the foundation-model case that the stakes are
+qualitatively new because so many downstream deployments share a
+single upstream model.
 
-LLMs do not operate in isolation.
-They are embedded in:
-\begin{itemize}
-  \item organizations,
-  \item workflows,
-  \item regulatory environments,
-  \item human decision-making loops.
-\end{itemize}
-
-Most real-world failures arise from \emph{system-level interactions}, not model internals.
+Two practical consequences for the engineer. First, ``safety'' is
+not a property of the model; it is a property of the deployment,
+and it can only be assessed in deployment context. Second,
+governance is not the job of a compliance team handed the model
+over the wall; it is an engineering concern owned by the team
+that deploys the system.
 
 \subsection{From Model Evaluation to System Assurance}
 
-Benchmark scores do not constitute assurance.
+Evaluation scores (Week~9) are necessary for assurance but not
+sufficient. Assurance is a structured \emph{argument} that a
+system is acceptably safe for its intended use in its intended
+context, supported by evidence and resting on explicit
+assumptions. Benchmark scores are evidence; the claim, the
+strategy, the assumptions, and the traceability between them are
+what turn evidence into assurance.
 
-Assurance requires structured arguments:
-\begin{itemize}
-  \item what claims are made about the system,
-  \item under what assumptions,
-  \item supported by what evidence.
-\end{itemize}
+The safety-critical engineering tradition
+\citep{leveson2011engineering} expresses this with
+Goal Structuring Notation (GSN) \citep{gsn2021}: a graphical
+notation in which \emph{goals} (claims) are decomposed via
+\emph{strategies} into \emph{sub-goals}, eventually reaching
+\emph{solutions} (evidence), all bound by \emph{context} and
+\emph{assumptions}. The canonical shape for a small LLM assurance
+case is shown in Figure~\ref{fig:assurance-case}.
 
-This mirrors safety-critical engineering practices.
+\begin{figure}[ht]
+  \centering
+  \input{figures/assurance_case.tex}
+  \caption{A minimal assurance case in Goal Structuring Notation.
+  The top-level goal is decomposed into per-hazard sub-goals; each
+  sub-goal is discharged by a specific evidence artefact (RAGAS
+  run, red-team report, UX study). Context nodes (ellipses)
+  constrain the scope of the argument.}
+  \label{fig:assurance-case}
+\end{figure}
 
-\subsection{Hazards and Failure Modes}
+An assurance case for an LLM deployment has three properties that
+matter.
 
-Common hazard categories:
-\begin{itemize}
-  \item technical (hallucination, brittleness),
-  \item human (overtrust, deskilling),
-  \item organizational (automation bias, diffusion of responsibility),
-  \item temporal (model drift, data staleness).
-\end{itemize}
+\paragraph{It is explicit about claims.}
+``The model is safe'' is not a claim; ``The system refuses
+clinical-dosage requests with precision and recall above 0.99 on
+the T\&S-curated test suite'' is. Claims must be measurable,
+falsifiable, and tied to an evaluation or audit activity.
 
-Not all hazards are eliminable.
+\paragraph{It is explicit about assumptions.}
+Every claim rests on assumptions --- the training data is
+representative, the deployment environment does not change, the
+retrieval corpus is not poisoned, the users are employees of a
+regulated institution. Making the assumptions visible is
+sometimes more important than the claims themselves, because the
+assumptions are where surprises live.
 
-\subsection{Controls and Mitigations}
+\paragraph{It is revisable.}
+An assurance case is not a one-time gate. As the model changes,
+as usage changes, as new hazards are discovered, the case is
+updated. Operational experience feeds back into the assurance
+argument. A deployment with a six-month-old, never-updated
+assurance case is not assured.
 
-Controls operate at multiple levels:
-\begin{itemize}
-  \item \textbf{Preventive}: prompt constraints, retrieval grounding
-  \item \textbf{Detective}: monitoring, logging, audits
-  \item \textbf{Corrective}: rollback, human override, retraining
-\end{itemize}
+\citet{leslie2021understanding} provides the most
+accessible AI-specific treatment of assurance thinking; the
+British Standards Institution's assurance-case tradition is the
+underlying engineering heritage.
 
-Effective systems combine technical and procedural controls.
+\subsection{Hazard Analysis for LLM Systems}
 
-\subsection{Assurance Cases for AI}
+Before a control can be designed, the hazard must be named. The
+safety-critical tradition offers several structured methods;
+\emph{STPA} (System-Theoretic Process Analysis)
+\citep{leveson2011engineering} is the best fit for LLMs because
+it treats hazards as arising from unsafe control actions across
+a socio-technical hierarchy, rather than from component failure
+alone.
 
-An assurance case typically includes:
-\begin{itemize}
-  \item \textbf{Claims}: what the system is safe/fit to do
-  \item \textbf{Evidence}: tests, audits, evaluations
-  \item \textbf{Assumptions}: operating conditions, user behavior
-\end{itemize}
+A pragmatic LLM hazard taxonomy organizes along five axes.
 
-Assurance is never absolute — it is contextual and revisable.
+\paragraph{Technical hazards.} Hallucination, refusal
+over-triggering, jailbreak susceptibility, prompt-injection
+susceptibility, RAG retrieval failures, tool misuse, numerical
+instability under aggressive quantization (Week~7).
 
-\subsection{Human Factors}
+\paragraph{Data hazards.} Training data contamination,
+copyright and licensing violations, personally identifiable
+information (PII) leakage, contamination of evaluation sets,
+corpus drift (the retrieval corpus ages out of date).
 
-Human operators:
-\begin{itemize}
-  \item interpret outputs,
-  \item decide when to trust or override,
-  \item adapt behavior over time.
-\end{itemize}
+\paragraph{Human hazards.} Overtrust, automation bias,
+deskilling, incorrect interpretation of confident-sounding
+outputs, inappropriate delegation of judgment to the model,
+misuse (the user circumvents the intended use case).
 
-Ignoring human factors is a primary cause of system failure.
+\paragraph{Organizational hazards.} Diffusion of responsibility
+(``the model said so''), misaligned incentives between the
+training team and the evaluation team, inadequate escalation
+paths for harms, compliance theatre that substitutes for
+actual risk reduction, supply-chain risk when the model is
+provided by a third party.
+
+\paragraph{Societal hazards.} Disparate performance across
+demographic groups, labour-market effects, information-
+ecosystem effects (cheap synthetic content, misleading
+personae), dual-use concerns for high-stakes domains
+(cybersecurity, biosecurity, influence operations).
+
+\citet{weidinger2023sociotechnical} provides a much more
+granular taxonomy organised around the sociotechnical
+framing; for regulated deployments, the applicable regulation's
+own taxonomy will usually dominate.
+
+\subsection{Controls and Defence in Depth}
+
+Once hazards are named, controls are designed against them. The
+engineering tradition distinguishes preventive (stop the
+hazard from being realized), detective (notice the hazard
+when it is realized), and corrective (recover when detection
+fires) controls. LLM deployments also benefit from a
+\emph{pre-model} layer (data governance upstream of training)
+and a \emph{post-deployment} layer (impact assessment and
+external audit). Figure~\ref{fig:controls-layers} shows the full
+stack.
+
+\begin{figure}[ht]
+  \centering
+  \input{figures/controls_layers.tex}
+  \caption{Defence in depth for LLM deployments. No single layer is
+  sufficient; a hazard that penetrates layer~1 should be caught
+  by layer~2, layer~3, \dots{} or at worst, detected and
+  corrected post-hoc. The uncorrelatedness of failure modes
+  across layers is what gives defence in depth its credibility.}
+  \label{fig:controls-layers}
+\end{figure}
+
+\subsubsection{Layer-by-layer review}
+
+\paragraph{Layer 1 (pre-model data governance).} Licensing
+compliance, contamination checks against known evaluation sets,
+PII filtering and redaction, consent or legal-basis review for
+sensitive sources. This is the stage where copyright and
+privacy obligations are primarily discharged. Datasheets for
+datasets \citep{gebru2021datasheets} are the canonical
+artefact.
+
+\paragraph{Layer 2 (preventive, model).} Alignment training
+(Week~8), Constitutional AI, RLHF, refusal training. These
+shape the model's behaviour but do not eliminate hazards; see
+Week~8's failure modes.
+
+\paragraph{Layer 3 (preventive, system).} Input classifiers
+(policy filters on user input), output classifiers (safety
+filters on model output), structured prompt templates that
+sandbox user content, retrieval sandboxing (Week~9) that treats
+retrieved content as untrusted, tool-schema validation. These
+are cheap, deterministic, and easy to audit.
+
+\paragraph{Layer 4 (detective).} Logging (prompts, retrieval
+sets, tool calls, model outputs, user actions), monitoring
+(refusal rate, response length, token frequency, latency,
+cost), drift alerts, canary evaluations that run every
+candidate release against a reference eval set before promotion.
+
+\paragraph{Layer 5 (corrective).} Rate limits (for suspected
+abuse), adapter rollback (Week~7), tool disablement (when a
+tool-use failure is detected), kill switches (for emergency
+takedown), documented incident response playbooks, explicit
+human override paths.
+
+\paragraph{Layer 6 (post-deployment).} User reporting channels,
+feedback loop into training data and evaluation sets,
+periodic algorithmic impact assessment
+\citep{metcalf2021algorithmic}, third-party audit, submission
+to the AI Incident Database \citep{aiid}.
+
+\subsubsection{The defence-in-depth argument}
+
+No single layer is assumed to be perfect. A system designed
+around ``our alignment is strong enough that we don't need input
+filters'' is a system where the alignment must be perfect.
+Because perfection is unachievable, credible deployments assume
+every layer will sometimes fail and design so that two
+\emph{independent} failures are required to cause a harm. This
+is the formal content of defence in depth and the reason safety-
+critical literature treats it as a structural property, not an
+optional enhancement.
+
+\subsection{The Regulatory Landscape}
+
+A deployed LLM system today is subject to a rapidly evolving
+regulatory context. An engineer does not need to be a lawyer, but
+does need to know the shape of the landscape well enough to raise
+the right questions to legal counsel.
+
+\paragraph{NIST AI Risk Management Framework (AI RMF) and
+Generative AI Profile.} The US NIST AI RMF
+\citep{nist2023airmf} is a voluntary framework organized around
+four functions: \textit{govern}, \textit{map}, \textit{measure},
+\textit{manage}. The generative-AI profile
+\citep{nist2024genai_profile} augments it with specific risks
+(confabulation, data privacy, human-AI configuration, obscene or
+degrading outputs, information integrity, and more). NIST AI RMF
+is non-binding but increasingly cited as a baseline by US
+regulators and procurement; for organizations selling AI
+services to US federal customers, compliance is effectively
+required.
+
+\paragraph{The EU AI Act.} \citet{eu_aiact_2024} is the most
+comprehensive AI-specific regulation in force today. It
+classifies systems by risk (prohibited, high-risk, limited-risk,
+minimal-risk), and it includes specific provisions for
+general-purpose AI models (GPAI) with separate thresholds for
+``systemic risk'' GPAI. For high-risk deployments, compliance
+involves a risk-management system, data governance, technical
+documentation, logging, human oversight, accuracy/robustness/
+cybersecurity requirements, and post-market monitoring. For
+GPAI providers, it adds model evaluation, adversarial testing,
+serious-incident reporting, and (for systemic-risk models)
+cybersecurity assessments. Penalties scale with revenue.
+
+\paragraph{ISO/IEC 42001.} \citep{iso42001_2023} is a
+management-system standard for AI, structured like ISO 9001 or
+27001 (plan-do-check-act). It defines organizational roles, risk
+processes, objectives, and continual improvement. Certification
+is increasingly expected for enterprise AI procurement.
+
+\paragraph{UK AI Safety Institute and evaluation-forward
+governance.} The UK, US, Japan, and Singapore AI safety
+institutes \citep{uk_aisi_2024, singapore_aiverify_2024}
+represent a newer governance model: state-funded technical
+evaluation of frontier models, typically before general release.
+This is the institutional home of ``dangerous capability
+evaluations'' (biosecurity, cybersecurity, autonomous replication)
+that \citet{shevlane2023model} argue are needed for frontier
+risk management.
+
+\paragraph{Sectoral regulation.} Much of what applies to LLMs in
+practice comes from pre-existing sectoral rules: HIPAA for
+healthcare data, FDA for medical devices, EU MDR, SEC disclosure
+requirements, GDPR for personal data. Sectoral regulation
+usually dominates when it conflicts with AI-specific rules, and
+deployments in regulated sectors must be designed around both.
+
+\paragraph{OECD principles and IEEE ethics standards.} The
+\citet{oecd_ai_principles} provide a non-binding international
+consensus on responsible AI. \citet{ieee_7000} codifies an
+ethics-by-design process. Both are useful scaffolding even where
+not legally binding.
+
+\subsubsection{Governance-as-code}
+
+A modern compliance approach does not treat regulation as a
+separate stream; it translates regulatory requirements into
+engineering artefacts that can be automated, tested, and
+monitored. An EU AI Act ``logging'' requirement becomes a
+logging library and retention policy. A NIST ``bias measurement''
+requirement becomes a CI job running a fairness eval on every
+release. An ISO/IEC 42001 ``continual improvement'' requirement
+becomes an incident-review process with a closed feedback loop
+into training data. \citet{anderljung2023frontier} argues for
+this translation at the policy level; in practice it is simply
+what effective compliance looks like.
+
+\subsection{Documentation Artefacts}
+
+Governance rests on documents. A minimum viable set for a
+production LLM deployment:
+
+\paragraph{Model card} \citep{mitchell2019modelcards}. A short
+document describing the model: its intended use, out-of-scope
+uses, training data provenance, evaluation results (broken out
+by subgroup where applicable), ethical considerations, and
+known limitations. For third-party models, a deployer should
+produce a \emph{deployment} model card that describes the
+particular configuration (adapters, prompts, retrieval,
+guardrails) as distinct from the upstream card.
+
+\paragraph{Datasheet for datasets}
+\citep{gebru2021datasheets}. A structured document for every
+dataset used in training, adaptation, or evaluation, covering
+motivation, composition, collection, preprocessing, uses,
+distribution, and maintenance. In regulated sectors, a
+datasheet is required; in all sectors, it is good hygiene.
+
+\paragraph{Algorithmic impact assessment (AIA)}
+\citep{metcalf2021algorithmic}. A before-deployment analysis of
+who could be affected, how, and what mitigations are in place.
+AIAs are becoming mandatory in many jurisdictions and sectors
+(Canada for federal systems, NYC for employment, various EU
+Member States).
+
+\paragraph{Assurance case.} GSN document tying claims to
+evidence (above).
+
+\paragraph{Red-team report.} Documentation of adversarial testing
+performed, vulnerabilities found, and mitigations applied. For
+frontier-capability models, this is increasingly required by
+regulators and standards bodies.
+
+\paragraph{Incident log and runbook.} Records of production
+incidents, root-cause analyses, and the changes made in response.
+Feeds into both the assurance case and continual-improvement
+processes.
+
+\paragraph{Foundation Model Transparency Index.}
+\citet{bommasani2023transparency} proposes a structured
+indicator set for foundation-model providers. Organizations
+deploying foundation models from third parties should expect to
+be asked these questions, and should be able to answer the
+downstream version of them about their own deployments.
+
+\subsection{Audits and Independent Evaluation}
+
+An internal team cannot plausibly be its own assurance. Three
+levels of audit are distinguished:
+
+\paragraph{First-party audit.} The development team's own
+evaluation. Necessary but not sufficient.
+
+\paragraph{Second-party audit.} An internal audit or risk team,
+separate from the development team, reviewing the case. This is
+the structural equivalent of an internal controls review.
+
+\paragraph{Third-party audit.} An external, independent party
+reviewing the system --- the equivalent of a financial audit.
+This is becoming standard for high-stakes deployments
+(regulated sectors, government procurement, large consumer-
+facing systems).
+
+\citet{raji2020closing} propose a five-stage internal
+algorithmic auditing framework --- scoping, mapping, artefact
+collection, testing, reflection --- that has become the
+de facto template for second-party AI audits. MLCommons
+\citep{mlcommons_ailuminate} is an industry consortium
+developing standardised safety benchmarks that support
+third-party evaluation.
+
+The bare minimum for a credible deployment is: independent
+evaluation with its own budget and the authority to block a
+release; quarterly (or event-driven) internal review; external
+red-team engagement at least annually for production-grade
+systems; submission of serious incidents to the AI Incident
+Database \citep{aiid}.
+
+\subsection{Responsible Scaling and Frontier-Risk Evaluation}
+
+For frontier-capability models, governance extends to
+capability-gated deployment --- evaluating for specific
+dangerous capabilities (cyber offense, biosecurity, autonomous
+agency) and committing to mitigations (training halts,
+restricted release) if thresholds are crossed.
+\citet{shevlane2023model} define the evaluation categories; the
+``responsible scaling policy'' frame adopted by several frontier
+labs operationalises the commitment.
+
+Engineers deploying third-party frontier models should be aware
+of the upstream RSP/ASL classification and what it implies about
+the model's permitted uses. For teams \emph{training} frontier
+models, frontier-risk evaluation is a first-order governance
+obligation, not an add-on.
+
+\subsection{Human Factors Across the Deployment}
+
+Governance fails most often at the seam between engineering
+and operators.
+
+\paragraph{Accountability structures.} Every production LLM
+deployment needs a named accountable person. ``The AI did it''
+is never acceptable; the accountability line goes through a
+human who is responsible for the model's behaviour in the
+deployment. The EU AI Act formalises this; good practice
+demanded it long before.
+
+\paragraph{Training.} Operators and users of the system need
+training in what the system can and cannot do, how to recognize
+failure, and how to escalate concerns. Deskilling
+\citep{reason1990human} is a documented risk: operators who
+defer entirely to an AI lose the skill to catch its mistakes.
+
+\paragraph{Interface design.} The same output framed as
+``I'm uncertain but my best guess is X'' is used very differently
+from ``X is the answer.'' Product design is a primary safety
+control, not a cosmetic concern. Surfaced uncertainty, sources,
+and explicit limitations are the operational answer to
+overtrust.
+
+\paragraph{Escalation and override paths.} Users must have a
+clear path to escalate concerns and (in high-stakes settings)
+override the model's recommendation. The escalation path must
+be instrumented: escalation rates are a core metric.
+
+\subsection{Systems Engineering Implications}
+
+\textbf{Requirements.}
+Traceable accountability. Documented risk assessment. Evidenced
+assurance case. Compliance with applicable regulation.
+Defence-in-depth control architecture. Independent evaluation.
+
+\textbf{Architecture.}
+Governance artefacts are stored next to code in version control.
+Compliance controls are implemented as CI jobs, automated
+monitors, or explicit human approvals, not as checklists.
+Logging is comprehensive and retained for the regulatory period.
+Separation of duties between training, evaluation, and
+deployment teams is real and enforced.
+
+\textbf{Verification and validation.}
+Pre-release evaluation includes capability, safety, bias,
+robustness, and privacy checks. Red-team engagements are
+recurring, with findings tracked to resolution. Third-party
+audits are scheduled on at least an annual cadence for
+high-stakes systems. Incident response is rehearsed.
+
+\textbf{Operations.}
+Continuous monitoring with drift alerts. Incident database
+subscription. Quarterly governance review. Adversarial-probe
+monitoring. Post-incident root cause analysis feeding back into
+training, evaluation, and documentation.
+
+\subsection{Human Factors and Organizational Failure Modes}
+
+Organizational failure dominates model failure at scale. A small
+catalogue of modes that recur:
+
+\paragraph{Compliance theatre.} Artefacts exist on paper but are
+not read. Model cards are copy-pasted between releases without
+updates. Assurance cases refer to stale evidence. The cure is
+peer review of governance artefacts on the same cadence as
+code.
+
+\paragraph{Separation-of-duties collapse.} The same team owns
+training, evaluation, and rollout. Under release pressure, the
+eval bar moves. The structural fix is an independent evaluation
+function.
+
+\paragraph{Escalation starvation.} Incidents are reported but
+not investigated. Root-cause analysis is superficial. Similar
+incidents recur. The fix is to make escalations first-class
+tickets with SLA.
+
+\paragraph{Regulatory lag.} The regulatory landscape moves
+faster than internal process. The fix is a dedicated AI
+governance function that tracks regulation and translates
+changes into engineering requirements within a fixed cycle.
+
+\paragraph{Third-party dependency blindness.} The model is
+procured; its upstream provider changes policy, terms, or
+behaviour; the downstream system inherits the change silently.
+The fix is explicit contract-level monitoring and a
+``model-provider change'' incident class.
 
 \subsection{Limits of the Current Paradigm}
 
-Current LLMs:
+Honesty about limits is a governance function. A partial list
+of things current LLM systems cannot do:
+
 \begin{itemize}
-  \item lack grounded understanding,
-  \item have no intrinsic goals,
-  \item optimize proxy objectives.
+  \item Provide reliable factual answers without retrieval
+        grounding or an explicit ``I don't know'' behaviour.
+  \item Guarantee alignment under adversarial prompts or
+        distribution shift.
+  \item Produce calibrated uncertainty without explicit training
+        for it.
+  \item Reason reliably about causation, counterfactuals, or
+        novel out-of-distribution problems.
+  \item Satisfy strong interpretability guarantees; mechanistic
+        interpretability is progressing but does not yet allow
+        us to audit the model's behaviour at the weight level.
+  \item Provide a strong guarantee that no training data is
+        recoverable from the model
+        \citep{weidinger2021ethical}; membership-inference and
+        extraction attacks remain possible.
 \end{itemize}
 
-Future progress may require:
-\begin{itemize}
-  \item new training paradigms,
-  \item tighter integration with symbolic systems,
-  \item improved governance frameworks.
-\end{itemize}
+An honest assurance case names these limits and designs around
+them. The engineering discipline is to build systems whose
+reliability comes from composition (retrieval plus refusal plus
+human review), not from any single claim about the model's
+inner reliability.
+
+Where the frontier is moving: mechanistic interpretability that
+lets us reason about what features a model uses; verified
+behavioural bounds for narrow domains; stronger evaluation
+tooling for open-ended tasks; formal verification for the
+non-model parts of the stack; broader adoption of
+capability-gated deployment for frontier models. None of these
+eliminate governance; all of them enrich the toolkit within which
+governance operates.
+
+\subsection{V-Model View: Governance Lifecycle}
+
+\begin{center}
+\small
+\begin{tabular}{p{4.3cm}|p{4.3cm}|p{4.3cm}}
+\textbf{V-stage} & \textbf{Artefact} & \textbf{Verification activity}\\\hline
+Requirements & Policy, regulation, sectoral rules, use-case scope & Legal sign-off; AIA scoping \\
+Hazard analysis & STPA-derived hazard register; LLM taxonomy & Independent review \\
+Control design & Preventive/detective/corrective control map & Defence-in-depth review \\
+Data governance & Datasheets; licensing check; PII review & Contamination scan \\
+Implementation & Logging, monitors, guardrails, eval harness & Unit and integration tests \\
+Assurance & GSN case; model card; red-team report & Second-party and (for high-risk) third-party audit \\
+Deployment & Controlled rollout; incident runbook & Canary and shadow traffic \\
+Operations & Monitoring dashboards; incident log; quarterly review & Drift alerts; external audit; regulatory reporting \\
+Retirement & Wind-down plan; data retention / deletion & Verify obligations to users discharged \\
+\end{tabular}
+\end{center}
 
 \subsection{Key References}
 
-\begin{itemize}
-  \item \citet{amodei2016concrete} — AI safety problems
-  \item \citet{leslie2021understanding} — AI assurance
-\end{itemize}
+The safety-engineering tradition: Leveson's STPA
+\citep{leveson2011engineering}, Perrow's \emph{Normal Accidents}
+\citep{perrow1999normal}, and Reason's \emph{Human Error}
+\citep{reason1990human} are the mandatory background reading
+for anyone designing a governance system. AI-specific
+translations: \citet{amodei2016concrete} on concrete safety
+problems, \citet{leslie2021understanding} for an accessible
+ethics-and-assurance overview, \citet{weidinger2021ethical,
+weidinger2023sociotechnical} for the sociotechnical risk
+taxonomy, \citet{bommasani2021opportunities} for the
+foundation-model framing.
+
+Documentation artefacts: \citet{mitchell2019modelcards} (model
+cards), \citet{gebru2021datasheets} (datasheets),
+\citet{metcalf2021algorithmic} (algorithmic impact assessment),
+\citet{bommasani2023transparency} (foundation-model transparency
+index). Auditing: \citet{raji2020closing} (internal audit
+framework). Frontier risk: \citet{shevlane2023model},
+\citet{anderljung2023frontier}.
+
+Regulation and standards: \citet{nist2023airmf} and
+\citet{nist2024genai_profile} (NIST RMF and GenAI profile),
+\citet{eu_aiact_2024} (EU AI Act), \citet{iso42001_2023} (ISO/IEC
+42001), \citet{oecd_ai_principles} (OECD), \citet{ieee_7000}
+(IEEE 7000), \citet{uk_aisi_2024, singapore_aiverify_2024}
+(evaluation-forward governance). Provenance:
+\citet{c2pa}. Incident tracking: \citet{aiid}. Assurance
+notation: \citet{gsn2021}. Safety benchmarking:
+\citet{mlcommons_ailuminate}.
 
 \subsection{Recommended University Lectures}
 
 \begin{itemize}
-  \item Stanford CS324 — governance and foundation models  
-  \url{https://stanford-cs324.github.io/winter2022/}
-
-  \item MIT AI Policy lectures  
-  \url{https://ai.mit.edu}
+  \item Stanford CS324 --- Governance and foundation models.
+        \url{https://stanford-cs324.github.io/winter2022/}
+  \item MIT 6.S898 --- AI Policy and Society.
+        \url{https://ai-policy-mit.github.io}
+  \item Oxford Institute for Ethics in AI.
+        \url{https://www.oxford-aiethics.ox.ac.uk}
+  \item Alan Turing Institute --- AI assurance and ethics.
+        \url{https://www.turing.ac.uk/research/interest-groups/ai-ethics}
+  \item CMU Block Center --- AI governance research.
+        \url{https://www.cmu.edu/block-center/}
 \end{itemize}
 
 \subsection{Practitioner Lab}
 
-See \texttt{labs/week10/week10\_lab\_governance\_assurance.ipynb}.
+A governance-oriented lab for a realistic deployment scenario:
+
+\begin{enumerate}
+  \item Choose a concrete LLM deployment (e.g., an internal
+        engineering assistant that can search docs and summarize
+        PRs). Write a one-page statement of intended use,
+        out-of-scope uses, user population, and data sources.
+  \item Build a hazard register using STPA-style analysis across
+        the five-axis taxonomy (technical, data, human,
+        organizational, societal). Aim for at least 15 hazards,
+        each with a severity and likelihood estimate.
+  \item Author a model card (for the underlying base) and a
+        deployment card (for the specific configuration). Use
+        the \citet{mitchell2019modelcards} template.
+  \item Author a datasheet \citep{gebru2021datasheets} for any
+        fine-tuning or retrieval corpus.
+  \item Design the defence-in-depth control stack. For each
+        hazard in step~2, name the preventive, detective, and
+        corrective controls.
+  \item Build an assurance case in Goal Structuring Notation for
+        the top three hazards (prompt injection, hallucination,
+        inappropriate reliance). Use \citet{gsn2021}
+        conventions.
+  \item Map the deployment against the NIST AI RMF
+        \citep{nist2023airmf} govern/map/measure/manage
+        functions. Identify gaps.
+  \item If operating in the EU: map the deployment against the
+        AI Act \citep{eu_aiact_2024} risk classification.
+        Document the classification and the corresponding
+        obligations.
+  \item Write an incident response runbook for two realistic
+        scenarios (jailbreak, prompt injection) and tabletop it
+        with the team.
+  \item Schedule a red-team engagement and an external audit for
+        the deployment's first year. Budget accordingly.
+\end{enumerate}
+
+\subsection{Bridges to Other Weeks}
+
+Week~10 is the integrator of everything that came before.
+Evaluation (Week~9) produces evidence for the assurance case.
+Alignment (Week~8) is a preventive control. Adaptation (Week~7)
+produces versioned artefacts that enter the governance registry.
+Scaling (Week~6) defines the capability level that dictates the
+governance tier (GPAI systemic-risk vs.\ not).
+Pretraining (Week~5) provides the data-provenance artefact that
+feeds the datasheet. The transformer architecture (Week~4),
+tokenization (Week~3), and statistical foundations (Weeks~1--2)
+underwrite the technical claims on which the assurance case
+rests.
+
+Week~11 closes the book with modern LLM access patterns (APIs,
+SDKs, agents, MCP). Much of that chapter's engineering ---
+credential management, scope control, audit logging,
+tool-schema validation --- is governance made concrete.
 
 \subsection{Week 10 Takeaway}
 
 \begin{quote}
-AI systems cannot be made safe by models alone; safety emerges from design, governance, and human judgment.
+Safety is not a property of a model; it is a property of a
+socio-technical system deployed in a context. Governance is the
+engineering discipline that makes that property legible,
+measurable, and accountable. A credible deployment builds
+defence in depth across pre-model, model, system, detective,
+corrective, and post-deployment layers; documents its claims
+and evidence in an assurance case; complies with the applicable
+regulation; and submits to independent evaluation. The model is
+the easy part.
 \end{quote}
-

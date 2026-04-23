@@ -1,0 +1,44 @@
+\begin{tikzpicture}[
+  goal/.style={draw, rounded corners=0.05cm, minimum width=4.0cm, minimum height=0.9cm,
+               align=center, font=\footnotesize, fill=black!5},
+  strat/.style={draw, trapezium, trapezium left angle=70, trapezium right angle=110,
+                minimum width=3.8cm, minimum height=0.7cm,
+                align=center, font=\footnotesize, fill=orange!12},
+  ctx/.style={draw, ellipse, minimum width=2.8cm, minimum height=0.6cm,
+              align=center, font=\scriptsize, fill=blue!8},
+  sol/.style={draw, circle, minimum size=1.2cm,
+              align=center, font=\scriptsize, fill=green!12},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.45cm and 0.45cm
+]
+
+% Root goal
+\node[goal] (G1) {\textbf{G1:} The deployed LLM system\\is acceptably safe in its intended use};
+
+% Context
+\node[ctx, right=1.0cm of G1] (C1) {C1: intended use\\= clinical Q\&A};
+\draw[-, thick] (G1) -- (C1);
+
+% Strategy
+\node[strat, below=of G1] (S1) {\textbf{S1:} argue by hazards identified (STPA) and controls verified};
+\draw[arrow] (G1) -- (S1);
+
+% Sub-goals
+\node[goal, below=of S1, xshift=-4.0cm] (G2) {\textbf{G2:} Hallucination hazard is adequately controlled};
+\node[goal, below=of S1] (G3) {\textbf{G3:} Prompt-injection hazard is adequately controlled};
+\node[goal, below=of S1, xshift=4.0cm] (G4) {\textbf{G4:} Over-trust hazard is adequately controlled};
+
+\draw[arrow] (S1) -- (G2);
+\draw[arrow] (S1) -- (G3);
+\draw[arrow] (S1) -- (G4);
+
+% Evidence / solutions
+\node[sol, below=of G2] (E1) {E1\\RAGAS};
+\node[sol, below=of G3] (E2) {E2\\red-team};
+\node[sol, below=of G4] (E3) {E3\\UX eval};
+
+\draw[arrow] (G2) -- (E1);
+\draw[arrow] (G3) -- (E2);
+\draw[arrow] (G4) -- (E3);
+
+\end{tikzpicture}

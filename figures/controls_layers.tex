@@ -1,0 +1,27 @@
+\begin{tikzpicture}[
+  lay/.style={draw, rounded corners, minimum width=11cm, minimum height=0.9cm,
+              align=center, font=\footnotesize},
+  lbl/.style={font=\footnotesize\bfseries, anchor=east},
+  arrow/.style={->, thick, >=Stealth},
+  node distance=0.25cm
+]
+
+\node[lay, fill=red!10] (preh) {\textit{Pre-model:} data governance, licensing, contamination checks, red-team corpus};
+\node[lay, below=of preh, fill=orange!12] (prev) {\textit{Preventive (model):} alignment, refusals, constitutional training, RLHF};
+\node[lay, below=of prev, fill=yellow!15] (guard) {\textit{Preventive (system):} input filters, schema validation, prompt templates, retrieval sandbox};
+\node[lay, below=of guard, fill=green!12] (det) {\textit{Detective:} logging, monitoring, drift alerts, canary evals, audit trails};
+\node[lay, below=of det, fill=cyan!12] (corr) {\textit{Corrective:} rate limits, rollback, human override, kill switch, incident response};
+\node[lay, below=of corr, fill=blue!12] (post) {\textit{Post-deployment:} user reporting, feedback loops, impact assessment, external audit};
+
+\node[lbl, left=of preh] {Layer 1};
+\node[lbl, left=of prev] {Layer 2};
+\node[lbl, left=of guard] {Layer 3};
+\node[lbl, left=of det] {Layer 4};
+\node[lbl, left=of corr] {Layer 5};
+\node[lbl, left=of post] {Layer 6};
+
+% Arrow from top
+\draw[arrow, dashed] ($(preh.west) + (-2.8, 0.8)$) -- node[midway, left, font=\scriptsize\itshape] {hazard}
+  ($(post.west) + (-2.8, -0.8)$);
+
+\end{tikzpicture}
