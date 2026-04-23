@@ -28,6 +28,50 @@
 \newcommand{\KL}{D_{\mathrm{KL}}}
 \newcommand{\entropy}{\mathcal{H}}
 
+% Unit macros (entropy / cross-entropy)
+\newcommand{\nats}{\mathrm{nats}}
+\newcommand{\bits}{\mathrm{bits}}
+
+% Variance operator
+\providecommand{\Var}{\mathrm{Var}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CLAIM-TYPE LABELS (REVIEW_PLAN.md E.3)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Short \paragraph-level labels that mark the epistemic status of the
+% paragraph that follows. Usage: \Def\ body text ...
+\newcommand{\Def}{\paragraph{Definition.}}
+\newcommand{\Ident}{\paragraph{Identity.}}
+\newcommand{\Assum}{\paragraph{Assumption.}}
+\newcommand{\Emp}{\paragraph{Empirical Observation.}}
+\newcommand{\Cons}{\paragraph{Engineering Consequence.}}
+\newcommand{\Heur}{\paragraph{Engineering Heuristic.}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% STRUCTURED BLOCKS (REVIEW_PLAN.md E.1, E.2, E.4, E.5)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Opening "Notation and Assumptions" block for every chapter.
+\newenvironment{notationbox}
+  {\par\medskip\noindent\textbf{Notation and Assumptions.}\par\nobreak\noindent\ignorespaces}
+  {\par\medskip}
+
+% Stepwise "Derivation" block; wrap an align* inside.
+\newenvironment{derivation}[1][]
+  {\par\medskip\noindent\textbf{Derivation (Stepwise)#1.}\par\nobreak\noindent\ignorespaces}
+  {\par\medskip}
+
+% Worked numeric example block.
+\newenvironment{workedexample}[1][]
+  {\par\medskip\noindent\textbf{Worked Example#1.}\par\nobreak\noindent\ignorespaces}
+  {\par\medskip}
+
+% End-of-section "Proved vs Assumed" recap block.
+\newenvironment{provedassumed}
+  {\par\medskip\noindent\textbf{Proved vs Assumed (Recap).}\par\nobreak\noindent\ignorespaces}
+  {\par\medskip}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FIGURES AND DIAGRAMS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

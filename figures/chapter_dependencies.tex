@@ -1,0 +1,84 @@
+% Cross-chapter dependency graph.
+% Nodes are weeks; arrows indicate "exports results used by".
+% Rendered in the front matter (see main.tex).
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=1.0cm and 1.0cm,
+  wk/.style={rectangle, rounded corners, draw=black!70, fill=black!5,
+             minimum width=2.2cm, minimum height=0.9cm,
+             align=center, font=\small},
+  core/.style={wk, fill=blue!12, draw=blue!60!black},
+  appl/.style={wk, fill=green!12, draw=green!50!black},
+  syst/.style={wk, fill=orange!15, draw=orange!70!black},
+  gov/.style={wk,  fill=red!10,    draw=red!70!black},
+  arr/.style={-{Latex[length=2mm]}, draw=black!55, thick}
+]
+
+% Row 1: foundations
+\node[core] (w1) {Week 1\\Foundations};
+\node[core, right=of w1] (w2) {Week 2\\Training};
+\node[core, right=of w2] (w3) {Week 3\\Tokenization};
+
+% Row 2: architecture / pretraining
+\node[core, below=of w1] (w4) {Week 4\\Architecture};
+\node[core, right=of w4] (w5) {Week 5\\Pretraining};
+\node[core, right=of w5] (w6) {Week 6\\MoE / Scaling};
+
+% Row 3: adaptation / alignment
+\node[appl, below=of w4] (w7) {Week 7\\Adaptation};
+\node[appl, right=of w7] (w8) {Week 8\\Alignment};
+\node[syst, right=of w8] (w9) {Week 9\\RAG / Eval};
+
+% Row 4: governance / access
+\node[gov,  below=of w7] (w10) {Week 10\\Governance};
+\node[syst, right=of w10] (w11) {Week 11\\APIs / MCP};
+
+% Edges - foundations -> downstream
+\draw[arr] (w1) -- (w4);
+\draw[arr] (w1.south east) -- (w5.north west);
+\draw[arr] (w1) -- ++(6.8,-0.4) |- (w8.west);
+\draw[arr] (w2) -- (w5);
+\draw[arr] (w2) -- (w6);
+\draw[arr] (w2) -- (w7);
+\draw[arr] (w3) -- (w4);
+\draw[arr] (w3) -- (w5);
+
+% Architecture -> downstream
+\draw[arr] (w4) -- (w5);
+\draw[arr] (w4) -- (w6);
+\draw[arr] (w4) -- (w7);
+\draw[arr] (w4) -- ++(8.2,-3.0) |- (w11.west);
+
+% Pretraining -> alignment / efficiency
+\draw[arr] (w5) -- (w6);
+\draw[arr] (w5) -- (w8);
+
+% Efficiency -> serving
+\draw[arr] (w6) -- ++(2.5,-2.6) |- (w11.east);
+
+% Adaptation -> alignment / serving
+\draw[arr] (w7) -- (w8);
+\draw[arr] (w7) -- ++(5.9,-1.2) |- (w11.west);
+
+% Alignment -> system / governance
+\draw[arr] (w8) -- (w9);
+\draw[arr] (w8) -- (w10);
+
+% System -> governance / access
+\draw[arr] (w9) -- (w10);
+\draw[arr] (w9) -- (w11);
+
+% Governance -> access (constraints)
+\draw[arr] (w10) -- (w11);
+
+\end{tikzpicture}%
+}
+\caption{Cross-chapter dependency graph. Arrows indicate that results,
+definitions, or notation from the source chapter are used by the target
+chapter. Foundations (blue) feed architecture, adaptation and alignment
+(green) and then systems-level chapters (orange) and governance (red).}
+\label{fig:chapter_dependencies}
+\end{figure}
