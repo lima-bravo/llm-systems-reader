@@ -84,6 +84,39 @@ textbook setting are:
 That modern deep networks reliably converge under these conditions is an
 empirical observation about the loss landscape, not a theorem.
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week2-notation}
+
+\begin{notationbox}
+Throughout this chapter the parameter vector is
+$\theta \in \R^{d}$ with $d \sim 10^{9}$--$10^{12}$; $\mathcal{L}(\theta)$
+is the empirical cross-entropy of Eq.~\eqref{eq:week2-empirical-loss};
+$g_t$ is the stochastic minibatch gradient with batch size $B$ and
+conditional covariance $\Sigma(\theta)$; $\eta_t$ is the learning rate
+at step $t$; $m_t, v_t$ are first- and second-moment accumulators with
+decays $\beta_1, \beta_2 \in (0,1)$ and numerical floor
+$\epsilon > 0$; $\lambda \ge 0$ is decoupled weight decay. Schedule
+parameters are warmup length $T_w$, total horizon $T_{\max}$, peak
+rate $\eta_{\max}$, and floor $\eta_{\min}$. Gradient-clip threshold
+is $c > 0$. For scaling laws, $N$ is parameter count, $D$ is training
+tokens, $C$ is compute in FLOPs, and $(A, B, E, \alpha, \beta)$ are
+the Chinchilla fit constants of Eq.~\eqref{eq:week2-chinchilla}.
+Standing assumptions are:
+\textbf{(A2.1)} the SGD-to-SDE approximation
+(Eq.~\eqref{eq:week2-langevin}) holds only when $\eta$ is small
+relative to curvature, $\Sigma$ is approximately locally stationary,
+and $\xi_t$ is approximately Gaussian by a CLT argument over the
+minibatch;
+\textbf{(A2.2)} Chinchilla exponents $\alpha, \beta$ were fit on
+properly tuned baselines and extrapolate only within the compute range
+spanned by the fit (roughly $10^{19}$--$10^{24}$ FLOPs);
+\textbf{(A2.3)} the memory budget
+(Eq.~\eqref{eq:week2-mem-budget}) assumes standard mixed-precision
+AdamW with per-worker full optimizer state; ZeRO-style sharding is
+layered on top in Week~6 and changes only the per-worker terms, not
+the total.
+\end{notationbox}
+
 \subsection{Stochastic Gradient Descent and Momentum}
 
 \subsubsection{SGD as a Noisy Dynamical System}
@@ -91,9 +124,24 @@ empirical observation about the loss landscape, not a theorem.
 Write the minibatch gradient as the true gradient plus noise,
 $g_t = \nabla \mathcal{L}(\theta_t) + \xi_t$, with
 $\mathbb{E}[\xi_t]=0$ and $\mathrm{Cov}(\xi_t) \approx \Sigma(\theta_t)/B$.
-For small $\eta$, the continuous-time limit of
+
+\Assum\ Under A2.1 the discrete-time recursion of
+Eq.~\eqref{eq:week2-sgd} is approximated by a continuous-time SDE
+\emph{only} when three conditions hold simultaneously: (i) $\eta$ is
+small relative to the inverse Lipschitz constant of
+$\nabla \mathcal{L}$ (so the discretization error per step is
+$O(\eta^{2})$); (ii) $\Sigma(\theta_t)$ varies slowly along the
+trajectory on the timescale $1/\eta$ (local stationarity of the
+diffusion tensor); (iii) $\xi_t$ is approximately Gaussian, justified
+by a CLT argument over $B$ i.i.d.\ per-example gradients for moderate
+$B$. Outside these conditions — very large steps, sharp curvature,
+or heavy-tailed per-example gradients — the SDE picture is
+illustrative rather than predictive.
+
+Under these assumptions, the continuous-time limit of
 Eq.~\eqref{eq:week2-sgd} is the Langevin SDE
 \begin{equation}
+\label{eq:week2-langevin}
 d\theta_t \;=\; -\nabla \mathcal{L}(\theta_t)\, dt
                 + \sqrt{\eta\,\Sigma(\theta_t)/B}\; dW_t,
 \end{equation}
@@ -104,6 +152,12 @@ generalization~\citep{keskar2017large};
 (ii)~the effective ``noise temperature'' scales with $\eta/B$, so doubling
 batch size roughly halves gradient noise — this is the basis for the
 linear scaling rule in large-batch training~\citep{goyal2017accurate}.
+
+\Emp\ The ``flat minima generalize better'' connection is an
+empirical correlation supported by large-batch experiments on image
+and language workloads; it is not a theorem and admits known
+counterexamples under reparameterization~\citep{dinh2017sharp}. Treat
+it as a design-time heuristic, not a guarantee.
 
 \subsubsection{Heavy-Ball and Nesterov Momentum}
 
@@ -144,14 +198,39 @@ v_t &= \beta_2\, v_{t-1} + (1-\beta_2)\, g_t^2
 \end{align}
 where $g_t^2$ is elementwise. Because $m_0 = v_0 = 0$, these estimates
 are biased toward zero in the first several steps. Adam corrects this
-bias analytically. Unrolling Eq.~\eqref{eq:week2-adam-m},
-\[
-m_t = (1-\beta_1) \sum_{k=1}^{t} \beta_1^{\,t-k} g_k,
+bias analytically.
+
+\begin{derivation}[for Adam bias correction]
+Unroll Eq.~\eqref{eq:week2-adam-m} from $m_0 = 0$:
+\begin{align*}
+m_t &= (1-\beta_1) \sum_{k=1}^{t} \beta_1^{\,t-k}\, g_k.
+\end{align*}
+Take expectations term by term, writing $\mu_k := \E[g_k]$:
+\begin{align*}
+\E[m_t]
+  &= (1-\beta_1) \sum_{k=1}^{t} \beta_1^{\,t-k}\,\mu_k.
+\end{align*}
+\textbf{Assume (local stationarity)} that $\mu_k$ varies slowly on the
+timescale $1/(1-\beta_1)$, so $\mu_k \approx \mu_t$ for all $k$ whose
+weight $\beta_1^{t-k}$ is non-negligible. Pulling $\mu_t$ out of the
+sum and using the geometric series
+$\sum_{k=1}^{t}\beta_1^{\,t-k} = (1-\beta_1^{\,t})/(1-\beta_1)$ gives
+\begin{align*}
+\E[m_t] \;\approx\; (1-\beta_1^{\,t})\,\mu_t,
 \qquad
-\mathbb{E}[m_t] = (1-\beta_1^{\,t})\,\mathbb{E}[g_t] + O(\text{drift}),
-\]
-so the debiased estimator is $\hat m_t = m_t / (1-\beta_1^{\,t})$; the
-analogous correction applies to $v_t$. The parameter update becomes
+\text{so}\qquad
+\hat m_t \;:=\; \frac{m_t}{1-\beta_1^{\,t}} \;\text{ is unbiased}.
+\end{align*}
+The residual drift term $\E[m_t] - (1-\beta_1^{\,t})\mu_t
+= (1-\beta_1)\sum_k \beta_1^{t-k}(\mu_k - \mu_t)$ is
+$O\!\left((1-\beta_1)\,\|\nabla^{2}\!\mathcal{L}\|\,\eta\,/(1-\beta_1)\right)
+= O(\eta\,\|\nabla^{2}\!\mathcal{L}\|)$ under a one-step Taylor
+expansion of $\mu_k$, which is small in the warmup regime that motivates
+bias correction in the first place. The identical argument applied to
+$v_t$ yields $\hat v_t = v_t/(1-\beta_2^{\,t})$.
+\end{derivation}
+
+The parameter update becomes
 \begin{equation}
 \label{eq:week2-adam-update}
 \theta_{t+1} \;=\; \theta_t - \eta_t\,\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon},
@@ -201,10 +280,44 @@ Lion/Shampoo & Less memory, competitive & Less mature tooling \\
 
 AdamW stores $m_t$ and $v_t$ at full precision for every parameter, so
 optimizer state is roughly $2\times$ the size of the parameters (or
-$\sim 8$ bytes/param at fp32). Combined with parameters themselves and
-activation memory, this is what ZeRO-style sharding
-\citep{rajbhandari2020zero} attacks in distributed training (revisited
-in Week~6).
+$\sim 8$ bytes/param at fp32).
+
+\Ident\ Write the per-worker training memory budget, under A2.3, as
+the sum of four terms:
+\begin{equation}
+\label{eq:week2-mem-budget}
+\boxed{\;M_{\mathrm{total}}
+  \;=\; \underbrace{b_{\mathrm p}\, N}_{\text{params}}
+     + \underbrace{b_{\mathrm g}\, N}_{\text{grads}}
+     + \underbrace{b_{\mathrm o}\, N}_{\text{optimizer}}
+     + \underbrace{M_{\mathrm{act}}(B,\,S,\,L,\,d_{\mathrm{model}})}_{\text{activations}}\;}
+\end{equation}
+with $b_{\mathrm p}, b_{\mathrm g}, b_{\mathrm o}$ bytes-per-parameter
+coefficients for parameters, gradients, and optimizer state
+respectively, and $M_{\mathrm{act}}$ the activation memory, which for
+a Transformer scales roughly as $M_{\mathrm{act}} \propto
+B\,S\,L\,d_{\mathrm{model}}$ with batch $B$, sequence length $S$,
+layer count $L$, and model dimension $d_{\mathrm{model}}$.
+
+\Emp\ For mixed-precision AdamW with an fp32 master copy, typical
+coefficients are $b_{\mathrm p} = 2$ (bf16 weights in compute) $+ 4$
+(fp32 master) $= 6$, $b_{\mathrm g} = 2$, $b_{\mathrm o} = 8$ (fp32
+$m_t$ and $v_t$), giving
+\[
+M_{\mathrm{total}} \;\approx\; (6 + 2 + 8)\,N + M_{\mathrm{act}}
+  \;=\; 16\,N + M_{\mathrm{act}}\;\text{bytes}.
+\]
+A $10^{10}$-parameter model therefore incurs $\sim 160$~GB of
+resident state per worker \emph{before} activations — already beyond
+a single accelerator's HBM.
+
+\Cons\ This arithmetic motivates every memory-saving mechanism
+covered later: ZeRO~\citep{rajbhandari2020zero} shards the $16N$
+static term across workers; activation checkpointing attacks
+$M_{\mathrm{act}}$; QLoRA and 8-bit optimizers~\citep{dettmers20228bit}
+reduce $b_{\mathrm o}$; quantization at serving time (Week~7) reduces
+$b_{\mathrm p}$ further. Week~6 revisits the sharded form of
+Eq.~\eqref{eq:week2-mem-budget}.
 
 \subsection{Learning Rate Schedules}
 
@@ -256,8 +369,15 @@ continual pretraining and fine-tuning that resume from a checkpoint
 usually want warmup+constant or warmup+linear; very long-horizon runs
 sometimes adopt \emph{one-cycle} / super-convergence
 schedules~\citep{smith2018superconvergence} where $\eta$ rises and falls
-once over the entire run. Figure~\ref{fig:lr_schedule} overlays the
-three schedules discussed above on a common axis.
+once over the entire run.
+
+Figure~\ref{fig:lr_schedule} overlays the three schedules discussed
+above on a common axis; for the figure, recall from
+\S\ref{sec:week2-notation} the four schedule parameters:
+warmup length $T_w$, total training horizon $T_{\max}$, peak rate
+$\eta_{\max}$, and floor rate $\eta_{\min}$. Cosine decay uses all
+four; inverse-square-root uses only $T_w$ and $\eta_{\max}$; the
+constant baseline uses only $\eta_{\max}$.
 
 \begin{figure}[H]
   \centering
@@ -288,6 +408,32 @@ large LLM pretraining. Clipping is a cheap, principled defense against
 rare but catastrophic optimizer divergence~\citep{pascanu2013difficulty},
 and its activation rate is a useful operational telemetry signal: a
 sudden increase typically precedes a loss spike by a few hundred steps.
+
+\begin{workedexample}[clipping preserves direction, bounds magnitude]
+Consider a two-parameter toy with raw gradient
+$g_t = (3, 4) \in \R^{2}$, so $\|g_t\|_2 = 5$, and clip threshold
+$c = 1$. Since $\|g_t\|_2 > c$, the scaling factor in
+Eq.~\eqref{eq:week2-gradclip} equals $c / \|g_t\|_2 = 1/5$, and the
+clipped gradient is
+\[
+g_t^{\mathrm{clip}}
+  \;=\; g_t \cdot \frac{1}{5}
+  \;=\; \left(\tfrac{3}{5},\,\tfrac{4}{5}\right),
+\qquad
+\|g_t^{\mathrm{clip}}\|_2 \;=\; 1 \;=\; c.
+\]
+The unit vector $\hat g = g_t / \|g_t\|_2 = (0.6, 0.8)$ is \emph{exactly
+preserved} since $g_t^{\mathrm{clip}} = c\,\hat g$; only the magnitude
+changed. Contrast with elementwise clipping at the same threshold,
+which would produce $g_t^{\mathrm{elem}} = (\min(3,1), \min(4,1)) = (1,1)$,
+pointing along a direction $45^{\circ}$ off from $\hat g$. For a
+second case, $g_t = (0.3, 0.4)$ has $\|g_t\|_2 = 0.5 < c$; the clip
+factor is $\min(1, c/0.5) = 1$ and the gradient passes through
+unchanged. This is why the activation rate of Eq.~\eqref{eq:week2-gradclip}
+(fraction of steps for which $\|g_t\|_2 > c$) is a clean telemetry
+signal: under stable training it is stably small; under incipient
+divergence it rises sharply well before loss explodes.
+\end{workedexample}
 
 \subsection{Mixed Precision, Loss Scaling, and Accumulation}
 
@@ -349,10 +495,14 @@ zero and test loss \emph{continues to improve}.
 
 \subsubsection{Double Descent}
 
-Plotted as a function of model size, test error exhibits the classical
-U-curve up to the \emph{interpolation threshold} where training error
-reaches zero. Beyond that threshold, test error descends
-again~\citep{belkin2019reconciling,nakkiran2020double}. Three regimes:
+\Emp\ Plotted as a function of model size, test error exhibits the
+classical U-curve up to the \emph{interpolation threshold} where
+training error reaches zero. Beyond that threshold, test error
+descends again~\citep{belkin2019reconciling,nakkiran2020double}. This
+is an \emph{observed} behavior on standard image and language
+benchmarks; the underlying theory connecting it to overparameterization,
+implicit bias of SGD, and feature learning remains active research.
+Three regimes:
 \begin{itemize}
   \item \textbf{Underparameterized}: bias dominates; more capacity helps.
   \item \textbf{Interpolation threshold}: variance is maximized;
@@ -365,7 +515,9 @@ model'' has been such a reliable strategy.
 
 \subsubsection{Why Bigger Is Not Worse}
 
-Several mechanisms are believed to contribute to benign overfitting:
+\Heur\ Several mechanisms are \emph{believed} to contribute to benign
+overfitting; each is an engineering heuristic supported by partial
+theory, not a proof:
 \begin{itemize}
   \item SGD has an implicit bias toward low-norm, flat
         minima~\citep{keskar2017large}, which correlate with
@@ -412,9 +564,54 @@ form is
 L(N, D) \;=\; E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}},
 \end{equation}
 with approximately $\alpha \approx 0.34$, $\beta \approx 0.28$,
-$E \approx 1.69$. Given a fixed compute budget $C \approx 6\,N D$ FLOPs,
-minimizing $L(N,D)$ subject to $C$ yields the \emph{compute-optimal}
-ratio
+$E \approx 1.69$ under A2.2.
+
+\begin{derivation}[for the compute-optimal $(N^\star, D^\star)$]
+Fix a compute budget $C$ with the Chinchilla approximation
+$C \approx 6\,N D$ FLOPs (two FLOPs per MAC, three MACs per parameter
+per token, forward plus backward). Minimize
+\[
+L(N, D) \;=\; E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}}
+\qquad\text{subject to}\qquad
+N D \;=\; \tfrac{C}{6}.
+\]
+Form the Lagrangian
+$\mathcal{J}(N, D, \mu) = L(N, D) - \mu\,(N D - C/6)$. Stationarity
+gives
+\[
+\partial_N \mathcal{J} \;=\; -\alpha\,A\,N^{-\alpha-1} - \mu\,D
+\;=\; 0,
+\qquad
+\partial_D \mathcal{J} \;=\; -\beta\,B\,D^{-\beta-1} - \mu\,N
+\;=\; 0.
+\]
+Divide the two first-order conditions to eliminate $\mu$:
+\[
+\frac{\alpha\,A\,N^{-\alpha-1}}{D} \;=\; \frac{\beta\,B\,D^{-\beta-1}}{N}
+\qquad\Longleftrightarrow\qquad
+\alpha\,A\,N^{-\alpha} \;=\; \beta\,B\,D^{-\beta},
+\]
+which fixes the \emph{ratio} between the two loss terms at the
+optimum: they are matched up to the constant
+$(\alpha A)/(\beta B)$. Solving for $D$ in terms of $N$ gives
+$D^\star = \big[(\beta B)/(\alpha A)\big]^{1/\beta}\,N^{\alpha/\beta}$,
+and substituting back into $N D = C/6$ yields
+\[
+N^\star \;\propto\; C^{a},
+\qquad
+D^\star \;\propto\; C^{b},
+\qquad
+a \;=\; \frac{\beta}{\alpha + \beta},
+\qquad
+b \;=\; \frac{\alpha}{\alpha + \beta}.
+\]
+With Chinchilla's fitted $\alpha \approx 0.34$, $\beta \approx 0.28$,
+we get $a \approx 0.45$, $b \approx 0.55$; the ``equal exponents''
+approximation $a \approx b \approx 0.5$ of
+Eq.~\eqref{eq:week2-chinchilla-opt} reflects the near-equality of
+$\alpha$ and $\beta$ in the original fit.
+\end{derivation}
+
 \begin{equation}
 \label{eq:week2-chinchilla-opt}
 N^\star \propto C^{a},
@@ -447,15 +644,42 @@ frontier is the envelope of the minima of those curves.
 
 \subsubsection{What Scaling Laws Do and Do Not Tell You}
 
-Scaling laws predict \emph{training loss} as a function of resources.
-They do \emph{not} predict:
+\Norm\ Scaling laws predict \emph{training loss} as a function of
+resources under A2.2; they do \emph{not} predict:
 \begin{itemize}
   \item emergent capabilities (discussed in Week~5 via
         \citet{wei2022emergent} and \citet{schaeffer2023mirage});
   \item performance on specific downstream tasks;
   \item the effect of data quality, deduplication, or mixture ratios.
 \end{itemize}
-They are compute-planning tools, not capability forecasts.
+They are compute-planning tools, not capability forecasts. Any
+document that uses Eq.~\eqref{eq:week2-chinchilla-opt} to argue for a
+capability level, rather than a loss level, is conflating these two
+predictive regimes; reject such arguments in design reviews.
+
+\begin{provedassumed}
+\emph{Proved (within the fit range).}
+Eq.~\eqref{eq:week2-chinchilla} is a regression fit whose exponents
+follow as closed-form stationarity conditions under Lagrangian
+optimization (the derivation above); the compute-optimal exponents
+$a = \beta/(\alpha+\beta)$, $b = \alpha/(\alpha+\beta)$ are
+mathematical consequences of the functional form.
+
+\emph{Assumed.}
+(i) The parametric form of Eq.~\eqref{eq:week2-chinchilla} — a power
+law plus a constant floor — is an empirical fit, not a derivation
+from first principles.
+(ii) The exponents $(\alpha, \beta, E)$ extrapolate only within the
+compute regime they were fit on; frontier training at
+$\gg 10^{24}$~FLOPs is an \emph{extrapolation} whose validity is
+itself an empirical question.
+(iii) The FLOP-cost approximation $C \approx 6\,N D$ ignores
+inference-time, activation-recompute, and MoE routing cost, and is
+only a first-order estimate.
+(iv) Loss is a proxy for capability; the gap between the two is
+what Week~5 calls ``emergent capabilities'' and is \emph{not}
+governed by Eq.~\eqref{eq:week2-chinchilla}.
+\end{provedassumed}
 
 \subsection{Systems Engineering Implications}
 
