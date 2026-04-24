@@ -122,6 +122,61 @@ inspectable delta.
 The whole of this chapter can be read as a formalization of that
 separation.
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week7-notation}
+
+\begin{notationbox}
+\textbf{Base/adapter pair.}
+$W_0 \in \R^{d \times k}$ is a frozen pretrained weight matrix (most
+often $d = k = d_{\mathrm{model}}$ for attention projections; $d \ne
+k$ for MLP up/down projections). $\Delta W \in \R^{d \times k}$ is
+the trainable adaptation delta. For LoRA,
+$\Delta W = (\alpha/r)\,B A$ with $B \in \R^{d \times r}$,
+$A \in \R^{r \times k}$, rank $r \ll \min(d,k)$, and scale factor
+$\alpha > 0$ (typically $\alpha = r$ or $\alpha = 2r$).
+
+\textbf{Adapter budget.}
+The per-layer trainable parameter count is $r(d+k)$ for LoRA versus
+$dk$ for full fine-tune. For a Llama-style model, summing over all
+adapted layers gives $|\Delta|_{\mathrm{LoRA}}$; typical values
+$|\Delta|_{\mathrm{LoRA}} \in [10^{6}, 10^{8}]$, to be compared
+against $N \in [10^{9}, 10^{11}]$ base parameters.
+
+\textbf{Precision formats.}
+Bytes-per-parameter coefficients (extending the Week~2 vocabulary
+from Eq.~\eqref{eq:week2-mem-budget}): $b_{\mathrm{fp32}} = 4$,
+$b_{\mathrm{bf16}} = b_{\mathrm{fp16}} = 2$, $b_{\mathrm{fp8}} = 1$,
+$b_{\mathrm{int8}} = 1$, $b_{\mathrm{int4}} = b_{\mathrm{nf4}} = 0.5$
+(one nibble per weight, plus $O(1/32)$ block-scale overhead for NF4).
+
+\textbf{Quantization.}
+A quantizer $Q_{\mathrm{fmt}} : \R \to \mathcal{G}_{\mathrm{fmt}}$
+maps a full-precision weight to a discrete grid
+$\mathcal{G}_{\mathrm{fmt}}$ of $2^{b}$ levels (e.g.\ $b=4$ for INT4
+/ NF4, $b=8$ for INT8). Calibration data $\mathcal{D}_{\mathrm{cal}}$
+is a small held-out sample used to fit per-channel scales or
+Hessians (GPTQ, AWQ).
+
+\textbf{Standing assumptions.}
+\textbf{(A7.1)} Low-rank adaptation is adequate \emph{when} the
+fine-tuning task lies within the intrinsic-dimensionality envelope
+of $W_0$'s pretraining distribution~\citep{aghajanyan2021intrinsic};
+it fails silently outside that envelope (far-domain transfer,
+hard-reasoning tasks). Recipes should rank-sweep rather than hardcode
+$r$.
+\textbf{(A7.2)} Quantization-error propagation through a frozen base
+is bounded only up to calibration coverage:
+$Q_{\mathrm{fmt}}$'s error on tokens outside
+$\mathrm{supp}(\mathcal{D}_{\mathrm{cal}})$ can be arbitrarily large.
+Evaluate on representative production traffic, not only on
+$\mathcal{D}_{\mathrm{cal}}$.
+\textbf{(A7.3)} All ``near-parity'' claims between quantized,
+LoRA-adapted, and full-fine-tuned models are \emph{benchmark-
+contingent empirical observations} on specific task suites, not
+generalization theorems. Far-domain, long-context, and hard-reasoning
+regimes may show larger gaps.
+\end{notationbox}
+
 \subsection{Parameter-Efficient Fine-Tuning (PEFT)}
 
 PEFT is the umbrella term for techniques that freeze the pretrained
@@ -222,24 +277,76 @@ model would need to ``un-learn'' the noise before learning the task.
 
 \subsubsection{Parameter and memory budgets}
 
-For a single linear layer of shape $d\times k$, full fine-tuning has
-$dk$ trainable parameters; LoRA has $r(d+k)$, a compression factor
-of $dk / r(d+k) \approx \min(d,k)/r$ for square-ish matrices.
-A Llama-2-7B has roughly $4096^2 \approx 16.8$M parameters per
-$W_Q$, $W_K$, $W_V$, $W_O$ matrix and more per MLP matrix; with
-$r=16$ applied to attention projections only, the trainable-parameter
-budget for the whole model drops to about 4~M, or $\approx 0.06\%$
-of the base. Storing an adapter at bfloat16 is $\approx 8$~MB.
+\begin{derivation}[LoRA parameter compression]
+For a single linear layer $W_0 \in \R^{d\times k}$ with
+$\Delta W = (\alpha/r) BA$, $B \in \R^{d\times r}$, $A \in \R^{r\times k}$:
+\begin{align*}
+  |\text{full-FT trainable}| &= dk, \\
+  |\text{LoRA trainable}| &= r(d+k), \\
+  \rho_{\mathrm{LoRA}} := \frac{|\text{LoRA}|}{|\text{full-FT}|}
+  &= \frac{r(d+k)}{dk}
+     \;\stackrel{d \approx k}{\approx}\; \frac{2r}{d}
+     \;=\; \frac{1}{\min(d,k)/r \cdot (1/2)}.
+\end{align*}
+For a square matrix, the compression factor is
+$1/\rho_{\mathrm{LoRA}} \approx \min(d,k)/(2r)$; for
+$d=k=4096$, $r=16$, this is $\approx 128\times$.
+\end{derivation}
 
-The VRAM savings come from three sources, not one:
-the parameter gradients collapse from 7B at 4 bytes each (28~GB) to
-4M at 4 bytes each (16~MB);
-the AdamW optimizer state collapses from $\approx 56$~GB to
-$\approx 32$~MB;
-the model weights themselves remain at 14~GB (bf16) but are never
-modified and therefore never need gradients.
-On a modern H100 (80~GB) or even an A100 (40~GB), a 7B-parameter LoRA
-fine-tune fits comfortably in memory; a full fine-tune does not.
+\Ident\ \emph{LoRA adapter memory budget.} Let $N_{\Delta} = \sum_\ell r_\ell
+(d_\ell + k_\ell)$ over adapted layers $\ell$. Using the Week~2 memory
+equation (Eq.~\eqref{eq:week2-mem-budget}), for AdamW training in bf16
+with fp32 master weights and optimizer state,
+\begin{equation}
+  M_{\mathrm{LoRA}}
+  \;=\;
+  \underbrace{b_{\mathrm{bf16}} N}_{\text{frozen base}}
+  \;+\;
+  \underbrace{(b_{\mathrm{bf16}} + b_{\mathrm{grad}}
+            + b_{\mathrm{opt}}) N_{\Delta}}_{\text{adapter + state}}
+  \;+\; M_{\mathrm{act}},
+  \label{eq:week7-lora-mem}
+\end{equation}
+where $b_{\mathrm{bf16}}=2$, $b_{\mathrm{grad}}=4$ (fp32 master grad),
+$b_{\mathrm{opt}}=8$ (Adam $m,v$ at fp32). For QLoRA, replace the
+first term with $b_{\mathrm{nf4}} N = 0.5 N$ plus the $O(N/32)$
+block-scale overhead; the second and third terms are unchanged.
+
+\begin{workedexample}[7B and 70B adaptation budgets]
+Take Llama-family geometry: $d_{\mathrm{model}}=4096$ (7B) or $8192$ (70B),
+$N_{\mathrm{7B}} \approx 7 \cdot 10^9$, $N_{\mathrm{70B}} \approx
+7 \cdot 10^{10}$. Apply LoRA at $r=16$ to
+$\{W_Q,W_K,W_V,W_O,W_{\mathrm{up}},W_{\mathrm{down}},W_{\mathrm{gate}}\}$
+across all 32 (7B) or 80 (70B) layers. Order-of-magnitude arithmetic:
+
+\textbf{7B model, LoRA.} $N_{\Delta} \approx 4\cdot 10^6$.
+Frozen base (bf16): $14$~GB. Adapter + state: $14 \cdot 4 \cdot 10^6
+= 56$~MB. Activations at batch~1, seq~2048, bf16: $\sim 4$~GB.
+\emph{Total $\approx 18$~GB} --- fits on a 24~GB consumer card.
+
+\textbf{7B model, QLoRA.} Base drops to $0.5 \cdot 7 \cdot 10^9 \approx
+3.5$~GB plus $\sim 220$~MB scale overhead. \emph{Total
+$\approx 8$~GB} --- comfortable on a 12~GB card.
+
+\textbf{70B model, LoRA.} Frozen base (bf16): $140$~GB. Adapter +
+state: $\sim 500$~MB. Activations (seq~2048, batch~1): $\sim 12$~GB.
+\emph{Total $\approx 153$~GB} --- needs $\geq 2$ H100s.
+
+\textbf{70B model, QLoRA.} Base: $35$~GB + $\sim 2$~GB scales.
+\emph{Total $\approx 49$~GB} --- fits on one 80~GB H100.
+
+\textbf{Full FT, 70B.} Memory from Eq.~\eqref{eq:week2-mem-budget}
+with $b_p+b_g+b_o=16$: $16 \cdot 7 \cdot 10^{10} = 1.12$~TB plus
+activations. \emph{$\geq 16$~H100s per training job} before data
+parallelism.
+
+\textbf{Training FLOPs per token.} LoRA gradients only flow through
+$\Delta$, but the forward pass touches all $N$ base weights. Per-token
+FLOPs stay $\approx 6N$ for forward+backward on LoRA
+(dominated by the frozen matmuls), versus $6N$ for full-FT ---
+\emph{LoRA's compute savings are small; its memory savings are
+large}. This asymmetry is the whole point.
+\end{workedexample}
 
 \subsubsection{\texorpdfstring{Why low rank? The intrinsic-dimensionality hypothesis}{Why low rank? The intrinsic-dimensionality hypothesis}}
 
@@ -253,13 +360,25 @@ useful updates live in an $\approx 10^3$-dimensional subspace, then
 training a rank-8 or rank-16 delta should recover most of the
 benefit.
 
-The caveat is that ``tasks'' here means tasks that are close to the
-pretraining distribution. For \emph{far-domain} transfer --- a
-healthcare- or legal-specific model --- the intrinsic dimension may
-be higher, and full fine-tuning, or LoRA with much higher rank, may be
-required. This is why a production LoRA recipe should almost always
-sweep rank $\{4, 8, 16, 32, 64\}$ and pick on validation loss, rather
-than hardcoding a number.
+\Assum\ (A7.1 in action) The caveat is that ``tasks'' here means tasks
+that are close to the pretraining distribution. For \emph{far-domain}
+transfer --- a healthcare- or legal-specific model --- the intrinsic
+dimension may be higher, and full fine-tuning, or LoRA with much higher
+rank, may be required. This is why a production LoRA recipe should
+almost always sweep rank $\{4, 8, 16, 32, 64\}$ and pick on validation
+loss, rather than hardcoding a number.
+
+\Cons\ \emph{When low-rank fails silently.} The pathological pattern is
+this: training loss descends cleanly, validation loss on in-distribution
+eval looks competitive, but held-out \emph{generation} on
+slightly-off-distribution prompts reverts to base-model behaviour.
+Diagnostics: (i)~compute the singular spectrum of the accumulated
+LoRA update $\Delta W$ after training; if it is rank-saturated (top-$r$
+singular values all of similar magnitude, no knee), the rank is too
+low. (ii)~Sweep rank upward; if eval loss continues to improve past
+$r=64$, the task is not low-intrinsic-dimensional and LoRA is the
+wrong tool. Full fine-tuning or continued pretraining is then
+indicated, despite its cost.
 
 \subsubsection{Which layers to adapt?}
 
@@ -299,8 +418,10 @@ variant. The base is quantized to 4-bit NF4 (see \S\ref{subsec:nf4}
 below), and the LoRA adapters are trained in bfloat16 on top. The
 effect is dramatic: a 65B model that ordinarily requires $\approx
 780$~GB of VRAM for full fine-tuning fits on a single 48~GB GPU for
-adaptation, with near-parity evaluation scores. QLoRA is now the
-default recipe at many production shops.
+adaptation, with \Emp\ near-parity evaluation scores on the
+instruction-following suites reported in the original paper (A7.3:
+benchmark-contingent). QLoRA is now the default recipe at many
+production shops.
 
 \paragraph{DoRA} \citep{liu2024dora} decomposes the weight update into
 magnitude and direction components separately. The claim is that this
@@ -332,6 +453,25 @@ Third, layer-selection bias: adapting only attention projections is
 cheap but can under-represent the MLP subspaces where facts are
 stored \citep{geva2021keyvalue}. Mission-critical domain transfer
 usually needs MLP adaptation.
+
+\begin{provedassumed}[LoRA: what is established vs assumed]
+\textbf{Proved.} The parameter-count identity
+$|\text{LoRA}| = r(d+k)$ is algebraic. The merge identity
+$W_0 + (\alpha/r)BA$ is exact; LoRA adds zero inference-time cost
+when merged. Initialization $B=0$ yields $\Delta W = 0$ at step~0,
+so the adapted model is behaviourally identical to the base at
+initialization.\\
+\textbf{Empirical.} Near-parity of LoRA with full-FT on
+GLUE/instruction tasks at $r \in \{4,\dots,64\}$
+\citep{hu2021lora}. Layer-selection benchmarks favouring
+attention+MLP over attention-only \citep{hu2021lora,
+raschka2023finetuning}. Rank starvation and scaling pathology are
+repeated lab findings, not theorems.\\
+\textbf{Assumed.} Intrinsic-dimensionality of task-relevant updates
+is $\ll \min(d,k)$ (A7.1). This assumption holds for near-domain
+adaptation and fails measurably for far-domain and
+hard-reasoning targets.
+\end{provedassumed}
 
 \subsection{Quantization: The Other Half of Cheap Adaptation}
 
@@ -433,12 +573,34 @@ INT4 kernels.
 QLoRA \citep{dettmers2023qlora} introduced a 4-bit floating-point
 format called NF4 (``normal-float 4-bit'') tuned specifically for
 neural network weights, whose distribution is well approximated by
-a zero-mean normal. NF4's 16 levels are chosen as the equal-mass
-quantiles of a unit normal, so each quantization bucket receives
-the same weight mass. A second optimization, ``double
-quantization,'' quantizes the per-block quantization constants
-themselves. The combined scheme delivers 4-bit base weights, 16-bit
-LoRA adapters, and near-parity downstream evaluation.
+a zero-mean normal.
+
+\begin{derivation}[NF4 as equal-mass quantiles of a unit normal]
+\Assum\ After per-block affine normalization, weights within a block
+are approximately $\mathcal{N}(0,1)$-distributed. \Def\ Construct the
+$2^4 = 16$ representable levels $\{q_0, \dots, q_{15}\}$ so that the
+intervals $[q_i, q_{i+1}]$ each carry equal probability mass under
+the standard normal. Writing $\Phi$ for the standard-normal CDF, set
+\[
+  q_i = \Phi^{-1}\!\left(\frac{i + 1/2}{16}\right),
+  \qquad i = 0,\dots,15,
+\]
+with a symmetrized and zero-anchored variant in the actual recipe to
+guarantee $0 \in \{q_i\}$ (so that exact-zero weights remain exact
+after quantization). \Cons\ Compared to uniform INT4, NF4 spends more
+representational resolution near zero, where most weight mass lives,
+and less in the tails --- matching the empirical weight histogram of
+pretrained LLMs.
+\end{derivation}
+
+A second optimization, ``double quantization,'' quantizes the
+per-block quantization constants themselves: the block scales are
+stored in 8-bit rather than 32-bit, adding another $\approx 0.37$
+bits/parameter of saving at negligible error. The combined scheme
+delivers 4-bit base weights, 16-bit LoRA adapters, and \Emp\
+near-parity downstream evaluation on the evaluation suites reported in
+\citet{dettmers2023qlora} (predominantly instruction-following and
+zero-shot benchmarks).
 
 \paragraph{FP8 and the emergence of training quantization.}
 Recent generations of hardware (H100, Blackwell) natively support
@@ -502,18 +664,44 @@ is:
 \end{enumerate}
 
 The result is that a single consumer-class GPU can fine-tune a 65B
-model, and a single 80~GB H100 can fine-tune much larger ones. The
-extensive evaluation in \citet{dettmers2023qlora} shows that QLoRA's
-downstream quality is statistically indistinguishable from 16-bit
-LoRA's, which in turn is close to full fine-tuning's, which in turn
-is close to pretrained-base's on most zero-shot tasks. The combined
-stack is a dramatic democratization of LLM adaptation.
+model, and a single 80~GB H100 can fine-tune much larger ones. \Emp\
+The extensive evaluation in \citet{dettmers2023qlora} shows that
+QLoRA's downstream quality is statistically indistinguishable from
+16-bit LoRA's, which in turn is close to full fine-tuning's, which
+in turn is close to pretrained-base's on most zero-shot tasks
+\emph{on the evaluation suites used in that paper} --- the A7.3
+caveat applies, and far-domain or hard-reasoning tasks can show
+measurable gaps. The combined stack is a dramatic democratization of
+LLM adaptation for tasks within the near-domain, near-capability
+envelope.
 
 From a systems perspective, the important QLoRA property is
 \emph{separability}. The 4-bit base lives once in HBM; hundreds of
 adapters (one per tenant, experiment, or policy) live on disk as
 small files. Swapping adapters is a cheap operation. This enables
 multi-tenant serving architectures that were previously infeasible.
+
+\begin{provedassumed}[Quantization and QLoRA: what is established vs assumed]
+\textbf{Proved.} The bit-width arithmetic: NF4 base + fp16 scales +
+double-quantized 8-bit meta-scales gives $\approx 4.37$ bits per base
+weight. Per-block affine dequantization $w \approx s \cdot q$ is exact
+for the representable grid.\\
+\textbf{Empirical.} QLoRA downstream quality $\approx$ 16-bit LoRA
+$\approx$ 16-bit full-FT on instruction-following benchmarks
+\citep{dettmers2023qlora}; LLM.int8() preserves perplexity
+at $\approx 2\times$ memory saving
+\citep{dettmers2022llmint8}; GPTQ 4-bit preserves perplexity on
+common benchmarks \citep{frantar2023gptq}; AWQ competitive with
+GPTQ at faster INT4 kernels \citep{lin2024awq}. All of these are
+\emph{benchmark-contingent} claims (A7.3) --- representative of a
+task distribution, not theorems on all tasks.\\
+\textbf{Assumed.} (A7.2) Quantization error on tokens outside the
+support of $\mathcal{D}_{\mathrm{cal}}$ is bounded. (A7.1) Low-rank
+adequacy of the adapter. Near-parity claims do \emph{not} generalize
+uniformly to hard-reasoning, long-context, or far-domain workloads;
+production evaluation must cover the actual deployed task
+distribution.
+\end{provedassumed}
 
 \subsection{Adaptation Data and the Instruction-Tuning Overlap}
 
