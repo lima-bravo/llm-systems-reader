@@ -885,6 +885,43 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
 
 See \texttt{labs/week01/week01\_lab\_probabilistic\_foundations.ipynb}.
 
+\subsection*{Derivation Ledger (Ch. 1)}
+
+\begin{derivledger}
+A compact index of the key identities established in this chapter.
+Each entry cites the full derivation already given in the text; no
+new content.
+\begin{itemize}
+  \item \textbf{Chain-rule factorisation of sequences.}\
+        $p_\theta(w_{1:T}) = \prod_{t=1}^{T} p_\theta(w_t \mid w_{<t})$
+        --- Eq.~\eqref{eq:chain}.
+  \item \textbf{MLE $\to$ token-normalised NLL $\to$ cross-entropy.}\
+        Five-line derivation Eqs.~\eqref{eq:mle-1}--\eqref{eq:mle};
+        assumption \textbf{(A1.1)} i.i.d.\ sequences applied at line
+        Eq.~\eqref{eq:mle-1}. Final form connects training loss to
+        the cross-entropy Eq.~\eqref{eq:nll-ce}.
+  \item \textbf{Cross-entropy identity.}\
+        $H(p,q) = H(p) + \KL(p \,\|\, q)$
+        --- Eq.~\eqref{eq:ce-kl}. Non-negativity of KL gives
+        $H(p,q) \ge H(p)$, with equality iff $q = p$ a.e.
+  \item \textbf{Softmax and shift invariance.}\
+        $\mathrm{softmax}(z) = \mathrm{softmax}(z + c \mathbf{1})$
+        --- Eq.~\eqref{eq:softmax}; $\exp(c)$ cancels in numerator
+        and denominator.
+  \item \textbf{Perplexity and ordering.}\
+        $\mathrm{PPL} = \exp(H)$, Eqs.~\eqref{eq:perplexity}--\eqref{eq:ppl-argmin};
+        monotone $\exp$ implies $\arg\min H = \arg\min \mathrm{PPL}$.
+  \item \textbf{ECE (finite-bin estimator).}\
+        $\mathrm{ECE} = \sum_{b=1}^{B} (|B_b|/N)\,|\bar a_b - \bar c_b|$
+        --- Eq.~\eqref{eq:ece}; population form Eq.~\eqref{eq:ece-population}.
+        Small-sample caveat carried with the estimator.
+  \item \textbf{Brier score.}\
+        Proper scoring-rule decomposition --- Eq.~\eqref{eq:brier}.
+  \item \textbf{Temperature rescaling.}\
+        Divides logits by $\tau$ before softmax --- Eq.~\eqref{eq:temperature}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 1 Takeaway}
 
 \begin{quote}
