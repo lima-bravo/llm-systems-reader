@@ -47,6 +47,48 @@ By the end of this week, you should be able to:
   \item Attention interpretability limits.
 \end{itemize}
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week4-notation}
+
+\begin{notationbox}
+\textbf{Shapes.}
+$T$: context length (tokens). $d$: model / residual-stream width
+(also $d_{\mathrm{model}}$). $H$: number of attention heads.
+$d_k$: per-head query/key dimension, typically $d_k = d/H$.
+$d_v$: per-head value dimension, typically $d_v = d_k$.
+$G$: number of key/value groups in GQA, with $G \mid H$; $G = H$
+recovers MHA, $G = 1$ recovers MQA.
+$L$: number of Transformer blocks (layers).
+$d_f$: FFN hidden width, $4d$ classic / $\tfrac{8}{3}d$ for SwiGLU.
+$b$: bytes per tensor element ($b{=}2$ for bf16/fp16).
+
+\textbf{Matrices.}
+$X \in \R^{T\times d}$ token activations. $Q,K \in \R^{T\times d_k}$
+per-head query/key; $V \in \R^{T\times d_v}$. $A \in \R^{T\times T}$
+post-softmax attention weights. $W_Q, W_K \in \R^{d\times d_k}$,
+$W_V \in \R^{d\times d_v}$, $W_O \in \R^{H d_v \times d}$.
+
+\textbf{Standing assumptions.}
+\textbf{(A4.1)} The variance-preserving scaling argument for
+$1/\sqrt{d_k}$ assumes $Q_{ij}, K_{ij}$ have zero mean, unit
+variance, and are pairwise independent across the summation index
+(Eq.~\eqref{eq:week4-qk-var-assumption} below). These conditions
+hold only at initialization; during training, the variance is
+empirically regularized by gradient flow but no longer by
+independence.
+\textbf{(A4.2)} RoPE's relative-position identity
+(Eq.~\eqref{eq:week4-rope-relative}) is \emph{exact} under exact
+arithmetic, but extrapolation beyond the training range relies on
+the further \emph{empirical} assumption that learned query/key
+statistics generalize to unseen rotation angles --- which they do
+only partially without interpolation surgery (NTK-aware, YaRN).
+\textbf{(A4.3)} Head-specialization, induction-head formation, and
+attention-pattern interpretations are \Emp\ empirical phenomena
+\citep{elhage2021mathematical, olsson2022induction}, not
+architectural guarantees. They are training-outcome dependent and
+can regress under recipe changes.
+\end{notationbox}
+
 \subsection{Conceptual Core: Why Attention Replaced Recurrence}
 
 Prior sequence models (RNNs, LSTMs, GRUs) compute each hidden state
@@ -99,32 +141,51 @@ for $j \le i$ and $M_{ij} = -\infty$ for $j > i$. Figure
 \begin{figure}[h]
 \centering
 \input{figures/attention_scores}
-\caption{Scaled dot-product attention.
-  Queries $Q$ and keys $K^{\top}$ multiply to form the attention
-  score matrix $Q K^{\top} \in \mathbb{R}^{T \times T}$, which is
-  scaled by $\sqrt{d_k}$, masked, softmax-normalized, and finally
-  used as weights against the values $V$.}
+\caption{Scaled dot-product attention, governing
+  Eq.~\eqref{eq:week4-attn}. Queries $Q$ and keys $K^{\top}$ multiply
+  to form the attention score matrix $Q K^{\top} \in \mathbb{R}^{T
+  \times T}$, which is scaled by $\sqrt{d_k}$
+  (Eq.~\eqref{eq:week4-qk-sum}), masked, softmax-normalized, and
+  finally used as weights against the values $V$.}
 \label{fig:week4-attn-scores}
 \end{figure}
 
 \subsubsection{\texorpdfstring{Why $\sqrt{d_k}$?}{Why sqrt(d\_k)?}}
 
-Assume $Q_{ij}$ and $K_{ij}$ are independent with zero mean and unit
-variance. Then each entry of $QK^{\top}$ is a sum of $d_k$ independent
-products:
+\begin{derivation}[Variance-preserving score scaling]
+\Assum\ (A4.1): $Q_{im}, K_{jm}$ are random variables with
+$\E[Q_{im}] = \E[K_{jm}] = 0$, $\Var[Q_{im}] = \Var[K_{jm}] = 1$,
+and $Q_{im} \perp K_{jm'}$ for all $m,m'$.
+\label{eq:week4-qk-var-assumption}
+
+Each score entry is a sum over the head dimension:
 \begin{equation}
-(QK^{\top})_{ij} \;=\; \sum_{m=1}^{d_k} Q_{im} K_{jm},
-\qquad
-\mathrm{Var}\!\left[(QK^{\top})_{ij}\right] = d_k.
+(QK^{\top})_{ij} \;=\; \sum_{m=1}^{d_k} Q_{im} K_{jm}.
+\label{eq:week4-qk-sum}
 \end{equation}
-Without rescaling, the logit magnitudes grow with $\sqrt{d_k}$; after
-softmax, this drives attention toward hard one-hot distributions for
-even moderately-sized models and \emph{kills} the gradient through the
-softmax. Dividing by $\sqrt{d_k}$ keeps the variance of each score at
-unity regardless of head dimension, preserving a usable gradient.
-This is a dimensional-analysis argument and it holds whether or not
-the initialization satisfies the unit-variance assumption exactly --
-the practical effect is consistent across head sizes.
+By independence and zero mean, each summand satisfies
+$\E[Q_{im}K_{jm}] = \E[Q_{im}]\E[K_{jm}] = 0$ and
+$\Var[Q_{im}K_{jm}] = \E[Q_{im}^2]\E[K_{jm}^2] - 0 = 1$. Summing $d_k$
+such independent zero-mean unit-variance random variables gives
+\begin{equation}
+\Var\!\left[(QK^{\top})_{ij}\right] \;=\; \sum_{m=1}^{d_k} 1 \;=\; d_k,
+\qquad
+\mathrm{sd}\!\left[(QK^{\top})_{ij}\right] = \sqrt{d_k}.
+\end{equation}
+Dividing by $\sqrt{d_k}$ restores unit variance:
+$\Var[(QK^{\top}/\sqrt{d_k})_{ij}] = 1$.
+\end{derivation}
+
+\Cons\ Without rescaling, logit magnitudes scale like $\sqrt{d_k}$;
+post-softmax this drives attention toward one-hot distributions
+and the gradient through the softmax vanishes, because
+$\partial \mathrm{softmax}_i / \partial z_j = s_i(\delta_{ij} - s_j)$
+is largest near the uniform distribution and collapses toward zero
+as $s_i$ approaches~0 or~1. \Heur\ A4.1's independence assumption
+breaks mid-training --- learned $Q/K$ distributions are correlated ---
+but the dimensional-analysis argument survives: the $\sqrt{d_k}$ scale
+is empirically robust across head sizes because it is the only
+dimensionally correct way to decouple logit magnitude from $d_k$.
 
 \subsubsection{Interpretation: Differentiable Lookup}
 
@@ -152,6 +213,35 @@ Total: $O(T d\, d_k + T^2 d_k)$. The quadratic $T^2$ term dominates
 for long contexts; the $T d d_k$ term dominates for short contexts.
 Memory is $O(T^2)$ for the attention matrix $A$ -- the target of
 FlashAttention (\S\,FlashAttention below).
+
+\begin{workedexample}[Full-block FLOP budget (Llama-2-7B geometry)]
+Fix $T=2048$, $d=4096$, $H=32$, $d_k=d_v=128$, $d_f = 11008$
+(SwiGLU), and count FLOPs per block forward pass (count a multiply-
+add as 2 FLOPs; the dominant terms only):
+
+\textbf{Attention.} All four projections $W_Q,W_K,W_V,W_O$ are
+$d \times d$: $4 \cdot 2 T d^2 = 8 T d^2 \approx 8 \cdot 2048 \cdot
+4096^2 \approx 2.75 \cdot 10^{11}$~FLOPs.
+Score matrix $Q K^{\top}$ (all heads together): $2 T^2 d
+\approx 2 \cdot 2048^2 \cdot 4096 \approx 3.44 \cdot 10^{10}$.
+$A V$: another $2 T^2 d \approx 3.44 \cdot 10^{10}$.
+\emph{Attention subtotal:} $\approx 3.44 \cdot 10^{11}$~FLOPs.
+
+\textbf{FFN (SwiGLU).} Three matrices $W_g, W_u \in \R^{d_f\times d}$
+(up) and $W_2 \in \R^{d\times d_f}$ (down):
+$3 \cdot 2 T d\, d_f \approx 6 \cdot 2048 \cdot 4096 \cdot 11008
+\approx 5.54 \cdot 10^{11}$~FLOPs.
+
+\textbf{Block total:} $\approx 3.44 \cdot 10^{11} + 5.54 \cdot
+10^{11} = 9.0 \cdot 10^{11}$~FLOPs. With 32 blocks, per-sequence
+forward is $\approx 2.9 \cdot 10^{13}$~FLOPs. Checking against the
+$6ND$ training-FLOP rule ($N = 7 \cdot 10^9$, one forward + two
+backward passes at $D = T = 2048$ tokens): $6ND \approx 8.6 \cdot
+10^{13}$, consistent with our forward count being roughly one third
+of training FLOPs. \Ident\ FFN dominates the FLOP budget
+($\approx 62\%$ of block cost at $T=2048$); attention dominates at
+longer $T$ because of the $T^2$ scaling.
+\end{workedexample}
 
 \subsection{Causal Masking}
 
@@ -202,19 +292,21 @@ so the parameter count matches a single full-size head. Figure
 \begin{figure}[h]
 \centering
 \input{figures/multihead_attention}
-\caption{Multi-head attention. $H$ independent attention heads operate
-  in parallel over the same input $X$; their outputs are concatenated
-  along the feature axis and projected back to model dimension $d$ by
-  $W_O$.}
+\caption{Multi-head attention, governing Eq.~\eqref{eq:week4-mha}.
+  $H$ independent attention heads (each following
+  Eq.~\eqref{eq:week4-attn}) operate in parallel over the same input
+  $X$; their outputs are concatenated along the feature axis and
+  projected back to model dimension $d$ by $W_O$.}
 \label{fig:week4-mha}
 \end{figure}
 
-Empirically, heads specialize \citep{elhage2021mathematical}: some
-attend to adjacent positions (n-gram heads), some to syntactic
-dependencies, some to previously-seen tokens of the same type
-(induction heads, \citealt{olsson2022induction}, revisited in
-Week~5). This specialization is not engineered in; it emerges from
-training.
+\Emp\ Heads specialize \citep{elhage2021mathematical}: some attend to
+adjacent positions (n-gram heads), some to syntactic dependencies,
+some to previously-seen tokens of the same type (induction heads,
+\citealt{olsson2022induction}, revisited in Week~5). This
+specialization is not engineered in; it \emph{emerges} from training
+(A4.3) and can regress under recipe changes --- it is an observation,
+not a guarantee.
 
 \subsubsection{Multi-Query and Grouped-Query Attention}
 
@@ -235,6 +327,25 @@ architectural mitigations:
 GQA is essentially always the better engineering default for
 inference-optimized models: the quality cost is small and the
 memory win on long contexts is substantial.
+
+\begin{provedassumed}[Attention block: what is established vs assumed]
+\textbf{Proved.} Permutation-equivariance of raw attention (no
+positional signal); the score decomposition
+$A V = \mathrm{softmax}(QK^{\top}/\sqrt{d_k} + M) V$ is exact;
+causal masking by $-\infty$ strictly zeros post-softmax weights at
+$j > i$; KV-cache formula Eq.~\eqref{eq:week4-kvbytes} is an exact
+byte count. \\
+\textbf{Empirical.} Head specialization (attention circuits,
+induction heads) \citep{elhage2021mathematical, olsson2022induction}.
+GQA quality near-parity with MHA \citep{ainslie2023gqa} ---
+benchmark-contingent. Attention-sink behaviour: first-token
+residual mass accumulation is observed, not derived. \\
+\textbf{Assumed.} A4.1's independence/unit-variance assumption for
+the $\sqrt{d_k}$ derivation holds at initialization; the scaling
+persists empirically despite the assumption breaking mid-training.
+A4.3: head specialization is training-outcome dependent and should
+not be treated as an architectural contract.
+\end{provedassumed}
 
 \subsection{Feed-Forward Blocks}
 
@@ -298,10 +409,10 @@ modern LLMs. Figure \ref{fig:week4-block} shows a pre-norm block.
 \begin{figure}[h]
 \centering
 \input{figures/transformer_block}
-\caption{A pre-norm Transformer block. Layer normalization is applied
-  before each sublayer; the residual connections bypass the
-  normalization so the residual stream remains an identity at
-  initialization.}
+\caption{A pre-norm Transformer block, governing
+  Eq.~\eqref{eq:week4-prenorm}. Layer normalization is applied before
+  each sublayer; the residual connections bypass the normalization so
+  the residual stream remains an identity at initialization.}
 \label{fig:week4-block}
 \end{figure}
 
@@ -396,20 +507,37 @@ R_{t, i} \;=\; \begin{pmatrix}
 \end{pmatrix}.
 \end{equation}
 The RoPE-rotated query is $\tilde q_t = R_t q_t$; similarly for $k_t$.
-The critical property is that
-\begin{equation}
-\label{eq:week4-rope-relative}
+
+\begin{derivation}[RoPE relative-position identity]
+A 2-D rotation matrix $R_\theta$ satisfies
+$R_\theta^{\top} = R_{-\theta}$ (transpose flips the sign of the
+off-diagonal sines) and $R_\alpha R_\beta = R_{\alpha+\beta}$
+(rotations compose by angle addition). Applied to a block-diagonal
+$R_t = \mathrm{diag}(R_{t\theta_1}, \dots, R_{t\theta_{d_k/2}})$ ---
+where each 2-D block rotates independently by its own frequency
+$\theta_i$ --- both identities hold blockwise, hence
+$R_t^{\top} R_s = R_{-t} R_s = R_{s-t}$. Therefore
+\begin{align}
 (\tilde q_t)^{\top} \tilde k_s
-\;=\; q_t^{\top} R_t^{\top} R_s k_s
-\;=\; q_t^{\top} R_{s-t} k_s,
-\end{equation}
-i.e., the attention score depends only on the \emph{relative}
-position $s - t$, not on the absolute positions. This is the key
-formal property RoPE guarantees: relative-position information is
-baked into every pre-softmax score, without adding parameters. RoPE
-interacts cleanly with FlashAttention (the rotation is applied to
-$q$ and $k$ before the score, so the kernel does not see it) and has
-become the de facto standard.
+&= (R_t q_t)^{\top} (R_s k_s) \\
+&= q_t^{\top} R_t^{\top} R_s k_s \\
+&= q_t^{\top} R_{-t} R_s k_s
+  \qquad (\text{transpose} = \text{inverse rotation}) \\
+&= q_t^{\top} R_{s-t} k_s.
+\label{eq:week4-rope-relative}
+\end{align}
+The score depends only on the \emph{relative} displacement
+$s - t$, not on absolute positions. \Ident\ Exact under exact
+arithmetic. (A4.2): extrapolation beyond training range is
+\emph{not} a corollary --- it relies on empirical generalization of
+learned $q, k$ statistics to unseen rotation angles.
+\end{derivation}
+
+This is the key formal property RoPE guarantees: relative-position
+information is baked into every pre-softmax score, without adding
+parameters. RoPE interacts cleanly with FlashAttention (the rotation
+is applied to $q$ and $k$ before the score, so the kernel does not
+see it) and has become the de facto standard.
 
 \subsubsection{Positional Encoding Decision Matrix}
 
@@ -426,6 +554,26 @@ RoPE            & yes    & yes (with scaling) & no \\
 \hline
 \end{tabular}
 \end{center}
+
+\begin{provedassumed}[Positional encoding: what is established vs assumed]
+\textbf{Proved.} Attention is permutation-equivariant without a
+positional signal (algebraic). RoPE's relative-position identity
+Eq.~\eqref{eq:week4-rope-relative} is exact under exact arithmetic
+(2-D rotation algebra). ALiBi's distance bias
+Eq.~\eqref{eq:week4-alibi} is a zero-parameter additive penalty. \\
+\textbf{Empirical.} ALiBi extrapolation beyond training length is
+benchmark-supported at the lengths measured in
+\citet{press2022alibi}; RoPE extrapolation requires NTK-aware or YaRN
+interpolation to remain usable. Sinusoidal encodings ``support''
+extrapolation weakly in the sense that the signal is still a valid
+sinusoid, but effective context quality drops sharply beyond train
+length. \\
+\textbf{Assumed.} A4.2: learned $Q,K$ statistics generalize across
+unseen rotation angles. This fails measurably at long-context
+extrapolation without explicit surgery on $\{\theta_i\}$. Production
+long-context RoPE deployments must evaluate at target context
+length, not rely on the identity alone.
+\end{provedassumed}
 
 \subsection{The KV Cache}
 
@@ -446,19 +594,42 @@ $Q$ against a $T$-row $K$), down from $O(T^2 d_k)$.
 
 \subsubsection{KV Cache Memory Math}
 
-The cache stores $K$ and $V$ for every position, layer, and head.
-Memory per token is
+The cache stores $K$ and $V$ for every position and layer. Under
+MHA there are $H$ independent K/V tensors per layer; under GQA with
+$G$ groups, there are only $G$. The factor of 2 counts both $K$ and
+$V$. The general formula is
 \begin{equation}
 \label{eq:week4-kvbytes}
-\text{bytes/token} \;=\; 2 \cdot L \cdot H \cdot d_k \cdot b,
+\text{bytes/token}
+\;=\; 2 \cdot L \cdot G_{\mathrm{eff}} \cdot d_k \cdot b,
+\qquad
+G_{\mathrm{eff}} = \begin{cases}
+H & \text{MHA}, \\
+G & \text{GQA}, \\
+1 & \text{MQA}.
+\end{cases}
 \end{equation}
-with $L$ layers, $H$ heads, $d_k$ per-head dim, $b$ bytes per element
-($b = 2$ for fp16/bf16). For a 70\,B-parameter GQA model with
-$L = 80$, $H = 64$, $d_k = 128$, $G = 8$ (GQA with 8 KV heads),
-Eq.~\eqref{eq:week4-kvbytes} becomes
-$2 \cdot 80 \cdot 8 \cdot 128 \cdot 2 \approx 0.33$\,MB per token.
-A 128\,k context then requires $\sim\!42$\,GB of KV cache
-\emph{per request} -- roughly the same as the weights themselves.
+\Ident\ Substituting $G_{\mathrm{eff}}$ recovers the MHA, GQA, and MQA
+cases as a single equation. The dense-vs-GQA compression ratio is
+$H/G$: Llama-2-70B uses $H=64$, $G=8$, cutting KV cache by $8\times$.
+
+\begin{workedexample}[KV cache budgets: dense MHA vs GQA vs MQA]
+Fix $L=80$, $H=64$, $d_k=128$, $b=2$~(bf16), and compute
+bytes/token from Eq.~\eqref{eq:week4-kvbytes}:
+\begin{align*}
+\text{MHA} \; (G_{\mathrm{eff}}=64) &:
+  \;2 \cdot 80 \cdot 64 \cdot 128 \cdot 2 \approx 2.62~\text{MB/tok},\\
+\text{GQA}, G=8 \; (G_{\mathrm{eff}}=8) &:
+  \;2 \cdot 80 \cdot 8 \cdot 128 \cdot 2 \approx 0.33~\text{MB/tok},\\
+\text{MQA} \; (G_{\mathrm{eff}}=1) &:
+  \;2 \cdot 80 \cdot 1 \cdot 128 \cdot 2 \approx 41~\text{KB/tok}.
+\end{align*}
+At 128k context, \emph{per request}: MHA $\approx 336$~GB (larger
+than the weights at $\approx 140$~GB --- unusable); GQA $\approx
+42$~GB (tractable on an H100); MQA $\approx 5.3$~GB (multi-tenant
+serving friendly at some quality cost).
+\end{workedexample}
+
 This is why GQA, KV quantization, and KV eviction policies
 (e.g., StreamingLLM, attention-sink attention) have become
 first-order engineering concerns.
@@ -492,10 +663,13 @@ hierarchy.
 
 Visualizing the attention matrix $A$ is a common interpretability
 practice: plot attention weights on a heatmap, highlight what each
-token ``looks at.'' \citet{jain2019attention} argued that such
-visualizations are \emph{not} reliable explanations because there
-exist adversarial attention distributions that produce the same
-output for different attention patterns.
+token ``looks at.'' \Emp\ \citet{jain2019attention} constructed
+adversarial attention distributions that produce the same output
+from different attention patterns --- a demonstration, not a
+theorem, but one that undermines any causal reading of the heatmap.
+\Heur\ In production, treat heatmaps as telemetry (degeneracy
+detection, attention-sink monitoring), not as mechanistic
+explanations (A4.3).
 
 Three more principled alternatives, developed largely in the
 Transformer circuits line of work
