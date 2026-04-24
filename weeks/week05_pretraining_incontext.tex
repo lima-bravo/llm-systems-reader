@@ -82,6 +82,43 @@ downstream deployment (Weeks 7--11) is, at bottom, a mechanism for
 constructing the right prompts and constraining the outputs of this
 engine.
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week5-notation}
+
+\begin{notationbox}
+For this chapter: $N$ is parameter count, $D$ is training tokens, and
+$C$ is training compute in FLOPs. Sequence length is $T$ (reused for
+context length and, where noted, sampling temperature; we disambiguate
+by context). Position index is $t \in \{1, \ldots, T\}$. The
+vocabulary has size $V$ and $\mathbf{z} \in \R^{V}$ denotes pre-softmax
+logits at a given position; $p(\cdot)$ is the resulting token
+distribution. Sampling parameters: temperature $T_s > 0$ (written $T$
+in decoding formulas by convention), top-$k$ cutoff
+$k \in \{1, \ldots, V\}$, nucleus threshold $p \in (0, 1]$, min-$p$
+coefficient $\alpha \in (0, 1)$, repetition-penalty $\rho \ge 1$.
+Beam width is $B$. For ICL few-shot prompts, $k$-shot denotes the
+number of in-context exemplars (distinguished from top-$k$ by
+context). For memorization, $\ell$ is the recall string length and
+$k$ is duplication count (reusing symbol intentionally — see
+Eq.~\eqref{eq:week5-memorization}).
+
+Standing assumptions are:
+\textbf{(A5.1)} Chinchilla exponents $(\alpha, \beta)$ and the
+compute-optimal form $(N^\star, D^\star) \propto C^{1/2}$ are imported
+from Week~2 (assumption A2.2) and extrapolate only within the fit
+range.
+\textbf{(A5.2)} Mechanistic hypotheses for in-context learning
+(implicit Bayesian inference, induction heads, gradient descent in
+the forward pass) are \emph{interpretive hypotheses} with partial
+empirical support on controlled tasks; none is a proved theorem for
+natural-language ICL.
+\textbf{(A5.3)} The memorization law Eq.~\eqref{eq:week5-memorization}
+is an \emph{empirical parametric fit} to extraction-probe data; its
+exponents $(a, b, c)$ vary by model family, corpus, and probe
+methodology, and the functional form is not derived from first
+principles.
+\end{notationbox}
+
 \subsection{Autoregressive, Masked, and Prefix Language Modeling}
 
 Three objectives have competed for the LLM crown; the decoder-only
@@ -244,13 +281,42 @@ is
 \label{eq:week5-chinchilla}
 L(N, D) \;=\; E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}.
 \end{equation}
-Under a compute budget $C = 6 N D$, the minimizing allocation is
-$N^\star \propto C^{1/2}, D^\star \propto C^{1/2}$, i.e.,
+
+\begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Week~2]
+Fix $C \approx 6\,N D$. Minimizing Eq.~\eqref{eq:week5-chinchilla}
+subject to $N D = C/6$ via the Lagrangian
+$\mathcal{J}(N, D, \mu) = L(N, D) - \mu\,(N D - C/6)$ yields the
+first-order conditions
+\[
+\alpha\,A\,N^{-\alpha-1} = \mu\,D,
+\qquad
+\beta\,B\,D^{-\beta-1} = \mu\,N.
+\]
+Eliminating $\mu$ gives
+$\alpha A\,N^{-\alpha} = \beta B\,D^{-\beta}$, fixing the ratio of the
+two loss terms at the optimum. Combined with the budget constraint
+this produces
+\[
+N^\star \propto C^{a},
+\quad
+D^\star \propto C^{b},
+\quad
+a = \frac{\beta}{\alpha + \beta},
+\quad
+b = \frac{\alpha}{\alpha + \beta}.
+\]
+For Chinchilla's fitted $\alpha \approx 0.34$, $\beta \approx 0.28$,
+$a \approx b \approx 0.5$, recovering the
+``roughly 20 tokens per parameter'' rule.
+\end{derivation}
+
+Under the compute budget $C = 6 N D$, the minimizing allocation is
+therefore $N^\star \propto C^{1/2}, D^\star \propto C^{1/2}$, i.e.,
 \emph{roughly 20 training tokens per parameter} at current fitted
 constants. For a $10^{25}$ FLOPs budget this yields $N \sim 70$\,B,
 $D \sim 1.4$\,T tokens -- the Chinchilla recipe.
 
-\emph{Why this matters operationally}: the cost of an LLM is
+\Heur\ \emph{Why this matters operationally}: the cost of an LLM is
 dominated by \emph{training} compute for frontier labs and by
 \emph{inference} compute for deployed services. A
 \emph{Chinchilla-undertrained} large model is wasteful for training
@@ -326,6 +392,34 @@ complementary views of a phenomenon that is empirically rich and
 mechanistically heterogeneous. For a survey, see
 \citet{dong2023survey}.
 
+\begin{provedassumed}
+\emph{Proved (within scope).}
+(i) On linear-regression toy settings, a Transformer \emph{can} be
+constructed whose forward pass implements one step of GD on the
+in-context examples~\citep{vonoswald2023transformers}; this is a
+\emph{constructive possibility theorem}, not a claim about what
+pretrained LLMs actually do.
+(ii) Induction-head circuits can be \emph{identified} via
+attribution patching in trained autoregressive LMs, and their
+emergence coincides with a loss drop attributable to in-context
+copying~\citep{olsson2022induction}; this is a \emph{mechanistic
+observation}, not a capability theorem.
+
+\emph{Assumed.}
+(i) That implicit-Bayesian-inference, induction-head, and
+GD-in-the-forward-pass hypotheses \emph{scale} to natural-language
+ICL in frontier models. Evidence exists in each case but is
+strongest for controlled tasks; extrapolation to open-ended language
+tasks is interpretive.
+(ii) That ICL is ``learning'' in any operational sense. No parameter
+update occurs; the phenomenon is \emph{conditional distribution
+selection} under A5.2.
+(iii) That ICL quality on a benchmark is model-stable: in practice
+prompt order, separators, and label verbalization can move accuracy
+by 20~points~\citep{lu2022fantastically}, so the ``ICL accuracy'' of
+a given model is itself a distribution over prompts, not a scalar.
+\end{provedassumed}
+
 \subsection{Few-Shot Format Sensitivity}
 
 Lu et al.~\citep{lu2022fantastically} showed that simply
@@ -347,13 +441,22 @@ across several paraphrases of the same prompt.
 
 \subsection{Sampling and Decoding}
 
+Recall from \S\ref{sec:week5-notation} the decoding parameter set
+$(T_s, k, p, \alpha, \rho, B)$: temperature, top-$k$ cutoff, nucleus
+threshold, min-$p$ coefficient, repetition penalty, beam width. All
+operate on the per-position logit vector $\mathbf{z} \in \R^{V}$.
+
 Given logits $\mathbf{z} \in \mathbb{R}^V$ at each step, the
 conditional distribution after temperature $T$ scaling is
 \begin{equation}
+\label{eq:week5-softmax-temp}
 p_T(i) \;=\; \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}.
 \end{equation}
 $T \to 0$ recovers greedy (argmax), $T = 1$ recovers the model's
-native distribution, $T > 1$ flattens it.
+native distribution, $T > 1$ flattens it. (Throughout this section,
+$T$ is temperature; sequence length from
+Eq.~\eqref{eq:week5-pretrain-obj} does not appear in the decoding
+formulas.)
 
 \subsubsection{Greedy and Beam}
 
@@ -393,6 +496,47 @@ $p_{\max}$ is the top-1 probability and $\alpha \in (0, 1)$. This
 handles heavy-tail distributions more robustly than top-$p$ at high
 temperatures and has seen rapid adoption in 2024--2025 local-model
 inference stacks.
+
+\begin{workedexample}[top-$k$ vs top-$p$ vs min-$p$ on identical logits]
+Fix the post-temperature distribution over five tokens
+$\{w_1, \ldots, w_5\}$ at $T = 1$:
+\[
+p \;=\; (0.50,\; 0.25,\; 0.15,\; 0.06,\; 0.04).
+\]
+The three cutoffs behave differently because each discretizes a
+different feature of the distribution.
+
+\textbf{Top-$k$ with $k = 3$.} Keep the three highest-probability
+tokens $\{w_1, w_2, w_3\}$ with pre-normalization masses
+$(0.50, 0.25, 0.15)$, total $0.90$. Renormalized to
+$(0.556, 0.278, 0.167)$; $w_4$ and $w_5$ get probability zero.
+
+\textbf{Top-$p$ (nucleus) with $p = 0.9$.}
+Sort by descending probability; the smallest prefix whose cumulative
+mass reaches $0.9$ is $\{w_1, w_2, w_3\}$ (cumulative
+$0.50 + 0.25 + 0.15 = 0.90$). Same kept set as top-$k$ for this
+distribution, but this is \emph{coincidence}: shift mass to
+$(0.50, 0.10, 0.10, 0.15, 0.15)$ and top-$p = 0.9$ would keep
+$\{w_1, w_4, w_5, w_2\}$ (reordering by probability to cumulative
+$0.90$) while top-$k = 3$ would keep $\{w_1, w_4, w_5\}$.
+
+\textbf{Min-$p$ with $\alpha = 0.1$.} The threshold is
+$\alpha \cdot p_{\max} = 0.1 \cdot 0.50 = 0.05$. Kept tokens are
+those with $p_i \ge 0.05$: $\{w_1, w_2, w_3, w_4\}$, masses
+$(0.50, 0.25, 0.15, 0.06)$, total $0.96$. Renormalized to
+$(0.521, 0.260, 0.156, 0.063)$. Min-$p$ retains $w_4$ that top-$k=3$
+and top-$p=0.9$ both dropped, because $w_4$ is still within $10\times$
+of the top.
+
+\textbf{Under temperature reshape.} Raise temperature to $T_s = 2$
+and re-softmax the underlying logits (not shown); the distribution
+flattens, $p_{\max}$ falls, so min-$p$'s threshold falls with it and
+its kept set \emph{grows} automatically — this is the behavior that
+distinguishes min-$p$ from top-$p$ under high-$T$ sampling. Top-$p$
+at fixed $p = 0.9$ would also grow but more slowly; top-$k$ at fixed
+$k$ stays constant regardless of entropy, which is why pure top-$k$
+is a poor default.
+\end{workedexample}
 
 \subsubsection{Repetition Penalty}
 
@@ -448,22 +592,62 @@ rescales the whole distribution without changing the argmax.
 
 \subsection{Emergence: Real or Metric Artefact?}
 
-\citet{wei2022emergent} reported that several LLM capabilities
+\Emp\ \citet{wei2022emergent} reported that several LLM capabilities
 exhibit sharp, unpredictable jumps as model scale increases, which
-they termed \emph{emergent abilities}. \citet{schaeffer2023mirage}
-replied that ``emergence'' is largely a consequence of choosing
-\emph{discontinuous metrics} (e.g., exact match) -- switching to a
-continuous, calibrated metric (log-likelihood, token-level accuracy)
-usually reveals smooth scaling trajectories predicted by the scaling
-laws of \S\,Scaling Laws.
+they termed \emph{emergent abilities}. This is an \emph{observed
+scaling curve on specific metrics}, not a claim about underlying
+capability.
 
-The engineering takeaway: when a capability appears to ``emerge''
-during scale-up, first check whether the metric you are using is
-continuous in the underlying distribution. If not, switch metrics
-before making causal claims. For safety-relevant claims (e.g., ``the
-model cannot do $X$ at our scale''), conservative practice assumes
-smooth scaling and budgets for the predicted performance of a
-larger model under the same metric.
+\Ident\ \citet{schaeffer2023mirage} replied that much of the
+apparent ``emergence'' is a \emph{metric effect}: a discontinuous
+scoring rule (e.g., exact string match) applied to a smoothly
+improving per-token distribution will itself exhibit a sharp
+threshold, because any strictly positive per-token error probability
+$\epsilon$ yields a sequence-level error probability
+$1 - (1-\epsilon)^{\ell}$ that transitions rapidly from near-1 to
+near-0 as $\epsilon$ declines past $\sim 1/\ell$ for sequence length
+$\ell$. Switching to a continuous, calibrated metric (log-likelihood,
+token-level accuracy) usually reveals smooth scaling trajectories
+consistent with the scaling laws of \S\,Scaling Laws.
+
+\begin{workedexample}[metric continuity inverts the emergence picture]
+Suppose a per-token error probability $\epsilon$ declines smoothly
+with compute as $\epsilon(C) = \epsilon_0 (C_0/C)^{\gamma}$ for some
+$\gamma > 0$ — a standard Chinchilla-style power law. Consider a
+task whose grading rule is exact match over $\ell = 10$ tokens.
+
+\textbf{Per-token accuracy (continuous).}
+$\mathrm{acc}_{\mathrm{tok}}(C) = 1 - \epsilon(C)$ is a smooth
+monotone function of $\log C$; plotted on log-compute axes it is
+nearly linear in the regime of interest.
+
+\textbf{Exact-match accuracy (discontinuous).}
+$\mathrm{acc}_{\mathrm{EM}}(C) = (1 - \epsilon(C))^{\ell}$. For
+numerical concreteness pick $\ell = 10$ and sweep
+$\epsilon \in \{0.5, 0.3, 0.2, 0.1, 0.05, 0.01\}$:
+\[
+\mathrm{acc}_{\mathrm{EM}} \;\in\;
+\{9.8\!\times\!10^{-4},\; 0.028,\; 0.107,\; 0.349,\; 0.599,\; 0.904\}.
+\]
+The per-token accuracy changed by a factor $\sim 2$ across the sweep
+(from $0.50$ to $0.99$); the exact-match accuracy changed by a factor
+$\sim 10^{3}$ and crossed the ``useful'' threshold of $0.5$ somewhere
+between $\epsilon = 0.1$ and $\epsilon = 0.05$. Plotted as a function
+of compute this looks like a sudden emergence; in reality the
+underlying per-token trajectory is smooth. This is exactly
+\citet{schaeffer2023mirage}'s argument made concrete.
+\end{workedexample}
+
+\Cons\ When a capability appears to ``emerge'' during scale-up,
+first check whether the metric is continuous in the underlying
+distribution. If not, switch metrics before making causal claims.
+For safety-relevant claims (e.g., ``the model cannot do $X$ at our
+scale''), conservative practice assumes smooth scaling and budgets
+for the predicted performance of a larger model under the same
+metric. Governance (Week~10) should require that any
+``non-emergence'' argument used in an assurance case be replicated
+under at least one continuous metric; a single-metric
+non-capability claim is not evidence.
 
 \subsection{Memorization and Extraction}
 
@@ -475,17 +659,27 @@ memorization rate as a function of:
 (ii)~data duplication (repeated strings memorize more), and
 (iii)~prompt length (longer prompts extract more).
 
-Empirically, memorization of a string of length $\ell$ scales roughly
-as
+\Emp\ Empirically — under A5.3 — memorization of a string of length
+$\ell$ scales roughly as the parametric fit
 \begin{equation}
+\label{eq:week5-memorization}
 \Pr[\text{verbatim recall}]
   \;\approx\; \left(\frac{N}{N_0}\right)^{a}\!\cdot
               \left(\frac{k}{k_0}\right)^{b}\!\cdot
               \left(\frac{\ell}{\ell_0}\right)^{c},
 \end{equation}
 with parameter count $N$, duplication count $k$, and length $\ell$,
-and fitted exponents $a, b, c > 0$. This has three operational
-consequences:
+and fitted exponents $a, b, c > 0$.
+
+\Assum\ Eq.~\eqref{eq:week5-memorization} is a regression to
+extraction-probe data; the exponents $(a, b, c)$ depend on model
+family, training mixture, and attacker methodology, and the
+multiplicative functional form is not derived from first principles
+but fitted because it captures the dominant scaling pattern across
+probes~\citep{carlini2023quantifying}. Do not extrapolate outside the
+probe regime without new measurement.
+
+\Cons\ This has three operational consequences:
 \begin{itemize}
   \item Aggressive deduplication is \emph{the} first-line memorization
         defence.
