@@ -82,6 +82,69 @@ model at the inference FLOPs cost of a 30B model -- \emph{but with the
 memory footprint of the 1T model}. This asymmetry drives most of what
 is interesting about MoE at the systems level.
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week6-notation}
+
+\begin{notationbox}
+This chapter reuses several symbols across regimes; disambiguation is
+by subscript or context.
+
+\textbf{Parameter counts.}
+$N_{\mathrm{total}}$ is the count of \emph{resident} parameters (all
+weights stored in memory); $N_{\mathrm{active}}$ is the count of
+parameters exercised per forward-pass token. For dense models
+$N_{\mathrm{total}} = N_{\mathrm{active}} = N$; for MoE with $N_e$
+experts and top-$k$ routing,
+$N_{\mathrm{active}} \approx (k/N_e)\,N_{\mathrm{total}}$ plus
+non-expert parameters.
+
+\textbf{Expert indexing.}
+$N_e$ is the number of experts per MoE layer; experts are indexed
+$i \in \{1, \ldots, N_e\}$ and denoted $E_i$ (capital $E$, distinct
+from the Chinchilla floor constant $E$ in Week~2). The router maps
+each token to a top-$k$ subset $\mathcal{T}_k(x) \subset \{1, \ldots,
+N_e\}$ via the softmax scores $\mathbf{s}(x) \in \Delta^{N_e - 1}$.
+In older MoE equations reproduced below, $N$ without subscript also
+means $N_e$; we retain the original notation to match the citations
+but prefer $N_e$ in new derivations.
+
+\textbf{Capacity and batch.}
+$B$ is total tokens per batch, $f \ge 1$ is capacity factor,
+$C = \lceil f k B / N_e \rceil$ is per-expert capacity
+(Eq.~\eqref{eq:week6-capacity}); the overflow is the number of tokens
+routed to an expert beyond $C$.
+
+\textbf{Parallelism degrees.}
+$\mathrm{DP}, \mathrm{TP}, \mathrm{PP}, \mathrm{SP}, \mathrm{EP}$ are
+the degrees along data, tensor, pipeline, sequence, and expert axes;
+cluster size $G = \mathrm{DP} \cdot \mathrm{TP} \cdot \mathrm{PP}$
+(expert and sequence parallelism are typically layered on top).
+Microbatch count is $M$; pipeline-stage count is $P = \mathrm{PP}$.
+
+\textbf{Communication.}
+$d$ is model hidden dimension; per-token all-to-all payload is $O(d)$
+floats; the per-layer all-to-all volume scales as $O(B \cdot k \cdot d)$
+for top-$k$ routing under A6.2 below.
+
+Standing assumptions are:
+\textbf{(A6.1)} The Chinchilla FLOP approximation $C \approx 6 N D$
+and its compute-optimal conclusions (Week~2, A2.2) hold with
+$N = N_{\mathrm{active}}$ for MoE training compute; total parameter
+count $N_{\mathrm{total}}$ affects memory, not per-token compute.
+\textbf{(A6.2)} All-to-all bandwidth estimates below assume (i)
+uniformly random routing at steady state, (ii) homogeneous
+inter-node interconnect, and (iii) non-overlapped communication for
+worst-case cost; production stacks (DeepSpeed-MoE) recover
+throughput by overlap and expert-placement heuristics not modeled
+here.
+\textbf{(A6.3)} The unified MoE scaling law
+Eq.~\eqref{eq:week6-unified-scaling} is an \emph{empirical fit}
+across the dense--routed family; exponents
+$(\alpha, \beta, \gamma)$ depend on routing policy, data mixture,
+and architectural details, and extrapolation to unseen routing
+schemes or to $N_e \gg 64$ is not established.
+\end{notationbox}
+
 \subsection{Parallelism: The Five Axes}
 
 See Figure~\ref{fig:week6-parallelism-axes}. In modern training
@@ -165,17 +228,22 @@ bubble size, and the blast radius of a single-GPU failure.
 
 Pure data parallelism replicates parameters, gradients, optimizer
 state, and activations on every GPU -- memory is $O(N)$ per device
-even on huge clusters. The Zero Redundancy Optimizer
-(ZeRO)~\citep{rajbhandari2020zero} shards these tensors across data-
-parallel ranks, reconstructing them only when needed:
+even on huge clusters. Recall the per-worker memory budget from
+Week~2 Eq.~\eqref{eq:week2-mem-budget},
+$M_{\mathrm{total}} = b_p N + b_g N + b_o N + M_{\mathrm{act}}$;
+unsharded DP pays all four terms per device. The Zero Redundancy
+Optimizer (ZeRO)~\citep{rajbhandari2020zero} shards these tensors
+across data-parallel ranks, reconstructing them only when needed:
 \begin{itemize}
   \item \textbf{ZeRO-1}: shard the optimizer state (the $m_t, v_t$ of
-        AdamW from Week~2). Memory per device drops by the DP degree
-        with only an additional all-gather per step.
-  \item \textbf{ZeRO-2}: additionally shard the gradients.
-  \item \textbf{ZeRO-3}: additionally shard the parameters themselves;
-        each forward pass all-gathers the needed shard, runs locally,
-        then discards.
+        AdamW from Week~2; the $b_o N$ term of
+        Eq.~\eqref{eq:week2-mem-budget}). Memory per device drops by
+        the DP degree with only an additional all-gather per step.
+  \item \textbf{ZeRO-2}: additionally shard the gradients (the
+        $b_g N$ term of Eq.~\eqref{eq:week2-mem-budget}).
+  \item \textbf{ZeRO-3}: additionally shard the parameters themselves
+        (the $b_p N$ term); each forward pass all-gathers the needed
+        shard, runs locally, then discards.
 \end{itemize}
 ZeRO-3 is memory-equivalent to tensor parallelism for the
 parameter axis, but uses only DP-style all-gather communication
@@ -246,6 +314,36 @@ routed to a backup expert. $f \in [1.0, 1.25]$ is typical. $f < 1$
 saves compute but increases drop rate; large $f$ wastes compute on
 empty slots.
 
+\begin{workedexample}[capacity factor, per-expert drop threshold]
+Consider an MoE layer with $B = 4096$ tokens per batch, $N_e = 8$
+experts, top-$k = 2$ routing, capacity factor $f = 1.25$. The
+per-expert buffer size from Eq.~\eqref{eq:week6-capacity} is
+\[
+C \;=\; \left\lceil f \cdot k \cdot B / N_e \right\rceil
+  \;=\; \lceil 1.25 \cdot 2 \cdot 4096 / 8 \rceil
+  \;=\; \lceil 1280 \rceil \;=\; 1280.
+\]
+Under uniform routing (the intended equilibrium), the expected tokens
+per expert is $k \cdot B / N_e = 2 \cdot 4096 / 8 = 1024$, well
+within the $1280$-slot buffer; no drops occur and $20\%$ of each
+buffer is idle (waste).
+
+Now perturb to an imbalanced regime: expert $E_1$ absorbs $20\%$ of
+all routed token-slots rather than its fair $1/N_e = 12.5\%$, so
+receives $0.20 \cdot k B = 0.20 \cdot 8192 = 1638$ tokens. Since
+$1638 > C = 1280$, the overflow $1638 - 1280 = 358$ tokens are
+dropped by $E_1$ in this step; the per-expert drop rate for $E_1$ is
+$358/1638 \approx 21.9\%$, and the \emph{layer-level} drop rate is
+$358 / 8192 \approx 4.4\%$.
+
+Conversely, raising $f$ to $1.5$ makes $C = 1536$, which absorbs
+$E_1$'s $1638$ tokens except for a $102$-token overflow, dropping the
+layer-level rate to $1.2\%$ --- but at the cost of $(C - 1024)/C
+\approx 33\%$ idle slots per expert at the uniform operating point.
+This is the capacity--drop tradeoff: $f$ is the mechanism by which
+the operator trades training FLOPs for signal preservation.
+\end{workedexample}
+
 \subsubsection{Load-Balancing Auxiliary Loss}
 
 Routing is discrete and the router receives no direct gradient
@@ -264,6 +362,29 @@ differentiable quantity). Minimizing $\mathcal{L}_{\mathrm{aux}}$
 pushes $P_i$ down wherever $f_i$ is large -- if the router is already
 sending many tokens to $E_i$, reduce your confidence in $E_i$.
 Equilibrium is $f_i = P_i = 1/N$, i.e., uniform.
+
+\begin{derivation}[gradient direction of the aux loss]
+Treat $f_i$ as a constant (no gradient flows through the discrete
+$\mathrm{top}_k$) and differentiate
+Eq.~\eqref{eq:week6-load-balance} with respect to router parameters
+$\phi$:
+\[
+\nabla_\phi \mathcal{L}_{\mathrm{aux}}
+  \;=\; \alpha\,N_e \sum_{i} f_i \,\nabla_\phi P_i.
+\]
+Since $P_i = \E_x[s_i(x)]$ and $s_i = \mathrm{softmax}(W_r x)_i$,
+$\nabla_\phi P_i$ points in the direction that \emph{increases} the
+average probability mass on expert $i$. The gradient step
+$\phi \gets \phi - \eta \nabla_\phi \mathcal{L}_{\mathrm{aux}}$
+therefore \emph{decreases} $P_i$ in proportion to $f_i$ --- experts
+that already receive many tokens see their router mass pushed down
+the fastest. Since $\sum_i P_i = 1$ (softmax), this mass
+redistributes to under-utilized experts. The fixed point is uniform
+$P_i = 1/N_e$, and the quadratic-looking form
+$\sum_i f_i P_i$ is minimized (at fixed $\sum_i f_i = 1$,
+$\sum_i P_i = 1$) exactly when both are uniform --- by rearrangement
+of Chebyshev's sum inequality.
+\end{derivation}
 
 \subsubsection{\texorpdfstring{Router $z$-Loss}{Router z-Loss}}
 
@@ -291,18 +412,46 @@ $\pi(i)$. The communication pattern:
   \item \textbf{Combine all-to-all}: each GPU pulls back the results
         for its original tokens and weights them by the gate.
 \end{enumerate}
-All-to-all bandwidth scales as $O(B d)$ per step and saturates
-inter-node interconnect quickly. MoE training is \emph{interconnect-
-bound}, not compute-bound, on typical clusters; DeepSpeed-MoE
+\Assum\ Under A6.2, the dispatch and combine all-to-all each carry a
+total of $B \cdot k$ token-expert payloads of size $O(d)$ floats per
+layer, so the aggregate per-layer all-to-all bandwidth scales as
+$O(B k d)$ per step; on inter-node fabric (A6.2 (ii)) this saturates
+quickly. MoE training is \emph{interconnect-bound}, not
+compute-bound, on typical clusters; DeepSpeed-MoE
 \citep{rajbhandari2022deepspeedmoe} and similar systems engineer
 around this with expert-placement heuristics, communication
-overlap, and hierarchical dispatch.
+overlap, and hierarchical dispatch. The $O(B k d)$ figure is a
+worst-case serial bound under A6.2 (iii); production measurements of
+effective all-to-all time are typically $0.3$--$0.7\times$ the bound
+depending on overlap and topology.
 
 \subsection{MoE in Inference: Buys FLOPs, Not Memory}
 
 At inference time, MoE still reduces FLOPs per token (only $k$
 experts fire) but \emph{all experts must remain resident in GPU
 memory} because the router can select any subset per token.
+
+\Ident\ The following table makes the dense--MoE asymmetry concrete
+at a fixed active parameter count $N_{\mathrm{active}}$, using the
+mixed-precision-AdamW coefficients from
+Eq.~\eqref{eq:week2-mem-budget} ($16 N$ bytes for weights + grads +
+optimizer, ignoring activations).
+\begin{center}
+\begin{tabular}{|l|r|r|r|r|}
+\hline
+Model (training) & $N_{\mathrm{active}}$ & $N_{\mathrm{total}}$ & Train FLOPs/tok & Train memory \\
+\hline
+Dense 30B           & 30\,B  & 30\,B   & $\approx 6 \cdot 30$\,B  & $16 \cdot 30$\,B $\approx 480$\,GB \\
+MoE 8$\times$30B, $k{=}2$ & 30\,B  & 240\,B  & $\approx 6 \cdot 30$\,B  & $16 \cdot 240$\,B $\approx 3.8$\,TB \\
+\hline
+\end{tabular}
+\end{center}
+Same per-token compute, $8\times$ the memory. Serving-time
+arithmetic is similar: FLOPs/token tracks $N_{\mathrm{active}}$ while
+resident memory (weights only, no optimizer state) tracks
+$N_{\mathrm{total}}$. This single asymmetry is what forces every
+systems choice in this chapter.
+
 Consequences:
 \begin{itemize}
   \item \textbf{Mixtral-8x7B} has 47B active parameters per token but
@@ -320,8 +469,8 @@ Consequences:
 
 \subsection{Scaling Laws for MoE}
 
-\citet{clark2022unified} fit a unified scaling law across dense and
-routed models of the form
+\Emp\ Under A6.3, \citet{clark2022unified} fit a unified scaling law
+across dense and routed models of the form
 \begin{equation}
 \label{eq:week6-unified-scaling}
 L(N_{\mathrm{total}}, N_{\mathrm{active}}, D) \;\approx\;
@@ -332,7 +481,7 @@ L(N_{\mathrm{total}}, N_{\mathrm{active}}, D) \;\approx\;
 with dense models recovered as $N_{\mathrm{total}} = N_{\mathrm{active}}$.
 Two empirical takeaways:
 \begin{itemize}
-  \item At fixed training compute, an MoE with $N$ experts achieves
+  \item At fixed training compute, an MoE with $N_e$ experts achieves
         lower loss than the dense model with the same per-token
         FLOPs.
   \item Scaling total parameters while holding active parameters
@@ -342,6 +491,33 @@ Two empirical takeaways:
 These observations, combined with Chinchilla's FLOP accounting from
 Week~2, drive the MoE proliferation of 2024--2025 (Mixtral, DeepSeek,
 Qwen-MoE, Grok-1).
+
+\begin{provedassumed}
+\emph{Proved (within the fit range).}
+Given the functional form Eq.~\eqref{eq:week6-unified-scaling}, the
+same Lagrangian argument used for Chinchilla in Week~2 applies: at
+fixed compute $C$, the loss-minimizing split between
+$N_{\mathrm{active}}$ and $D$ is determined by matching the two
+power-law terms' logarithmic sensitivities. The reduction to
+Chinchilla as $N_{\mathrm{total}} = N_{\mathrm{active}}$ is algebraic.
+
+\emph{Assumed.}
+(i) The parametric form of Eq.~\eqref{eq:week6-unified-scaling} is
+an empirical fit; the separation of $N_{\mathrm{total}}$ and
+$N_{\mathrm{active}}$ contributions as additive power-law terms is
+not derived from first principles.
+(ii) The exponents $(\alpha, \beta, \gamma)$ depend on routing
+policy (top-1 vs top-2, noisy gating, expert-choice routing), data
+mixture, and block placement of experts; transferring exponents
+across architectures is not safe.
+(iii) The law was fit in a moderate-expert regime ($N_e \le 64$);
+extrapolation to $N_e \gg 64$ is not established and may hit
+routing-saturation effects that the functional form cannot capture.
+(iv) The ``8--16 experts, top-2'' sweet spot is a \emph{fitted
+observation} on one paper's sweep; other papers report
+different optima when data mixture or serving constraints are
+varied~\citep{fedus2021switch,jiang2024mixtral}.
+\end{provedassumed}
 
 \subsection{MoE Failure Modes}
 
@@ -377,6 +553,31 @@ A token that was reliably routed to $E_3$ during training may, in a
 distribution-shifted inference context, route to an underfit expert.
 Unlike dense models, MoE quality can vary across input distributions
 in ways that are hard to anticipate.
+
+\begin{provedassumed}
+\emph{Proved.}
+The aux-loss fixed point $f_i = P_i = 1/N_e$ is a stationary point of
+Eq.~\eqref{eq:week6-load-balance} under the constraints $\sum f_i
+= \sum P_i = 1$ (rearrangement inequality); the capacity threshold
+$C$ is an exact combinatorial bound on per-expert processed tokens.
+
+\emph{Assumed.}
+(i) That the aux-loss fixed point is \emph{reached} during training;
+in practice expert collapse is a persistent failure mode requiring
+hyperparameter tuning, warmup scheduling of $\alpha$, and telemetry.
+(ii) That under-capacity drop is benign at ``small'' rates; the
+threshold between benign and harmful is workload- and data-
+dependent. Monitor layer-level drop rate alongside loss.
+(iii) That routing behavior generalizes across the training and
+inference token distributions. Distribution shift at serving time
+can activate underfit experts and produce surprising output quality
+regressions not observable in dense models.
+(iv) That the all-to-all cost bound $O(B k d)$ is representative of
+production wall-clock; overlap, hierarchical dispatch, and
+expert-placement heuristics can reduce this substantially, so the
+bound is for worst-case reasoning about interconnect limits rather
+than for throughput forecasting.
+\end{provedassumed}
 
 \subsection{Hardware-Aware Design}
 
