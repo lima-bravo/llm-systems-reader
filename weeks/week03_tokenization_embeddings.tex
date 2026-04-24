@@ -48,6 +48,49 @@ By the end of this week, you should be able to:
   \item Prompt brittleness at token boundaries.
 \end{itemize}
 
+\subsection{Notation and Standing Assumptions}
+\label{sec:week3-notation}
+
+\begin{notationbox}
+\textbf{Alphabet and token set.}
+$\Sigma$: Unicode-codepoint or UTF-8 byte alphabet ($|\Sigma| = 256$
+for byte-level). $\mathcal{V}$: the trained vocabulary of tokens,
+with $|\mathcal{V}| = V$ (typical $V \in [32{,}000, 256{,}000]$).
+Token identifiers are integers $\iota \in \{0, 1, \dots, V-1\}$. We
+reserve $i$ for positions in a token \emph{sequence} (the $i$-th
+token in context) and $\iota$ for vocabulary-item indices (the
+$\iota$-th row of $E$). Where context is unambiguous, we write the
+one-hot indicator $\mathbf{1}_\iota \in \{0,1\}^V$.
+
+\textbf{Sequences.}
+Input text of length $T$ tokens produces
+$\mathbf{x} = (x_1, \dots, x_T)$ with $x_i \in \mathcal{V}$, or
+equivalently a sequence of IDs $(\iota_1, \dots, \iota_T)$.
+Embedding matrix $E \in \R^{V \times d}$, with $d$ the model width.
+
+\textbf{Pre-processing.}
+$\mathrm{NF}(\cdot)$: a Unicode normalization form
+(NFC/NFD/NFKC/NFKD). Pre-tokenization $\pi_{\mathrm{pre}}$ splits
+strings into candidate units (whitespace-delimited words, byte
+runs). The full tokenizer pipeline is
+$\mathcal{T} = \mathrm{enc}\circ\pi_{\mathrm{pre}}\circ\mathrm{NF}$.
+
+\textbf{Standing assumptions.}
+\textbf{(A3.1)} \emph{Tokenizer determinism.} Given fixed
+$\mathrm{NF}$, $\pi_{\mathrm{pre}}$, and merge rules (or Unigram-LM
+parameters), $\mathcal{T}$ is a deterministic function. Encoding
+drift between training and inference --- different normalization or
+pre-tokenization --- breaks this and yields out-of-distribution IDs.
+\textbf{(A3.2)} \emph{Lossless detokenization} is guaranteed by
+byte-level BPE and SentencePiece (which treat whitespace as a
+sentinel), and is \emph{not} guaranteed by classical BPE or
+WordPiece, which require language-specific detokenization rules.
+\textbf{(A3.3)} Anisotropy ranges, multilingual token-inflation
+factors, and analogy-recovery rates are \Emp\ empirical observations
+on specific corpora and models; they must be re-measured on the
+deployed tokenizer and distribution, not assumed.
+\end{notationbox}
+
 \subsection{Conceptual Core: Discrete Symbols to Vectors}
 
 Neural networks operate on $\mathbb{R}^d$; natural language is discrete,
@@ -244,14 +287,39 @@ merges the pair $(a, b)$ that maximizes
 \label{eq:week3-wordpiece}
 \mathrm{score}(a, b) \;=\;
 \frac{\mathrm{count}(ab)}
-     {\mathrm{count}(a)\,\mathrm{count}(b)},
+     {\mathrm{count}(a)\,\mathrm{count}(b)}.
 \end{equation}
-which is proportional to the increase in the unigram likelihood of the
-training corpus under the merged vocabulary. WordPiece prefers merges
-whose constituents are rare on their own but frequent together (i.e.,
-collocations). Encoding uses greedy longest-prefix matching at
-inference time, annotated with the \texttt{\#\#} prefix to mark
-intra-word continuation (``playing'' $\to$ \texttt{play \#\#ing}).
+
+\begin{derivation}[Why this score $\propto$ unigram likelihood gain]
+\Assum\ Under a unigram model, each occurrence of token $t$
+contributes $\log p(t) = \log(\mathrm{count}(t)/N)$ to the corpus
+log-likelihood, with $N$ the total token count. Merging
+$(a,b) \to ab$ \emph{replaces} $\mathrm{count}(ab)$ occurrences of
+``$a$ followed by $b$'' (each currently contributing
+$\log p(a) + \log p(b)$) with the same number of single $ab$ tokens
+(each contributing $\log p(ab)$). The per-merge log-likelihood
+change is
+\begin{align*}
+\Delta \ell &\approx \mathrm{count}(ab)\,\bigl[\log p(ab)
+  - \log p(a) - \log p(b)\bigr]\\
+&= \mathrm{count}(ab)\,\log
+  \frac{\mathrm{count}(ab)/N}
+       {(\mathrm{count}(a)/N)(\mathrm{count}(b)/N)}\\
+&= \mathrm{count}(ab)\,\log\!\Bigl[N \cdot
+  \underbrace{\tfrac{\mathrm{count}(ab)}
+    {\mathrm{count}(a)\,\mathrm{count}(b)}}_{=\,\mathrm{score}(a,b)}\Bigr].
+\end{align*}
+So $\mathrm{score}(a,b)$ is the pointwise-mutual-information term
+that governs the corpus log-likelihood gain per occurrence (up to
+the constant $\log N$). Merges whose pair is \emph{over-represented}
+relative to the product of marginals --- collocations --- are
+preferred, which is exactly the intuition that WordPiece prefers
+rare-on-their-own but frequent-together constituents.
+\end{derivation}
+
+Encoding uses greedy longest-prefix matching at inference time,
+annotated with the \texttt{\#\#} prefix to mark intra-word
+continuation (``playing'' $\to$ \texttt{play \#\#ing}).
 
 \subsection{Unigram LM and SentencePiece}
 
@@ -262,11 +330,43 @@ tokenizer maintains a unigram language model over subwords,
 \label{eq:week3-unigram}
 p(\mathbf{x}) \;=\; \prod_{t} p(x_t),
 \end{equation}
-with the per-subword probabilities fit by EM. At each iteration the
-tokenizer removes the subword whose deletion causes the smallest drop
-in corpus log-likelihood, repeating until the desired vocabulary size
-is reached. Encoding uses the Viterbi algorithm to find the highest-
-likelihood segmentation of the input given the pruned vocabulary.
+with the per-subword probabilities fit by EM.
+
+\begin{derivation}[Unigram LM training: compact EM sketch]
+Each corpus token sequence $\mathbf{y}$ (text) has many possible
+segmentations $S(\mathbf{y}) = \{\mathbf{x}^{(1)}, \mathbf{x}^{(2)},
+\dots\}$ under a given vocabulary $\mathcal{V}$.
+
+\textbf{E-step (expected counts).} For each text $\mathbf{y}$ and
+each candidate segmentation $\mathbf{x} \in S(\mathbf{y})$, compute
+its posterior probability
+\[
+  q(\mathbf{x} \mid \mathbf{y}) \;=\;
+  \frac{\prod_t p(x_t)}{\sum_{\mathbf{x}' \in S(\mathbf{y})}
+    \prod_{t'} p(x'_{t'})}
+\]
+(done efficiently by forward-backward / Viterbi over the
+segmentation lattice). The expected count of subword $s$ is
+\[
+  \E[\#s] \;=\; \sum_{\mathbf{y}} \sum_{\mathbf{x} \in S(\mathbf{y})}
+    q(\mathbf{x}\mid\mathbf{y}) \cdot \#\{t : x_t = s\}.
+\]
+
+\textbf{M-step (closed-form update).} Renormalize:
+$p(s) \leftarrow \E[\#s] / \sum_{s'} \E[\#s']$.
+
+\textbf{Prune step.} After EM convergence on $\mathcal{V}$, delete
+the subword $s^*$ whose removal causes the smallest drop in total
+corpus log-likelihood:
+\[
+  s^* \;=\; \arg\min_{s \in \mathcal{V}}\;
+    \Bigl(\ell_{\mathcal{V}} - \ell_{\mathcal{V}\setminus\{s\}}\Bigr).
+\]
+Iterate E/M/prune until $|\mathcal{V}| = V$.
+\end{derivation}
+
+Encoding uses the Viterbi algorithm to find the highest-likelihood
+segmentation of the input given the pruned vocabulary.
 
 \emph{SentencePiece}~\citep{kudo2018sentencepiece} is an open-source
 implementation that supports both BPE and Unigram-LM and, importantly,
@@ -300,6 +400,62 @@ simplifies caching; Unigram LM can return the $k$-best segmentations,
 useful for data augmentation during training~\citep{kudo2018unigram}.
 Byte-level BPE trades a slightly larger apparent vocabulary for robust
 handling of all Unicode input without special-casing.
+
+\subsubsection{Same sentence, different tokenizers}
+
+\begin{workedexample}[Tokenizing ``Let's tokenize this!''\ three ways]
+The nine-character English string \texttt{Let's tokenize this!}
+produces different ID sequences under different tokenizers
+(ID-count figures are representative of public implementations at
+standard vocabulary sizes):
+
+\begin{center}
+\small
+\begin{tabular}{|l|p{6.8cm}|r|}
+\hline
+\textbf{Tokenizer} & \textbf{Segmentation} & \textbf{\#tokens} \\
+\hline
+GPT-2 byte-BPE ($V{=}50257$) &
+  \texttt{[Let][\textquoteright s][ tokenize][ this][!]} & 5 \\
+BERT WordPiece ($V{=}30522$) &
+  \texttt{[let][\textquotesingle][s][token][\#\#ize][this][!]} & 7 \\
+SentencePiece Unigram ($V{=}32000$) &
+  \texttt{[\_Let][\textquoteright][s][\_token][ize][\_this][!]} & 7 \\
+\hline
+\end{tabular}
+\end{center}
+
+Three points to note. First, the punctuation and apostrophe are
+handled differently by each scheme (attached vs.\ emitted as a
+separate token), which matters for stop-sequence matching. Second,
+byte-BPE attaches leading whitespace to the following token (the
+``\texttt{ tokenize}'' whitespace-oddity discussed below), so
+concatenating prompts naively across a whitespace boundary can
+shift the segmentation. Third, on non-English scripts the counts
+diverge far more dramatically (A3.3): the same sentence in Thai or
+Amharic can be 2--5$\times$ more tokens under a GPT-2-era tokenizer
+than under a multilingual-tuned one.
+\end{workedexample}
+
+\begin{provedassumed}[Tokenizer comparison: what is established vs assumed]
+\textbf{Proved.} BPE and WordPiece are deterministic given their
+merge tables (A3.1). SentencePiece's whitespace-as-sentinel design
+guarantees lossless detokenization (A3.2). WordPiece's score
+Eq.~\eqref{eq:week3-wordpiece} is proportional to the unigram
+log-likelihood gain per merge (derivation above). Unigram-LM EM
+maximizes corpus log-likelihood under the Bayesian posterior over
+segmentations.\\
+\textbf{Empirical.} Subword regularization (k-best sampling under
+Unigram-LM) improves downstream accuracy on specific
+tasks~\citep{kudo2018unigram}; byte-BPE handles all Unicode without
+fallback kernels on tested corpora.\\
+\textbf{Assumed.} The unigram-model \emph{segmentation} is a
+useful approximation to the true joint distribution over subword
+sequences --- it ignores context and treats tokens as independent
+(A3.3). Real text has strong local dependence; this is why
+different tokenizers can produce measurably different perplexities
+on the same corpus without any change to the model.
+\end{provedassumed}
 
 \subsection{The GPT Whitespace Oddity and Other Quirks}
 
@@ -415,14 +571,36 @@ Similarity between embeddings is conventionally measured by cosine:
 \frac{\mathbf{e}_i \cdot \mathbf{e}_j}
      {\|\mathbf{e}_i\|\,\|\mathbf{e}_j\|}.
 \end{equation}
-Modern Transformer embeddings are highly \emph{anisotropic}: almost
+\Emp~Modern Transformer embeddings are highly \emph{anisotropic}: almost
 all token vectors concentrate in a narrow cone of the $d$-dimensional
 space, so the mean cosine similarity between random tokens is
-typically $0.5$--$0.8$ rather than the $0$ a uniformly-distributed
-embedding would predict. This means raw cosine similarity is
-uninformative without centering or whitening; downstream
-retrieval pipelines (Week~9) routinely apply a mean-subtraction or
-PCA step before comparing embeddings.
+typically in the $0.5$--$0.8$ range rather than the $0$ a uniformly-distributed
+embedding would predict~\citep{ethayarajh2019contextual,gao2019representation}.
+These are reported empirical ranges across the models studied in
+those works (BERT, GPT-2, ELMo families); newer architectures with
+different training objectives or explicit isotropy regularisers
+shift the ranges, and the precise numbers depend on the measurement
+protocol (layer, subset of vocabulary, pre-processing).
+
+\begin{center}
+\fbox{\parbox{0.93\linewidth}{
+\textbf{Caveat (preprocessing dependence).} The anisotropy numbers above,
+and any downstream cosine-based retrieval quality claim, are sensitive
+to pre-processing: mean-subtraction (centering), per-dimension whitening,
+and norm-based filtering each change the reported cosine distribution
+materially. Before citing a ``cosine similarity of $x$'' figure,
+specify: (i) which layer's embeddings, (ii) whether mean-centering or
+whitening was applied, and (iii) the token subset (full vocabulary vs.\
+content words vs.\ a held-out sample). Without those three, cosine
+numbers are not comparable across papers.
+}}
+\end{center}
+
+The practical implication: raw cosine similarity is uninformative
+without centering or whitening. Downstream retrieval pipelines
+(Week~9) routinely apply a mean-subtraction or PCA step before
+comparing embeddings, and the effectiveness of that step is itself an
+empirical finding, not a theorem.
 
 \subsubsection{Visualization: PCA and t-SNE}
 
@@ -505,10 +683,17 @@ Operations & Tokenizer versions in logs
 
 \subsection{Multilingual and Billing Considerations}
 
-A BPE vocabulary trained on an English-heavy corpus allocates most of
+\Emp~A BPE vocabulary trained on an English-heavy corpus allocates most of
 its merge rules to English patterns. On other languages the same
-vocabulary segments less aggressively, producing $2$--$5\times$ as
-many tokens per Unicode code-point. The practical effects:
+vocabulary segments less aggressively, producing typically $2$--$5\times$
+as many tokens per Unicode code-point for non-Latin scripts such as
+Thai, Amharic, or Burmese, relative to English under the same
+tokenizer~\citep{ahia2023languages,petrov2023language}. The $2$--$5\times$
+figure is an observation range across the tokenizers and language pairs
+studied in those references; individual (language, tokenizer) pairs
+fall outside this range in either direction, and frontier-model
+tokenizers from 2024 onward narrow the gap materially. Treat the range
+as a planning anchor, not a guarantee. The practical effects:
 \begin{itemize}
   \item \textbf{Billing disparity}: per-token-priced APIs charge more
         for the same information content in Thai, Amharic, or Burmese
