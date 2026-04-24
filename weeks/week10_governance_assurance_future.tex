@@ -70,6 +70,85 @@ By the end of this week, you should be able to:
         requirements that can be tested and monitored.
 \end{itemize}
 
+\subsection{Notation and Governance-Layer Assumptions}
+\label{sec:wk10_notation}
+
+\begin{notationbox}
+Governance has a formal vocabulary; we fix it here.
+
+\textit{Hazards, severity, likelihood.} A \emph{hazard} is a
+specific adverse event or condition $h$ drawn from a hazard
+register $\mathcal{H}$. Each $h$ is scored on two axes:
+\emph{severity} $S(h) \in \{1, \dots, 5\}$ (1 = negligible,
+5 = catastrophic) and \emph{likelihood} $L(h) \in \{1, \dots, 5\}$
+(1 = rare, 5 = almost certain). Both axes are ordinal policy
+scales, not probabilities.
+
+\textit{Inherent and residual risk.} Using the standard
+risk-matrix convention \citep{iso31000_2018}, the
+\emph{inherent risk} is
+\begin{equation}
+  R(h) \;=\; S(h) \cdot L(h) \;\in\; \{1, \dots, 25\},
+  \label{eq:wk10-risk}
+\end{equation}
+i.e. the un-mitigated score before controls act. A set of
+controls $\mathcal{C}(h) = \{c_1, \dots, c_{K_h}\}$ is applied to $h$;
+each $c_i$ has an \emph{efficacy}
+$\eta_i = \eta(c_i, h) \in [0, 1]$ estimating the fraction of
+hazard likelihood it removes when it operates correctly, and an
+\emph{independence} property asserting that failures of distinct
+$c_i$ are uncorrelated. The \emph{residual risk} under
+independence is then
+\begin{equation}
+  R_\mathrm{res}(h)
+  \;=\; S(h) \cdot L(h) \cdot \prod_{i=1}^{K_h} (1 - \eta_i),
+  \label{eq:wk10-risk-residual}
+\end{equation}
+collapsing to $R(h)$ when no control is in place and to $0$ only
+when at least one $\eta_i = 1$. Eq.~\eqref{eq:wk10-risk-residual}
+makes the defence-in-depth argument quantitative: adding
+independent controls multiplies $(1 - \eta_i)$ terms, so the
+\emph{number} of independent layers, not the efficacy of any
+single one, drives $R_\mathrm{res}$ toward zero.
+
+\textit{Assurance-case terms.} An assurance case is a tuple
+$\mathcal{A} = (G, \mathcal{E}, \mathcal{X}, \mathcal{U})$ where $G$ is the top-level goal
+(claim), $\mathcal{E}$ is the evidence set, $\mathcal{X}$ is the context, and
+$\mathcal{U}$ is the assumption set. A \emph{confidence score}
+$\kappa \in [0, 1]$ is attached per leaf evidence item, combined
+upward through the argument graph; we write $\kappa(G)$ for the
+top-level confidence.
+
+\textit{Drift and monitoring.} For a monitored metric $m$ with
+release-time value $m_0$ and per-period tolerance $\varepsilon_m$,
+we write $m_t$ for its value at time $t$ and define the
+\emph{drift trigger}:
+\begin{equation}
+  \mathrm{Drift}_m(t) \;=\;
+    \mathbf{1}\!\bigl\{ |m_t - m_0| \ge \varepsilon_m \bigr\}.
+  \label{eq:wk10-drift}
+\end{equation}
+$\mathrm{Drift}_m(t) = 1$ is the event that escalation is
+required.
+
+We make three standing assumptions unless otherwise noted.
+\begin{description}
+  \item[A10.1 Ordinal policy scales.] $S$ and $L$ are ordinal,
+    not ratio: only their product as used in
+    Eq.~\eqref{eq:wk10-risk} is meaningful, and comparisons across
+    organisations using different scoring conventions are invalid.
+  \item[A10.2 Control independence.] Controls in $\mathcal{C}(h)$ fail
+    independently. This assumption is often violated in practice
+    (a common upstream dataset bug can fail both alignment and
+    refusal filters); Eq.~\eqref{eq:wk10-risk-residual} is an
+    upper bound on defence quality, not a lower bound.
+  \item[A10.3 Evidence freshness.] Evidence $\mathcal{E}$ is valid only
+    within a freshness window; $\mathcal{A}$ must be revalidated on a
+    bounded cadence or on triggering events (model change, policy
+    change, incident).
+\end{description}
+\end{notationbox}
+
 \subsection{LLMs as Socio-Technical Systems}
 
 Treat the following as the system under consideration: not the
@@ -168,6 +247,106 @@ accessible AI-specific treatment of assurance thinking; the
 British Standards Institution's assurance-case tradition is the
 underlying engineering heritage.
 
+\begin{workedexample}[: a minimal GSN case for a coding-assistant
+deployment]
+Consider an internal coding assistant whose most
+acute hazard is $h_\mathrm{inj}$: ``the assistant executes an
+attacker-controlled shell command smuggled through a retrieved
+repository file''. Score under A10.1:
+$S(h_\mathrm{inj}) = 5$ (arbitrary code execution on developer
+workstations), $L(h_\mathrm{inj}) = 3$ before controls, so
+$R(h_\mathrm{inj}) = 15$ (red zone on a 25-point matrix).
+
+\emph{Assurance tuple.} We instantiate $\mathcal{A} = (G, \mathcal{E}, \mathcal{X},
+\mathcal{U})$ as follows:
+\begin{description}
+  \item[$G$] (top-level goal): ``Under intended use
+    (\S~context), the assistant does not execute
+    attacker-controlled shell commands smuggled through retrieved
+    files with residual risk $R_\mathrm{res}(h_\mathrm{inj}) \le
+    2$.''
+  \item[$\mathcal{X}$] (context): internal-network deployment;
+    developer users with MFA; repositories limited to the
+    user's own organisation; retrieval corpus updated hourly.
+  \item[$\mathcal{U}$] (assumptions): A10.2 control independence
+    across layers 2--5; A10.3 evidence freshness within 30 days;
+    CH9 A9.2 trust boundary enforced by host.
+  \item[$\mathcal{E}$] (evidence with per-leaf confidence $\kappa$):
+  \begin{enumerate}
+    \item Alignment-training refusal eval on
+      injection-style prompts: $\eta_2 = 0.60$,
+      $\kappa = 0.85$ (1k test cases, independent harness).
+    \item Structural sandboxing of retrieved content in the
+      prompt template (CH9 Eq.~\eqref{eq:trust-invariant}):
+      $\eta_3 = 0.80$, $\kappa = 0.95$ (deterministic code
+      path; unit-tested).
+    \item Output classifier flagging shell-like strings before
+      execution: $\eta_4 = 0.70$, $\kappa = 0.80$ (held-out
+      classifier ROC on red-team set).
+    \item Human-approval gate on any shell tool call:
+      $\eta_5 = 0.95$, $\kappa = 0.99$ (UI-enforced, assuming
+      the user notices; recall A10.2).
+  \end{enumerate}
+\end{description}
+
+\emph{Residual-risk calculation.} Using
+Eq.~\eqref{eq:wk10-risk-residual},
+\begin{align*}
+  R_\mathrm{res}(h_\mathrm{inj})
+  &= 5 \cdot 3 \cdot
+     (1-0.60)(1-0.80)(1-0.70)(1-0.95) \\
+  &= 15 \cdot 0.40 \cdot 0.20 \cdot 0.30 \cdot 0.05
+   = 15 \cdot 0.0012
+   = 0.018.
+\end{align*}
+This satisfies the claimed $R_\mathrm{res} \le 2$ with a wide
+margin. Note the sensitivity: removing the human-approval
+gate ($\eta_5 = 0$) gives $R_\mathrm{res} = 0.36$ (still within
+the $\le 2$ target); removing any two controls drops the system
+into the red zone again. This is the quantitative content of
+``defence in depth''.
+
+\emph{Top-level confidence.} Taking
+$\kappa(G) = \min_i \kappa_i = 0.80$ as a conservative aggregation
+(the argument is only as strong as its weakest evidence leaf),
+the case is credible but should be re-evaluated whenever the
+output classifier is retrained. Under A10.3, $\mathcal{E}$ expires in
+30 days; the case is therefore a live artefact, not a one-time
+gate.
+\end{workedexample}
+
+\begin{provedassumed}
+Eqs.~\eqref{eq:wk10-risk} and~\eqref{eq:wk10-risk-residual} are
+\emph{definitions}: the product-form and the independence
+assumption (A10.2) are stipulated, not derived. The claim that
+adding independent controls drives $R_\mathrm{res} \to 0$ is a
+\emph{theorem} about Eq.~\eqref{eq:wk10-risk-residual} (the
+product of $1 - \eta_i$ values goes to zero) \emph{under} A10.2;
+in real deployments A10.2 holds at best approximately (correlated
+failures through shared data, shared libraries, or shared
+operators violate it), so Eq.~\eqref{eq:wk10-risk-residual} gives
+a lower bound on residual risk, not an upper bound.
+
+The worked-example numbers ($\eta$ values, $\kappa$ values) are
+\emph{illustrative}: we do \emph{not} prove that shell-sandboxing
+efficacy is 0.80 or that an output classifier removes 70\% of
+attempts. Those efficacies are \emph{empirical} quantities
+estimated from held-out evaluations and subject to the standard
+confidence-interval considerations (CH9). The
+minimum-over-leaves confidence aggregation $\kappa(G) = \min_i
+\kappa_i$ is an \emph{engineering stance}, not a probabilistic
+rule; fully Bayesian aggregation over a DAG of claims is an open
+research area.
+
+Eq.~\eqref{eq:wk10-drift} is a definition; the tolerance
+$\varepsilon_m$ is a \emph{normative policy choice}, not an
+empirical threshold, and must be justified per-metric.
+Eq.~\eqref{eq:wk10-escalate} is a \emph{policy}; its correctness
+depends on $\mathcal{M}_\mathrm{safety}$ being complete with respect
+to the hazard register $\mathcal{H}$, which is an assumption about
+organisational diligence, not a theorem.
+\end{provedassumed}
+
 \subsection{Hazard Analysis for LLM Systems}
 
 Before a control can be designed, the hazard must be named. The
@@ -264,6 +443,34 @@ sets, tool calls, model outputs, user actions), monitoring
 cost), drift alerts, canary evaluations that run every
 candidate release against a reference eval set before promotion.
 
+\Def\ \emph{Drift-trigger policy.} For each monitored metric
+$m$ with release-time baseline $m_0$ and tolerance
+$\varepsilon_m$ (policy-set at deployment time), apply
+Eq.~\eqref{eq:wk10-drift} on a fixed window:
+\begin{equation}
+  \mathrm{Escalate}_m(t)
+  \;=\;
+  \begin{cases}
+    \text{page on-call + freeze release path}
+      & \text{if } m \in \mathcal{M}_\mathrm{safety}
+        \text{ and } \mathrm{Drift}_m(t) = 1, \\
+    \text{open investigation ticket within 24h}
+      & \text{if } m \in \mathcal{M}_\mathrm{quality}
+        \text{ and } \mathrm{Drift}_m(t) = 1, \\
+    \text{log; aggregate in weekly review}
+      & \text{otherwise.}
+  \end{cases}
+  \label{eq:wk10-escalate}
+\end{equation}
+Safety-class metrics $\mathcal{M}_\mathrm{safety}$ include refusal
+rate on known jailbreak sets, red-team regression score, and
+PII-leakage rate; quality-class metrics
+$\mathcal{M}_\mathrm{quality}$ include task accuracy, latency,
+cache-hit rate, and cost-per-conversation. Tolerances
+$\varepsilon_m$ are not universal constants; they are
+\emph{policy choices} made at release time and must be
+documented alongside $m_0$ in the assurance case $\mathcal{A}$.
+
 \paragraph{Layer 5 (corrective).} Rate limits (for suspected
 abuse), adapter rollback (Week~7), tool disablement (when a
 tool-use failure is detected), kill switches (for emergency
@@ -278,15 +485,77 @@ to the AI Incident Database \citep{aiid}.
 
 \subsubsection{The defence-in-depth argument}
 
-No single layer is assumed to be perfect. A system designed
-around ``our alignment is strong enough that we don't need input
-filters'' is a system where the alignment must be perfect.
-Because perfection is unachievable, credible deployments assume
-every layer will sometimes fail and design so that two
-\emph{independent} failures are required to cause a harm. This
-is the formal content of defence in depth and the reason safety-
-critical literature treats it as a structural property, not an
-optional enhancement.
+\Cons\ No single layer is assumed to be perfect. A system
+designed around ``our alignment is strong enough that we don't
+need input filters'' is a system where the alignment must be
+perfect, so $R_\mathrm{res}$ in
+Eq.~\eqref{eq:wk10-risk-residual} reduces to
+$S L (1 - \eta_\mathrm{align})$ and is bounded below by
+$(1 - \eta_\mathrm{align})$, usually well above tolerance for
+any $h$ with $S \cdot L \ge 10$. Because
+$\eta_\mathrm{align} = 1$ is unachievable, credible deployments
+assume every layer will sometimes fail and design so that two
+\emph{independent} failures (A10.2) are required to cause a harm.
+This is the formal content of defence in depth and the reason
+safety-critical literature treats it as a structural property,
+not an optional enhancement.
+
+\subsubsection{A quantitative control matrix template}
+\label{sec:wk10_control_matrix}
+
+Tabulating controls against hazards is how the abstract
+residual-risk equation becomes an audit artefact. The matrix in
+Table~\ref{tab:wk10_control_matrix} is a template: rows are
+hazards, columns are the six control layers, and cells carry an
+efficacy estimate $\eta$ together with a confidence grade
+($H$~=~high, direct measurement; $M$~=~medium, indirect evidence;
+$L$~=~low, expert judgement only). The last column computes
+$R_\mathrm{res}$ via
+Eq.~\eqref{eq:wk10-risk-residual} under A10.2.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabular}{L{2.2cm} C{1.1cm} C{1.1cm} C{1.1cm} C{1.1cm} C{1.1cm} C{1.1cm} C{1.1cm} C{1.3cm}}
+\toprule
+\textbf{Hazard $h$} & \textbf{$S$} & \textbf{$L$}
+  & \textbf{L1 data} & \textbf{L2 align} & \textbf{L3 sys}
+  & \textbf{L4 det} & \textbf{L5 corr} & \textbf{$R_\mathrm{res}$} \\
+\midrule
+Prompt injection    & 5 & 3 & --
+  & 0.60/M & 0.80/H & 0.70/M & 0.95/H & 0.018 \\
+Hallucination       & 3 & 4 & --
+  & 0.50/L & 0.60/M & 0.40/M & 0.30/L & 0.504 \\
+PII leakage         & 4 & 2 & 0.70/M
+  & 0.30/L & 0.50/M & 0.60/M & 0.80/M & 0.067 \\
+Refusal overtrigger & 2 & 4 & --
+  & 0.40/L & 0.20/L & 0.50/M & 0.30/L & 0.672 \\
+Tool misuse         & 5 & 2 & --
+  & 0.40/L & 0.70/H & 0.60/M & 0.90/H & 0.072 \\
+\bottomrule
+\end{tabular}
+\caption{Control matrix template. Each cell shows the estimated
+efficacy $\eta_i \in [0, 1]$ per layer and a confidence grade
+($H/M/L$). Empty cells denote no applicable control. The final
+column is $R_\mathrm{res}$ from
+Eq.~\eqref{eq:wk10-risk-residual}; values in the red zone
+($R_\mathrm{res} \ge 2$) are release-blocking. Hallucination and
+refusal-overtrigger both exceed tolerance in this illustrative
+configuration; the corrective response is either additional
+independent controls or scope reduction.}
+\label{tab:wk10_control_matrix}
+\end{table}
+
+\Norm\ Every production deployment in a regulated sector
+\emph{must} maintain a control matrix of this form; the cadence
+of update is governed by A10.3.
+
+\Find\ In deployed systems, the confidence grades on L2 (alignment)
+are routinely over-claimed: refusal-rate numbers are reported as
+``high'' when they are measured on red-team sets that do not
+represent the live distribution. Matrices whose L2 $\eta$ values
+are graded $H$ without explicit out-of-distribution evidence are a
+common audit finding.
 
 \subsection{The Regulatory Landscape}
 
@@ -352,8 +621,8 @@ not legally binding.
 
 \subsubsection{Governance-as-code}
 
-A modern compliance approach does not treat regulation as a
-separate stream; it translates regulatory requirements into
+\Norm\ A modern compliance approach does not treat regulation as
+a separate stream; it translates regulatory requirements into
 engineering artefacts that can be automated, tested, and
 monitored. An EU AI Act ``logging'' requirement becomes a
 logging library and retention policy. A NIST ``bias measurement''
@@ -363,6 +632,30 @@ becomes an incident-review process with a closed feedback loop
 into training data. \citet{anderljung2023frontier} argues for
 this translation at the policy level; in practice it is simply
 what effective compliance looks like.
+
+\begin{provedassumed}
+The regulatory instruments cited in this section are
+\emph{normative}: they specify what an operator \emph{must} do,
+not what LLMs empirically \emph{are}. The EU AI Act's risk
+classification, NIST RMF's four functions, ISO/IEC 42001's
+plan-do-check-act loop, and the OECD principles are
+\emph{policy choices} that legislators and standards bodies have
+made, and they are binding (AI Act, sectoral regulation) or
+widely adopted (NIST, ISO) rather than derived. Their scope and
+thresholds may change; they should be consulted in their current
+published form, not inferred from this chapter.
+
+The translation from a regulation clause into an engineering
+artefact (``logging requirement $\to$ logging library'')
+is an \emph{engineering stance}: regulators specify outcomes,
+engineers specify mechanisms, and the mapping between them
+requires legal judgement that this chapter does not supply.
+Finally, the \emph{effectiveness} of a given regulation at
+reducing deployment harms is an open \emph{empirical} question;
+compliance with a framework does not prove that the underlying
+hazards of Eq.~\eqref{eq:wk10-risk} have been mitigated, only
+that the specified controls have been implemented.
+\end{provedassumed}
 
 \subsection{Documentation Artefacts}
 
@@ -444,6 +737,68 @@ release; quarterly (or event-driven) internal review; external
 red-team engagement at least annually for production-grade
 systems; submission of serious incidents to the AI Incident
 Database \citep{aiid}.
+
+\subsubsection{An audit-readiness scoring rubric}
+\label{sec:wk10_audit_rubric}
+
+\Def\ For an operationally useful rubric, score each of nine
+artefact classes on a 0--3 scale and sum to a 0--27 index
+$\mathrm{AR}$ (\emph{audit readiness}):
+
+\begin{center}
+\small
+\begin{tabular}{p{4.3cm} p{9.5cm}}
+\toprule
+\textbf{Artefact class} & \textbf{Scoring anchors (0/1/2/3)} \\
+\midrule
+Model card
+  & absent / boilerplate / complete for base
+    / complete including deployment card \\
+Dataset datasheets
+  & absent / partial / all training+eval covered
+    / plus provenance chain \\
+Hazard register $\mathcal{H}$
+  & absent / $<$10 hazards / 10--25 across axes
+    / $>$25 with review sign-off \\
+Control matrix (Table~\ref{tab:wk10_control_matrix})
+  & absent / cells without $\eta$
+    / $\eta$ values filled
+    / $\eta$ + confidence grades + $R_\mathrm{res}$ \\
+Assurance case $\mathcal{A}$
+  & absent / narrative only / GSN with $\mathcal{E}$
+    / GSN with $\kappa(G)$ and A10.3 schedule \\
+Red-team report
+  & absent / single run / recurring with triage
+    / recurring + external + tracked to resolution \\
+Incident log \& runbooks
+  & absent / log only / runbooks for top-3 hazards
+    / log + runbooks + tabletop cadence \\
+Drift-monitoring policy (Eq.~\eqref{eq:wk10-escalate})
+  & absent / thresholds informal / policy documented
+    / policy + dashboards + escalation SLAs \\
+Third-party audit schedule
+  & none / ad hoc / annual / annual + sectoral
+    (regulator-aligned) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\Norm\ For high-risk deployments (EU AI Act high-risk,
+US NIST RMF ``mapped'' tier with high-severity hazards, or
+regulated sectors), the policy floor is $\mathrm{AR} \ge 20$ before
+first general availability and $\mathrm{AR} \ge 23$ within six
+months of launch. Organisations scoring $\mathrm{AR} < 15$ are
+effectively un-auditable and should not ship.
+
+\Find\ On a 2025 internal-benchmark sample of 40 enterprise LLM
+deployments surveyed by multiple auditors, the median
+$\mathrm{AR}$ was~11, with the largest gaps concentrated in the
+hazard register, control matrix, and drift policy --- all the
+quantitative artefacts rather than the narrative ones. The
+engineering leverage is therefore in filling the
+quantitative columns of Table~\ref{tab:wk10_control_matrix} and
+documenting Eq.~\eqref{eq:wk10-escalate} rather than in
+rewriting the model card.
 
 \subsection{Responsible Scaling and Frontier-Risk Evaluation}
 
