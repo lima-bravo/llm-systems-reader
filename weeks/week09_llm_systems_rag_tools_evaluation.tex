@@ -68,25 +68,77 @@ By the end of this week, you should be able to:
         distribution drift).
 \end{itemize}
 
+\subsection{Notation and System Assumptions}
+
+\begin{notationbox}
+Throughout this chapter we fix the following objects. A
+\emph{corpus} is a finite document set $\mathcal{D} = \{d_1, \dots, d_{|\mathcal{D}|}\}$.
+Each document $d$ is partitioned into a \emph{chunk set}
+$\mathcal{C}(d)$, and the union $\mathcal{C} = \bigcup_{d \in \mathcal{D}} \mathcal{C}(d)$
+is the retrieval universe. A \emph{query} is a token sequence $q$.
+A \emph{retriever} is a map $R_{k_R} : q \mapsto
+\{c_{(1)}, \dots, c_{(k_R)}\} \subseteq \mathcal{C}$ that returns
+the top-$k_R$ chunks ranked by a scoring function
+$s : (q, c) \mapsto \mathbb{R}$. We write $\mathrm{rank}(c \mid q)$ for
+the 1-indexed rank of chunk $c$ under $s(q, \cdot)$. A
+\emph{reranker} is a second-stage scorer
+$s_R : (q, c) \mapsto \mathbb{R}$, typically a cross-encoder that
+reads $q$ and $c$ jointly. For a question $q$ with known gold
+answer $a^\star$, we write $\mathcal{G}(q) \subseteq \mathcal{C}$ for the
+set of chunks that are \emph{sufficient} to derive $a^\star$; for
+an answer $y$, we write $\mathrm{Claims}(y)$ for the atomic
+factual claims extracted from $y$. We continue to use $x$ for the
+user-visible prompt, $y$ for the model answer, $\tau$ for decoding
+temperature (Week~1), and $T$ for context length. The generator
+conditional is written $P_\theta(y \mid x, c_{(1)}, \dots, c_{(k_R)})$.
+
+We make three standing assumptions.
+\begin{description}
+  \item[A9.1 Retrieval freshness.] The index $\mathcal{I}$ used by $R_{k_R}$
+    reflects the corpus $\mathcal{D}$ up to a staleness bound
+    $\Delta_\mathrm{idx}$; documents added or removed within the last
+    $\Delta_\mathrm{idx}$ may be missing or present in $\mathcal{I}$.
+  \item[A9.2 Trust boundary.] Content retrieved from $\mathcal{D}$ is
+    \emph{untrusted input}: the adversary may insert documents into
+    $\mathcal{D}$, and strings inside retrieved chunks are not
+    authoritative instructions.
+  \item[A9.3 Gold labels are partial.] $\mathcal{G}(q)$ is known only for
+    a held-out evaluation set; at serving time the system must act
+    without access to $\mathcal{G}$.
+\end{description}
+\end{notationbox}
+
 \subsection{Retrieval-Augmented Generation (RAG)}
 
-A RAG system augments the model's conditional distribution
-\[
-  P_\theta(y \mid x) \;\longrightarrow\; P_\theta(y \mid x, d_1, \dots, d_k),
-\]
-where the $d_i$ are documents (or document fragments) retrieved
-from an external corpus based on the query~$x$. The design space
-is larger than this equation suggests. Figure~\ref{fig:rag-pipeline}
-shows the canonical pipeline.
+\Def\ A \emph{retrieval-augmented generator} is a pair $(R_{k_R},
+P_\theta)$ whose induced conditional distribution over answers is
+\begin{equation}
+  P_{\mathrm{RAG}}(y \mid q)
+  \;=\; P_\theta\bigl(y \,\big|\, x(q), \, R_{k_R}(q)\bigr),
+  \label{eq:rag-conditional}
+\end{equation}
+where $x(q)$ is a prompt-construction function that renders the
+retrieved chunk set $R_{k_R}(q) = \{c_{(1)}, \dots, c_{(k_R)}\}$
+and the user query $q$ into a single token sequence, and
+$P_\theta$ is the frozen generator from Week~4. The design space is
+larger than Eq.~\eqref{eq:rag-conditional} suggests: $R$, $k_R$, the
+chunking policy producing $\mathcal{C}$, and the prompt-construction
+function $x(\cdot)$ are all independent design choices.
+Figure~\ref{fig:rag-pipeline} shows the canonical pipeline; each
+labelled stage corresponds to one of those choices.
 
 \begin{figure}[ht]
   \centering
   \input{figures/rag_pipeline.tex}
-  \caption{The canonical RAG pipeline. Offline: ingest the corpus,
-  chunk each document, embed each chunk, write to a vector store.
-  Online: embed the query, retrieve top-$k$ neighbours, optionally
-  rerank, pack into the prompt, and generate. Each stage can fail
-  independently and each has its own quality metric.}
+  \caption{The canonical RAG pipeline realising the conditional of
+  Eq.~\eqref{eq:rag-conditional}. Offline: ingest the corpus
+  $\mathcal{D}$, chunk each document into $\mathcal{C}$, embed each chunk,
+  write to an index $\mathcal{I}$. Online: embed the query $q$, retrieve
+  the top-$k_R$ chunks $R_{k_R}(q)$ under $s(q, \cdot)$, optionally
+  rerank under $s_R$, render via $x(\cdot)$, and sample from
+  $P_\theta(y \mid x(q), R_{k_R}(q))$. Each stage can fail
+  independently (see \S\ref{sec:rag-failure-modes}) and each has its
+  own quality metric (\S\ref{sec:rag-eval}).}
   \label{fig:rag-pipeline}
 \end{figure}
 
@@ -121,45 +173,95 @@ work \citep{lin2024radit}.
 
 \subsubsection{Retrievers: sparse, dense, and hybrid}
 
-The retriever answers: given a query, return the most relevant
-$k$ documents from the corpus. Three families cover almost all
-production deployments.
+The retriever answers: given a query $q$, return the top-$k_R$
+chunks from $\mathcal{C}$ ranked by a scoring function
+$s(q, c)$. Three families cover almost all production deployments.
+Each specifies $s$ differently.
 
-\paragraph{Sparse retrieval (BM25).}
-BM25 \citep{robertson2009bm25} scores a document-query pair using
-term-frequency statistics weighted by inverse document frequency,
-with length normalization. It is a three-parameter extension of
-tf-idf and remains the single strongest baseline in most
-benchmarks. BM25 has no training cost, indexes in minutes for
-millions of documents, and handles rare technical vocabulary (drug
-names, part numbers, code identifiers) far better than dense
-retrievers whose training distribution did not cover them. Every
-RAG system should include a BM25 option, usually as the first
-stage of a hybrid.
+\Ident\ \emph{BM25 scoring rule.}
+For a query $q$ with terms $t$ and a chunk $c$ of length $|c|$
+tokens drawn from an index with average chunk length $\bar{L}$, the
+BM25 score \citep{robertson2009bm25} is
+\begin{equation}
+  s_{\mathrm{BM25}}(q, c)
+  \;=\;
+  \sum_{t \in q}
+    \mathrm{IDF}(t) \cdot
+    \frac{f(t, c)\,(k_1 + 1)}
+         {f(t, c) + k_1\!\left(1 - b + b\,\dfrac{|c|}{\bar{L}}\right)},
+  \label{eq:bm25}
+\end{equation}
+where $f(t, c)$ is the raw term frequency of $t$ in $c$,
+$\mathrm{IDF}(t) = \log\!\bigl((|\mathcal{C}| - n_t + 0.5)/(n_t + 0.5)\bigr)$
+with $n_t$ the number of chunks containing $t$, and
+$(k_1, b) \in [1.2, 2.0] \times [0, 1]$ are tuning constants that
+control term-frequency saturation and length normalization
+respectively. Eq.~\eqref{eq:bm25} is a closed form, deterministic
+given $\mathcal{C}$: there is no training step and no randomness. BM25
+remains the single strongest baseline in most benchmarks, has no
+training cost, indexes in minutes for millions of chunks, and
+handles rare technical vocabulary (drug names, part numbers, code
+identifiers) far better than dense retrievers whose training
+distribution did not cover them.
 
-\paragraph{Dense retrieval (bi-encoder).}
-Dense Passage Retrieval \citep{karpukhin2020dpr} learns two
-encoders --- one for queries, one for documents --- and retrieves
-by cosine (or inner-product) similarity of their embeddings.
-Contriever \citep{izacard2022contriever} trains a similar model
-without supervised labels by contrastive learning. Dense
-retrievers generalize across paraphrases better than BM25 and can
-match on semantic similarity (``heart attack'' vs.\ ``myocardial
-infarction''), but degrade sharply off-distribution.
+\Cons\ Every RAG system should include a BM25 option, usually as
+the first stage of a hybrid.
+
+\Ident\ \emph{Dense bi-encoder scoring rule.}
+A dense retriever encodes query and chunk into
+$\mathbb{R}^{d_\mathrm{emb}}$ via trained encoders $E_q, E_c$ and scores
+with cosine similarity:
+\begin{equation}
+  s_{\mathrm{dense}}(q, c)
+  \;=\; \cos\!\bigl(E_q(q),\, E_c(c)\bigr)
+  \;=\; \frac{E_q(q)^\top E_c(c)}
+             {\|E_q(q)\|_2 \,\|E_c(c)\|_2}.
+  \label{eq:dense-cos}
+\end{equation}
+Dense Passage Retrieval \citep{karpukhin2020dpr} supervises $E_q,
+E_c$ with labelled positive-negative pairs; Contriever
+\citep{izacard2022contriever} does so without labels via
+contrastive learning.
+
+\Assum\ Eq.~\eqref{eq:dense-cos} uses \emph{normalized} embeddings:
+if vectors are unnormalized, inner product and cosine disagree and
+the retrieval ranking can shift. Production code should either
+normalize at index time or use an inner-product index with
+normalization baked into the encoder.
+
+\Emp\ Dense retrievers generalize across paraphrases better than
+BM25 and match on semantic similarity (``heart attack'' vs.\
+``myocardial infarction''), but degrade sharply off-distribution:
+on TREC-COVID and BEIR out-of-domain splits, BM25 outperforms
+unadapted dense retrievers on a majority of tasks
+\citep{thakur2021beir}.
 
 \paragraph{Late-interaction (ColBERT).}
 ColBERT \citep{khattab2020colbert} indexes a separate embedding for
-each token and scores a query-document pair with a maxsim operator.
+each token and scores a query-chunk pair with a MaxSim operator:
+\begin{equation}
+  s_{\mathrm{ColBERT}}(q, c)
+  \;=\; \sum_{i=1}^{|q|} \max_{j=1,\dots,|c|}
+         \cos\!\bigl(E(q_i),\, E(c_j)\bigr).
+  \label{eq:colbert-maxsim}
+\end{equation}
 It retains most of the semantic-matching benefit of dense retrieval
 while being more robust to rare terms. It costs more in index size
 (one embedding per token) but is often the quality-leading choice
 for technical corpora.
 
 \paragraph{Hybrid.}
-A production default is BM25 + dense retrieval with a merging
-strategy (reciprocal-rank fusion or a learned reranker). The
-hybrid is almost always better than either alone, especially on
-queries the dense retriever has not seen.
+A production default combines BM25 and dense retrieval using
+reciprocal-rank fusion (RRF)
+\begin{equation}
+  s_{\mathrm{RRF}}(q, c)
+  \;=\; \sum_{s \in \{s_{\mathrm{BM25}}, s_{\mathrm{dense}}\}}
+         \frac{1}{k_\mathrm{RRF} + \mathrm{rank}_s(c \mid q)},
+  \label{eq:rrf}
+\end{equation}
+with $k_\mathrm{RRF}=60$ as a common default. The hybrid is almost
+always better than either alone, especially on queries the dense
+retriever has not seen.
 
 \subsubsection{Indexing with approximate nearest neighbours}
 
@@ -193,8 +295,11 @@ regression.
 
 \subsubsection{Chunking: the underrated design decision}
 
-Retrievers operate on chunks, not documents. How the corpus is
-chunked is as important as which retriever is used.
+Retrievers operate on chunks, not documents: $s(q, \cdot)$ in
+Eqs.~\eqref{eq:bm25}--\eqref{eq:colbert-maxsim} takes a chunk $c$
+as its second argument, not a whole document $d$. The partition of
+$\mathcal{D}$ into $\mathcal{C}$ is therefore a retriever-side design choice
+and is as important as which scoring function is used.
 
 \paragraph{Fixed-size vs.\ semantic chunking.}
 The simplest scheme is fixed-size windows (e.g., 512 tokens with
@@ -204,11 +309,14 @@ locality and is better for structured corpora (technical manuals,
 legal texts). Sentence-window chunking (chunk = one sentence +
 context window) can be best for FAQ-style corpora.
 
-\paragraph{The sweet-spot is smaller than you think.}
+\Heur\ \emph{The sweet-spot is smaller than you think.}
 Practitioners consistently overestimate the right chunk size.
-128--512 tokens with a small overlap outperforms 1--2k-token chunks
-on most benchmarks, because each retrieval ``vote'' goes to a
-tighter semantic unit. The cost is more chunks in the index.
+Across public RAG benchmarks and internal reports, chunks of
+128--512 tokens with 20--50 token overlap outperform 1--2k-token
+chunks on most knowledge-QA tasks, because each retrieval ``vote''
+goes to a tighter semantic unit. The cost is more chunks in the
+index. This is a heuristic, not a theorem: verify on your own
+recall@$k_R$ measurements before locking in a value.
 
 \paragraph{Hierarchical chunking.}
 An emerging pattern is to index at two granularities: small chunks
@@ -218,29 +326,87 @@ precise and generation well-contextualized.
 
 \subsubsection{Reranking}
 
-Top-$k$ retrieval by similarity is not enough. Rerankers are a
-second-stage model that reads the query \emph{and} each candidate
-together and produces a calibrated relevance score. A cross-encoder
-(``monoBERT''-style) will rerank 50 candidates down to 5 at a small
-cost and often contributes a 5--10 point absolute gain in final
-answer quality. Production systems with a latency budget rarely
-skip this step.
+\Def\ A \emph{reranker} is a second-stage scorer $s_R(q, c)$, run
+only on the top-$k_1$ candidates from the first-stage retriever,
+which produces the final top-$k_R$ set ($k_R < k_1$). Unlike the
+bi-encoder of Eq.~\eqref{eq:dense-cos}, a cross-encoder reranker
+reads $q$ and $c$ \emph{jointly} through a shared Transformer
+stack, so it can model query-chunk interactions that bi-encoders
+cannot.
+
+\Def\ \emph{Precision@$k$.} For gold chunk set $\mathcal{G}(q)$ and
+returned set $R_k(q)$,
+\begin{equation}
+  \mathrm{P@}k(q)
+  \;=\; \frac{\bigl|R_k(q) \cap \mathcal{G}(q)\bigr|}{k}.
+  \label{eq:precision-at-k}
+\end{equation}
+
+\begin{workedexample}[: reranking lifts Precision@5]
+Take a single query $q$ with $|\mathcal{G}(q)| = 3$ gold chunks. A
+bi-encoder first-stage retrieves the following 10 candidates (ranks
+1--10), with relevance flags $r_i = 1$ iff $c_{(i)} \in \mathcal{G}(q)$:
+\[
+  (r_1, \dots, r_{10}) = (1, 0, 0, 1, 0, 0, 0, 1, 0, 0).
+\]
+At $k_R = 5$ without reranking, $R_5(q) = \{c_{(1)}, \dots, c_{(5)}\}$
+contains two gold chunks, so by
+Eq.~\eqref{eq:precision-at-k} $\mathrm{P@}5 = 2/5 = 0.40$. A
+cross-encoder reranker now rereads $(q, c_{(i)})$ for $i = 1, \dots,
+10$ and outputs calibrated scores $s_R$; suppose the resulting
+ranking is the permutation
+$(1, 4, 8, 2, 3, 5, 6, 7, 9, 10)$ of the first-stage ranks
+---~all three gold chunks are pulled to the top. The post-rerank
+top-5 set contains all three golds, so
+$\mathrm{P@}5 = 3/5 = 0.60$, a $+20$-point absolute gain at the
+cost of ten cross-encoder forward passes. The example is
+idealised, but the mechanism is real: cross-encoder rerankers
+typically contribute 5--15 absolute P@5 points on top of a
+bi-encoder first stage \citep{nogueira2020monobert}.
+\end{workedexample}
+
+\Cons\ Production systems with a latency budget rarely skip this
+step: the marginal cost of $k_1 = 50$ cross-encoder calls is small
+compared with the generation cost of the downstream LLM, and the
+precision gain propagates directly into context precision and
+answer quality.
 
 \subsubsection{Context packing and the ``lost in the middle'' problem}
 
-Once you have $k$ chunks, you must write them into the prompt. The
-order matters. \citet{liu2024lost} documented a ``lost in the
-middle'' phenomenon: models use information placed at the
-beginning and end of the context much more reliably than
-information in the middle. Three practical rules follow.
+Once $R_{k_R}(q)$ is fixed, the prompt-construction function
+$x(\cdot)$ must choose a \emph{position mapping}
+$\pi : \{1, \dots, k_R\} \to \{1, \dots, k_R\}$ that decides where
+each retrieved chunk is placed inside the prompt.
 
+\Emp\ \emph{Lost-in-the-middle.} \citet{liu2024lost} ran the
+following controlled experiment. Fix $k_R = k$ retrieved chunks,
+exactly one of which (the ``gold'' chunk $c^\star$) contains the
+answer. Place $c^\star$ at position $j \in \{1, \dots, k\}$ inside
+the prompt and shuffle the rest. Let $\mathrm{Acc}(j)$ denote the
+exact-match answer accuracy averaged over queries. For
+$k \in \{10, 20, 30\}$ and across GPT-3.5, Claude, and several
+open-source long-context models, the empirical curve satisfies
+\begin{equation}
+  \mathrm{Acc}(1) \;\approx\; \mathrm{Acc}(k) \;>\; \mathrm{Acc}(j)
+  \quad \text{for } j \in \{\lfloor k/2 \rfloor - 1, \lfloor k/2
+  \rfloor, \lfloor k/2 \rfloor + 1\},
+  \label{eq:litm}
+\end{equation}
+with end-vs-middle gaps reaching 20 accuracy points for $k = 30$.
+In words: accuracy as a function of gold-chunk position is
+U-shaped, with primacy and recency both preserved and the middle
+positions systematically under-used. The effect is independent of
+whether the model claims to support long context.
+
+\Cons\ Three practical rules follow from Eq.~\eqref{eq:litm}:
 \begin{enumerate}
-  \item Place the most relevant retrieved chunk either first or
-        last, not in the middle.
-  \item Keep the total context length modest. A 32k-context model
-        given 16k tokens of retrieval usually performs worse than
-        the same model given 2k tokens of carefully-chosen
-        retrieval.
+  \item Choose $\pi$ so the highest-$s_R$ chunk lands at position 1
+        or $k_R$, not in the interior.
+  \item Keep $k_R$ and the rendered length modest: a 32k-context
+        model given 16k tokens of retrieval usually performs worse
+        than the same model given 2k tokens of carefully-chosen
+        retrieval, because Eq.~\eqref{eq:litm}'s middle-penalty
+        scales with $k_R$.
   \item If you must include many chunks, use structured
         delimiters (``Source 1:''$\dots$``Source 2:''$\dots$) so the
         model can address them individually in the answer.
@@ -280,31 +446,69 @@ structure is the call graph plus the file hierarchy; retrieval that
 respects this structure is reliably better than flat chunking.
 
 \subsubsection{RAG failure modes}
+\label{sec:rag-failure-modes}
 
-\paragraph{Retrieval miss.} The right document exists in the corpus
-but was not retrieved. Usually a chunking or retriever issue;
-diagnose with recall@$k$ on a gold set.
+\paragraph{Retrieval miss.} $\mathcal{G}(q) \not\subseteq R_{k_R}(q)$: the
+right chunk exists in $\mathcal{C}$ but is not in the top-$k_R$ set.
+Usually a chunking or retriever issue; diagnose with
+recall@$k_R$ on a gold set (see Eq.~\eqref{eq:context-recall}
+below).
 
-\paragraph{Context dilution.} Retrieval fetched the right document
-and also fetched several irrelevant ones. The model is distracted.
-Fix with reranking and smaller $k$.
+\paragraph{Context dilution.} $|R_{k_R}(q) \cap \mathcal{G}(q)|$ is
+small relative to $k_R$: retrieval fetched the right chunk and
+also fetched several irrelevant ones, so context precision
+(Eq.~\eqref{eq:context-precision}) is low and the model is
+distracted. Fix with reranking and smaller $k_R$.
 
 \paragraph{Retrieval-generation disagreement.} The retrieved
-documents contradict the model's pretrained beliefs. Without an
+chunks contradict the model's pretrained beliefs. Without an
 explicit instruction to prefer retrieved content, the model will
-sometimes ignore it. Prompt for faithfulness and measure it.
+sometimes ignore it. Prompt for faithfulness and measure it
+(Eq.~\eqref{eq:faithfulness}).
 
-\paragraph{Prompt injection via retrieved content.}
-\citet{greshake2023injection} showed that a malicious document in
-the retrieval corpus can hijack the model's behaviour through
-instructions embedded in the document text. Treat retrieved
-content as untrusted input: escape or sandwich it, refuse to
-follow instructions that appear inside retrieval results, and
-never let retrieved text rewrite the system prompt. This is the
-single most important security property of a production RAG.
+\paragraph{Prompt injection via retrieved content
+(\citealt{greshake2023injection}).}
+This is the central consequence of assumption A9.2 (trust
+boundary). We model it as follows.
 
-\paragraph{Stale index.} The corpus drifts while the index does
-not. Define and monitor an index-staleness metric.
+\emph{Adversary capabilities.} The adversary $\mathcal{A}$ may insert
+one or more attack chunks $c_\mathrm{atk}$ into $\mathcal{D}$ subject to a
+budget constraint $|c_\mathrm{atk}| \le B_\mathrm{tok}$ tokens.
+$\mathcal{A}$ knows the retriever scoring function $s$ (but not model
+weights) and crafts $c_\mathrm{atk}$ so that
+$s(q, c_\mathrm{atk})$ is high for some target query class $Q$.
+
+\emph{Threat goal.} $\mathcal{A}$ aims to induce the generator to emit an
+output $y$ that satisfies an attacker-chosen predicate $\phi(y)$
+---~e.g., ``$y$ reveals the system prompt'', ``$y$ calls a tool with
+attacker-controlled arguments''.
+
+\emph{Trust boundary.} Define
+$\mathcal{T} = \{\text{system prompt},\, \text{user query } q\}$ as
+trusted and $\mathcal{U} = R_{k_R}(q)$ as untrusted. The core safety
+invariant is:
+\begin{equation}
+  \text{no string in } \mathcal{U} \text{ may change the interpretation
+  of a string in } \mathcal{T}.
+  \label{eq:trust-invariant}
+\end{equation}
+
+\emph{Defenses.} Operationally, upholding
+Eq.~\eqref{eq:trust-invariant} requires (i) structured escaping at
+the prompt-construction step (retrieved chunks placed inside tagged
+delimiters that the generator is trained to treat as data, not
+instructions), (ii) instruction-hierarchy training
+\citep{wallace2024instruction} that puts system $>$ user $>$ tool
+output $>$ retrieved content, (iii) detection classifiers on
+$R_{k_R}(q)$ that flag instruction-like content, and (iv) output
+filters that refuse responses matching known exfiltration
+predicates. No single defense is sufficient; defence-in-depth is
+the production norm.
+
+\paragraph{Stale index.} The effective staleness $\Delta_\mathrm{idx}$
+of A9.1 drifts while the corpus grows; define and monitor a
+staleness metric and treat exceeding $\Delta_\mathrm{idx}$ as a
+release-blocking incident.
 
 \subsection{Tool Use: Structured I/O, Not ``Reasoning''}
 
@@ -316,6 +520,16 @@ I/O}: the model emits a message in a specified schema, a
 deterministic piece of code validates and executes it, the result
 is fed back in, and the loop continues.
 
+\Def\ Formally, a tool is a triple $(\sigma, \mathrm{exec},
+\mathrm{desc})$ where $\sigma$ is a JSON schema specifying the
+parameter space $\Sigma$, $\mathrm{exec} : \Sigma \to \mathcal{O}$ is a
+deterministic side-effecting procedure mapping validated
+parameters to a textual observation, and $\mathrm{desc}$ is a
+natural-language description. A tool surface $\mathcal{T} = \{(\sigma_i,
+\mathrm{exec}_i, \mathrm{desc}_i)\}_{i=1}^{N}$ is the finite set of
+tools exposed to the policy. The model is trained (or prompted) to
+emit messages that validate against one of the $\sigma_i$.
+
 Figure~\ref{fig:react-loop} illustrates the ReAct pattern
 \citep{yao2023react}, the dominant shape of tool-use loops today.
 
@@ -323,11 +537,14 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
   \centering
   \input{figures/react_loop.tex}
   \caption{The ReAct loop. The policy alternates Thought (free-form
-  chain-of-thought), Action (structured tool call), Observation
-  (tool result), and repeats until it is ready to emit a final
-  answer. The ``reasoning'' narrative is useful for debugging but
-  is not what the external system executes --- only the structured
-  Action is executed.}
+  chain-of-thought $y_t^{\mathrm{thought}} \sim P_\theta$), Action
+  (structured tool call that must validate against some
+  $\sigma_i \in \mathcal{T}$), Observation ($o_t =
+  \mathrm{exec}_i(\mathrm{params}_t)$), and repeats until the policy
+  emits a terminal answer. Only the Action is executed; the
+  Thought is useful for debugging and sometimes for training (see
+  reasoning-trace-based methods in Week~8) but does not cross the
+  trust boundary into the tool runtime.}
   \label{fig:react-loop}
 \end{figure}
 
@@ -367,15 +584,18 @@ compile it to prompts.
 
 \subsubsection{Tool-use failure modes}
 
-\paragraph{Hallucinated calls.} The model invents a tool that does
-not exist, or fills in plausible-sounding but wrong parameters. The
-defence is strict schema validation (\texttt{400} the call, return
-the validation error to the model, let it retry).
+\paragraph{Hallucinated calls.} The model emits a message whose
+name field does not match any $\sigma_i \in \mathcal{T}$, or whose
+parameters fail to validate against the matched $\sigma_i$. The
+defence is strict schema validation (reject the call, return the
+validation error to the model as an observation $o_t$, let it
+retry within the step budget).
 
-\paragraph{Infinite loops.} The model calls a tool, gets a result
-it does not understand, and calls again. Bound the loop with a
-step limit. Prefer a small step limit and a clear ``I couldn't
-complete this'' response to an unbounded attempt.
+\paragraph{Infinite loops.} The policy calls a tool, gets an
+observation it does not understand, and calls again. Bound the
+loop with a step limit $T_\mathrm{step}$. Prefer a small
+$T_\mathrm{step}$ and a clear ``I couldn't complete this'' response
+to an unbounded attempt.
 
 \paragraph{Destructive action without confirmation.} A tool-using
 agent that can issue SQL UPDATE, file deletes, or external API
@@ -388,6 +608,15 @@ credentials. An agent should not have a credential it cannot
 justify. Principle of least privilege applies: give each tool its
 own tightly-scoped service account and audit the credentials
 surface.
+
+\paragraph{Observation injection.} A tool's observation $o_t$ is
+retrieved from external systems (search results, database rows,
+API responses) and is therefore \emph{untrusted content} in the
+same sense as retrieved chunks: the trust invariant
+Eq.~\eqref{eq:trust-invariant} extends from $R_{k_R}(q)$ to
+$\bigcup_t o_t$. An attacker who controls any tool endpoint can
+inject instructions into $o_t$; defenses are identical to the
+prompt-injection defences above.
 
 \subsubsection{Tool use and retrieval as a unified view}
 
@@ -493,28 +722,75 @@ evaluation or human calibration is required.
 outputs. Never evaluate a model with itself as the sole judge.
 
 \subsubsection{RAG-specific evaluation}
+\label{sec:rag-eval}
 
-RAG has its own metrics beyond end-to-end accuracy.
+RAG has its own metrics beyond end-to-end accuracy. Each is a
+set-ratio defined against the objects of
+\S\,\emph{Notation and System Assumptions}: the retrieved set
+$R_{k_R}(q)$, the gold chunk set $\mathcal{G}(q)$, the extracted claim
+set $\mathrm{Claims}(y)$, and a semantic-relevance oracle
+$\mathbf{1}\{\cdot\}$ (in practice, an LLM judge or human
+annotator).
 
-\paragraph{Context recall.} Given a gold answer, does the
-retrieved context contain the information needed to produce it?
-This isolates retriever quality.
+\Def\ \emph{Context recall.} The fraction of gold chunks that were
+retrieved:
+\begin{equation}
+  \mathrm{Recall}_{\mathrm{ctx}}(q)
+  \;=\; \frac{\bigl|R_{k_R}(q) \cap \mathcal{G}(q)\bigr|}
+             {|\mathcal{G}(q)|}.
+  \label{eq:context-recall}
+\end{equation}
+Isolates retriever quality: the generator is irrelevant to
+Eq.~\eqref{eq:context-recall}.
 
-\paragraph{Context precision.} Of the retrieved chunks, how many
-are actually relevant? Diagnoses reranker quality.
+\Def\ \emph{Context precision.} The fraction of retrieved chunks
+that are relevant:
+\begin{equation}
+  \mathrm{Prec}_{\mathrm{ctx}}(q)
+  \;=\; \frac{\bigl|\{\, c \in R_{k_R}(q)
+              : \mathbf{1}\{c \text{ relevant to } q\} \,\}\bigr|}
+             {|R_{k_R}(q)|}.
+  \label{eq:context-precision}
+\end{equation}
+Diagnoses reranker quality. When $\mathcal{G}(q)$ is fully specified,
+Eq.~\eqref{eq:context-precision} reduces to
+$|R_{k_R}(q) \cap \mathcal{G}(q)| / k_R$; otherwise the indicator is
+evaluated by the oracle.
 
-\paragraph{Faithfulness.} Does the generated answer follow from
-the retrieved context, or does the model hallucinate beyond it?
-This is often measured with an LLM judge that checks each claim
-against the context.
+\Def\ \emph{Faithfulness.} The fraction of claims in the answer
+that are entailed by the retrieved context:
+\begin{equation}
+  \mathrm{Faith}(q, y)
+  \;=\; \frac{\bigl|\{\, \kappa \in \mathrm{Claims}(y)
+              : \mathbf{1}\{R_{k_R}(q) \vDash \kappa\} \,\}\bigr|}
+             {|\mathrm{Claims}(y)|},
+  \label{eq:faithfulness}
+\end{equation}
+where $R_{k_R}(q) \vDash \kappa$ means the retrieved set entails
+claim $\kappa$ under the oracle. $\mathrm{Faith} = 1$ means every
+claim is grounded; $\mathrm{Faith} < 1$ signals hallucination
+beyond the context.
 
-\paragraph{Answer relevance.} Does the answer actually address
-the question? This catches cases where the model produces a
-well-grounded but off-topic answer.
+\Def\ \emph{Answer relevance.} A semantic match between the answer
+and the query, measured by sampling $M$ hypothetical queries
+$q_m \sim P_{\mathrm{LLM}}(\cdot \mid y)$ that a user might have
+asked to produce $y$, and averaging their similarity to $q$:
+\begin{equation}
+  \mathrm{AnsRel}(q, y)
+  \;=\; \frac{1}{M} \sum_{m=1}^{M}
+        \cos\!\bigl(E(q),\, E(q_m)\bigr).
+  \label{eq:answer-relevance}
+\end{equation}
+Catches cases where the model produces a well-grounded but
+off-topic answer ($\mathrm{Faith} = 1$ but $\mathrm{AnsRel}$ low).
 
-RAGAS \citep{es2024ragas} is one open implementation of this
-four-dimensional framework and is a reasonable starting point for
-a new RAG deployment.
+RAGAS \citep{es2024ragas} is one open implementation of
+Eqs.~\eqref{eq:context-recall}--\eqref{eq:answer-relevance} and is
+a reasonable starting point for a new RAG deployment. The four
+metrics decouple: a retriever can score well on
+Eq.~\eqref{eq:context-recall} and the generator can still produce
+a low-$\mathrm{Faith}$ answer, so all four must be reported
+jointly.
 
 \subsubsection{Evaluation hygiene}
 
@@ -544,6 +820,40 @@ eval team and the training team are the same team, the eval suite
 becomes a gameable target. The structural fix is an independent
 eval team with unpublished prompts, its own budget, and the
 authority to block a release.
+
+\begin{provedassumed}
+Eqs.~\eqref{eq:rag-conditional}, \eqref{eq:precision-at-k}, and
+\eqref{eq:context-recall}--\eqref{eq:answer-relevance} are
+\emph{definitions}: they hold by stipulation given the notation of
+\S\,\emph{Notation and System Assumptions} and have no hidden
+assumptions. The BM25 formula Eq.~\eqref{eq:bm25} and the MaxSim
+formula Eq.~\eqref{eq:colbert-maxsim} are closed-form scoring
+rules; their ranking behaviour is a property of the scoring rule
+and the corpus statistics, not of a trained model. The RRF formula
+Eq.~\eqref{eq:rrf} is an engineering heuristic whose optimality
+has no closed-form justification; its $k_\mathrm{RRF}=60$ default
+is empirical.
+
+The lost-in-the-middle curve Eq.~\eqref{eq:litm} is an
+\emph{empirical observation} on multiple production and
+research-grade models. We do \emph{not} have a theorem that
+predicts the U-shape from architecture alone; it correlates with
+positional-encoding behaviour (Week~4) and training-data
+positional biases, but no derivation connects them. Treat
+Eq.~\eqref{eq:litm} as a robust regularity, not a law.
+
+The attack model around Eq.~\eqref{eq:trust-invariant} and the
+defences that follow are an \emph{engineering stance}: we assume
+A9.2 (trust boundary) holds because we enforce it in code, not
+because the underlying model respects it by construction. When any
+defence is weakened, the invariant can be violated. The
+four-dimensional RAG metric suite
+(Eqs.~\eqref{eq:context-recall}--\eqref{eq:answer-relevance})
+likewise \emph{reports} four quantities; it does not \emph{prove}
+that optimising them jointly yields a good system. That claim is
+an inductive generalisation from deployed RAGAS pipelines, not a
+theorem.
+\end{provedassumed}
 
 \subsection{Augmented LLMs: A Survey Lens}
 
