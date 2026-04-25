@@ -5,6 +5,117 @@
 \section{Week 1: Statistical Learning Foundations for Large Language Models}
 \label{sec:week1}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.} Consider for a moment what it means to
+predict the next word. You are reading this sentence. Your eye has
+not yet reached its end, and yet some part of you is already
+guessing how it will finish. The guess is not certain. It is not
+random either. It is shaped by everything you have ever read, and
+by the few words that came just before. If we wanted to teach a
+machine to do the same, we would need to give it a way to assign,
+to each possible continuation, a number that captures \emph{how
+likely} that continuation is given everything it has seen so far.
+That is the entire problem of language modelling, written in a
+single sentence. Everything in this book is the elaboration.
+
+\paragraph{How we got here.} The idea that one symbol in a sequence
+depends on the symbols before it is older than the computer. In
+1913 the Russian mathematician Andrey Markov sat down with a copy
+of Pushkin's \emph{Eugene Onegin} and counted the alternation of
+vowels and consonants. He counted twenty thousand letters by
+hand. He did this, in part, to make a point against a colleague
+who had argued that the law of large numbers required independent
+trials; Markov wanted to show that one could relax independence
+into a chain of conditional dependence and still do useful
+mathematics. He gave us a model of language as a sequence of
+dependencies a full century before we had the data or the hardware
+to make that model interesting.
+
+Claude Shannon, in 1948, wrote the paper that founded information
+theory. He used English text as one of his running examples.
+Shannon estimated the entropy of English at roughly one bit per
+letter --- that is, on average each letter of an English string
+carries about one bit of new information given everything before
+it. He observed that a model that captures more of this structure
+will, by definition, assign higher probability to natural text. He
+gave us a yardstick.
+
+For half a century after Shannon the field crawled. The n-gram
+era of speech recognition counted word triples on hard drives
+that filled rooms. Frederick Jelinek, working at IBM, gave us the
+phrase ``every time I fire a linguist my speech recognizer's
+performance improves'' --- a statement about the willingness of
+counts to do the work that elaborate theory had failed to do.
+Yoshua Bengio and his coauthors, in 2003, built a neural network
+that learned a continuous representation of words and used it to
+predict the next one. Almost nobody outside the field noticed.
+Mikolov and his colleagues, in 2013, simplified the idea into
+word2vec. The geometry of the resulting word vectors --- in which
+``king minus man plus woman'' lands near ``queen'' --- caught
+public attention in a way that the underlying technology, by then
+ten years old, had not. The next decade and a half compressed:
+sequence-to-sequence translation in 2014, attention in 2015, the
+Transformer in 2017, and then the GPT line. By the end of 2022
+the kind of model that had been a research curiosity for fifty
+years was a consumer product.
+
+\paragraph{Where we stand.} The lineage converged on a remarkably
+simple recipe. Take a neural network. Show it a sequence of
+tokens. Ask it to predict, for each position in the sequence, a
+probability distribution over the next token. Compare its
+prediction to the token that actually came next. Penalise it in
+proportion to how surprised it was by the truth. That penalty,
+averaged over a corpus, is called the \emph{cross-entropy} loss.
+The mathematics in the rest of this chapter unpacks why this
+particular penalty is the right one. The short version is that
+cross-entropy is what you always end up at when you ask, formally,
+``minimise the surprise of seeing the data we actually saw, and
+nothing more.'' It is a maximum-likelihood estimator. It is a
+proper scoring rule. It is the information-theoretic distance
+between two distributions, plus a constant the model cannot
+control. We will see all three of these views in the pages that
+follow, because each one buys a different intuition.
+
+\paragraph{What goes wrong.} A model trained on cross-entropy is,
+by construction, the most plausible thing the model can say. The
+most plausible thing is not the same as the true thing. It is not
+the same as the most useful thing. It is not the same as the
+thing the user wanted, or the thing the user would have wanted if
+they had thought about it longer. It is, narrowly, the
+continuation that the training corpus would on average have
+produced. We give a polite name to the gap between this and the
+truth: we call it \emph{hallucination}. It is not a bug. It is the
+loss surface doing exactly what we asked of it.
+
+There are several specific consequences of this gap. The first is
+that the model has no native concept of confidence in the sense a
+human reader would mean. It has a probability distribution over
+next tokens, which is not the same thing. We will distinguish
+\emph{probability} (the model's number), \emph{confidence} (how
+strongly the model commits to that number), and
+\emph{correctness} (whether the chosen token is in fact right).
+The three are routinely conflated by users, and that conflation is
+the source of more downstream errors than any architectural
+choice. The second consequence is that the model is what we call
+\emph{calibrated}, or, more often, \emph{miscalibrated}: its
+confidence levels do not reliably correspond to its accuracy
+rates. We can measure this. We can sometimes correct it. We
+cannot eliminate it.
+
+The mathematics of the next sections is the bookkeeping for what
+we have just described. We will derive cross-entropy from
+maximum likelihood, identify it with information-theoretic
+divergence, work an example with a softmax, define
+calibration error formally, and watch how each of these objects
+is one face of the same construction. By the end of this chapter
+the reader who began with the intuition that an LLM ``just
+predicts the next word'' will have a sturdier intuition: an LLM
+encodes a conditional distribution, and reading its outputs
+through that lens explains, in advance, most of the surprises the
+rest of the book will document.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
