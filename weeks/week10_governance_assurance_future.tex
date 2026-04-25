@@ -1,44 +1,96 @@
 \section{Week 10: Governance, Assurance, and the Future of AI Systems}
 
-\subsection{Introduction: From Model to Accountability}
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
 
-The previous nine chapters described how to build, adapt, align,
-evaluate, and serve a language model. This one asks a different
-question: who is responsible when the resulting system is wrong,
-and what structures make that responsibility operative?
+\paragraph{The problem.}
+Suppose you have built and deployed everything in the first nine
+chapters. Your model is pretrained, aligned, retrieval-grounded,
+tool-equipped, and evaluated on a battery of harnesses. It runs in
+production. One morning a user takes a screenshot of the system
+giving a confidently wrong piece of medical advice and posts it on
+social media. The next morning, a regulator emails you with
+questions. The morning after that, your insurance carrier asks for
+documentation of your safety controls. The problem of this chapter
+is what you should have done before any of these mornings, and what
+you must do once they arrive. The technical question --- did the
+model produce the wrong output? --- has a definite answer. The
+governance question --- who is responsible, what process should
+have caught it, what control will catch the next one, and how do
+we prove this to a third party --- has a different shape, and it
+turns out to be answerable using engineering disciplines that are
+older than the model by half a century.
 
-The answer is \emph{governance} --- the set of practices, roles,
-documents, processes, and external obligations that let an
-organization deploy an AI system and be accountable for it.
-Governance is not a separate activity layered on top of
-engineering; it is an engineering discipline in its own right,
-with artefacts (model cards, datasheets, impact assessments,
-assurance cases), tools (audits, red teams, incident databases),
-and regulatory counterparts (NIST AI RMF, the EU AI Act, ISO/IEC
-42001) that this chapter treats with the same rigour as attention
-mechanisms and training loss curves.
+\paragraph{How we got here.}
+Safety-critical engineering has been a serious discipline since at
+least the 1970s. Nancy Leveson at MIT, in a series of books and
+papers culminating in \emph{Engineering a Safer World} (2011),
+showed that accidents in complex systems are typically not the
+result of single component failures but of the way the whole system
+is designed and operated. Charles Perrow's \emph{Normal Accidents}
+(1984) argued that some systems are so tightly coupled that
+accidents are statistically inevitable; the response is not to wish
+the accidents away but to design systems whose accidents are
+recoverable rather than catastrophic. James Reason's
+\emph{Human Error} (1990) gave us the Swiss-cheese model of
+defense in depth, in which no single safety control is asked to be
+perfect but the alignment of holes across overlapping controls is
+made improbable. None of this work was about AI. All of it applies.
 
-We treat four main threads. First, the socio-technical framing:
-an LLM is never merely a model; it is a model plus an operator
-plus users plus a regulatory context plus a failure mode space,
-and governance is concerned with the whole. Second, assurance
-cases in the tradition of safety-critical engineering, adapted
-for the statistical and open-ended behaviour of LLMs. Third, the
-current regulatory landscape --- EU AI Act, NIST AI RMF, ISO/IEC
-42001, and the emerging safety-institute model --- and what
-compliance looks like in practice. Fourth, the honest limits of
-the current paradigm: what alignment and evaluation cannot do,
-where the open problems are, and how an engineer should reason
-about a five-year horizon.
+The translation to AI systems began with the model-card and
+datasheet movement in the late 2010s, which made documentation a
+deliverable rather than an afterthought. The NIST AI Risk
+Management Framework, published in 2023, gave US federal agencies a
+structured approach to AI risk. The European Union's AI Act, agreed
+in 2024 and entering force in stages, classified AI systems by risk
+tier and imposed specific obligations on the high-risk and
+general-purpose tiers. ISO/IEC 42001, the first management-systems
+standard for AI, gave organizations an audit-ready frame analogous
+to ISO 9001 for quality or ISO 27001 for information security. The
+combination of these frameworks is now the de facto floor for
+serious AI deployment in most jurisdictions.
 
-A recurring theme: \textbf{defence in depth}. No single control
---- alignment training, retrieval grounding, input filtering,
-human review, rollback --- is sufficient on its own. Safety is a
-property of the whole stack, and a credible deployment builds
-overlapping layers whose failure modes are uncorrelated. This
-framing is borrowed wholesale from classical safety engineering
-\citep{leveson2011engineering, perrow1999normal, reason1990human}
-and applies with minimal translation to AI systems.
+\paragraph{Where we stand.}
+A modern governance stack treats an AI system as a socio-technical
+artifact: a model plus an operator plus the users plus the data
+flowing in and out plus the regulatory context that frames the
+whole. The engineering disciplines map onto familiar shapes. There
+is a hazard analysis (what can go wrong, and how badly). There is a
+set of controls, layered for defense in depth (input filters,
+output classifiers, retrieval grounding, alignment training,
+human-in-the-loop review, monitoring, rollback). There is an
+assurance case --- a structured argument, with explicit claims,
+arguments, and evidence --- that the controls are adequate for the
+deployment context. There is documentation --- model cards,
+datasheets, impact assessments, change logs, incident reports ---
+that lets a third party reconstruct what was built and why. And
+there is monitoring, because no static assessment survives contact
+with the production traffic that follows it. The whole edifice is
+slow to assemble and not optional.
+
+\paragraph{What goes wrong.}
+The first failure of governance is to treat it as paperwork. A model
+card that no one updates after the first deployment is worse than no
+model card, because it gives false reassurance. The second is to
+trust a single control: alignment alone, or retrieval alone, or red
+teaming alone. The Swiss-cheese model exists because every control
+has holes, and a credible deployment is one in which the holes do
+not align. The third failure is the moving target: a model that was
+safe in October may not be safe in March, because the world around
+it has changed even if the weights have not --- new jailbreak
+techniques have been published, new tool integrations have been
+added, new user populations have started using the system. The
+fourth, and the one this chapter takes most seriously, is the
+\emph{honest limit} of the current paradigm. There are problems that
+no amount of alignment training and no quantity of evaluation will
+solve: the model has no intrinsic understanding of truth, the
+training data contains biases that the loss function will never see,
+the deployment environment will produce inputs the evaluation suite
+did not anticipate. An engineer who pretends otherwise is not being
+useful; an engineer who acknowledges the limits and designs the
+system to recover gracefully when it fails is being honest about the
+problem. The math, the standards, and the assurance cases in this
+chapter exist to support that honesty.
 
 \subsection{Learning Objectives}
 
