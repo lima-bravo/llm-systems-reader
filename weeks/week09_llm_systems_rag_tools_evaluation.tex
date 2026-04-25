@@ -1,45 +1,102 @@
 \section{Week 9: LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses}
 
-\subsection{Introduction: The Model Is a Subsystem}
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
 
-Everything in Weeks~1--8 has been about the model as an object:
-its architecture, training, adaptation, and alignment. This chapter
-shifts the frame. In production, the model is one component of a
-larger system that also includes retrievers, tools, business logic,
-guardrails, caches, and the prompt-construction code that binds
-them together. Most of what users experience as ``the model'' is in
-fact a mixture of model behaviour and system behaviour, and most of
-the failures that reach users are system failures, not model
-failures.
+\paragraph{The problem.}
+A pretrained, aligned language model is, in the abstract, an
+extraordinarily capable thing. It is also bounded in two ways that
+matter in production. It cannot know facts that postdate its
+training cutoff, and it has no way to act on the world: it can
+describe a database query but it cannot run one, it can recommend a
+calendar invite but it cannot send one, it can recite arithmetic
+but it tends to do it incorrectly past five-digit numbers. The
+problem of this chapter is the gap between the model and the
+deployed system. Almost every interesting LLM application closes
+that gap by adding two things: a way to fetch fresh information into
+the context window, and a way to call external programs. Adding
+those two things turns a language model into a useful component of
+a larger system. Doing so without breaking the engineering invariants
+that make the larger system trustworthy is the work.
 
-The system boundary matters because three of the most consequential
-techniques in modern deployments --- retrieval-augmented generation
-(RAG), tool use, and external evaluation --- live \emph{outside} the
-model weights. A 7B-parameter model with a good RAG pipeline and a
-well-designed tool surface routinely outperforms a 70B-parameter
-model with neither, because grounding on fresh data and delegating
-arithmetic to a calculator are system capabilities, not model
-capabilities. A skilled practitioner knows which problems to push
-inside the model (pretraining, adaptation, alignment) and which to
-push into the system (retrieval, tools, orchestration).
+\paragraph{How we got here.}
+The history of fetching fresh information for a downstream task is,
+of course, the history of information retrieval, and it is older than
+the model. Hans Peter Luhn at IBM, in the late 1950s, proposed
+weighting terms by their frequency in a document --- the seed that
+became term-frequency / inverse-document-frequency (TF-IDF). Stephen
+Robertson and Karen Sp\"arck Jones at Cambridge, in the 1990s,
+refined the idea into the BM25 ranking function that remains the
+default lexical baseline. Dense retrieval --- representing queries
+and documents as vectors and ranking by inner product --- became
+practical with the embedding work of Mikolov in 2013 and the
+sentence and passage encoders that followed. By 2020 the field had
+the components it needed. Patrick Lewis and his colleagues at
+Facebook AI Research formalized the combination as
+\emph{Retrieval-Augmented Generation}: dense passage retrieval over
+a corpus, then condition the language model's generation on the
+retrieved passages. Vladimir Karpukhin and his collaborators
+published \emph{Dense Passage Retrieval} the same year, supplying
+the retriever component. The pattern stuck.
 
-This chapter treats three topics that together define an LLM
-system. First, \emph{retrieval-augmented generation}: the dominant
-pattern for combining a frozen language model with an evolving
-knowledge base, with its associated retrievers, chunking choices,
-context-packing strategies, and failure modes. Second, \emph{tool
-use} as structured I/O, including the ReAct loop, the JSON-schema
-discipline that modern APIs enforce, and the emerging MCP standard
-that will dominate Week~11. Third, \emph{evaluation harnesses} ---
-the empirical discipline that lets teams know whether a system is
-getting better, getting worse, or simply changing. The evaluation
-material doubles as a counterpart to Week~8: alignment is what the
-model learns; evaluation is how we know it learned it.
+Tool use has a parallel history. The first systems that let a
+language model call external programs were research demonstrations
+--- WebGPT, Toolformer, ReAct --- in which the model emitted a
+specially-formatted string that an outer harness recognized and
+executed. The breakthrough for production was the OpenAI function
+calling API in 2023, which made the structured I/O contract
+official: the model produced JSON conforming to a developer-supplied
+schema, the harness validated it and dispatched the call. Anthropic
+followed with \emph{Model Context Protocol} (MCP) in 2024, which
+generalized the idea to a transport-layer standard so that one
+client could talk to many servers without bespoke integration. The
+standardization mattered: it transformed tool use from a research
+trick into a discipline with versioned interfaces, testable
+schemas, and an audit trail.
 
-A running theme: \textbf{prompts are system artefacts}. They must be
-versioned, reviewed, tested, and audited like any other piece of
-production software. Treating a prompt as ``just a string'' is the
-single most common cause of silent regressions in LLM deployments.
+\paragraph{Where we stand.}
+A modern LLM application is a pipeline. The user query enters,
+optionally rewritten by a query-understanding step, then sent to a
+retriever (often a hybrid of BM25 and dense, sometimes with a cross-
+encoder reranker) that returns a small set of passages. Those
+passages are packed into the model's context, along with a system
+prompt describing the task and any structured tool schemas. The
+model emits a response that may include tool calls; tool calls are
+executed by the harness, their results are returned to the model,
+and the loop continues until the model emits a final answer. The
+whole system is wrapped in observability: every request is logged,
+every tool call is traced, every prompt is versioned, every output
+is scored against an evaluation harness that runs both automated
+metrics and a sample of LLM-as-judge or human ratings. The system
+is, in the language of software engineering, a perfectly normal
+piece of distributed software with a peculiar component at its
+center.
+
+\paragraph{What goes wrong.}
+The system boundary is where most user-visible failures happen.
+The retriever can return passages that are relevant in topic but
+wrong in content, with the result that the model produces a
+fluent and well-grounded falsehood. Long contexts produce the
+\emph{lost-in-the-middle} effect, in which the model reliably
+attends to the beginning and end of the retrieved passages and
+underweights the middle, regardless of where the answer actually
+sits. Retrieved content can also contain instructions ---
+deliberate or accidental --- that the model treats as authoritative;
+this is \emph{prompt injection}, and it is to LLM systems roughly
+what SQL injection once was to web applications. Tool use opens
+the same door wider: a malicious tool output can persuade the
+model to take actions the user never asked for. Evaluation has its
+own pathologies: an LLM-as-judge will systematically prefer the
+output style it was trained on; a benchmark with leaked test data
+will overstate progress; a regression suite that does not include
+adversarial inputs will declare a system safe that is not. The
+math in this chapter --- BM25, the dense-retrieval inner product,
+the ReAct loop invariants, the LLM-as-judge bias decomposition ---
+exists to give you a vocabulary for predicting and diagnosing each
+of these failure modes. Treat prompts as system artefacts: version
+them, review them, test them, audit them. The single most common
+cause of silent regressions in LLM deployments is treating a prompt
+as ``just a string.''
 
 \subsection{Learning Objectives}
 
