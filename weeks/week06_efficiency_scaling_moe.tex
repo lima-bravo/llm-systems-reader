@@ -1,6 +1,101 @@
 \section{Week 6: Efficiency, Scaling, and Mixture-of-Experts}
 \label{sec:week6-moe}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.}
+A modern frontier model has hundreds of billions, sometimes trillions,
+of parameters. The matrices that hold those parameters do not fit on
+a single chip. Neither do the activations they produce, the gradients
+they generate, nor the optimizer states that an algorithm like AdamW
+needs in order to update them. A single training run takes weeks,
+runs on tens of thousands of accelerators, and costs tens of millions
+of dollars. At inference time, the same model has to answer a query
+in seconds and a thousand simultaneous queries without melting. The
+problem of this chapter is the engineering that makes this possible:
+how to spread a model across many devices when no single device can
+hold it, how to move information between those devices fast enough
+that the accelerators do not sit idle, and how to do both without
+breaking the optimization. None of this is glamorous. All of it
+determines whether the model trains in a month or in a year, and
+whether the system serves users at five cents a query or fifty.
+
+\paragraph{How we got here.}
+The first models that did not fit on a single GPU were trained with
+\emph{data parallelism}: every worker held a full copy of the model
+and processed a different mini-batch, and gradients were averaged
+between workers. Data parallelism is simple and beautiful and runs
+out of room the moment the model itself stops fitting on a worker.
+Two responses followed. \emph{Tensor parallelism}, popularized by
+NVIDIA's Megatron-LM team in 2019, split individual matrix
+multiplications across workers, communicating partial results.
+\emph{Pipeline parallelism}, which had appeared in earlier work and
+was refined in Google's GPipe, split layers across workers and ran
+micro-batches in a staggered pipeline so that no worker sat idle.
+Microsoft Research's ZeRO, in 2019 and 2020, observed that the
+optimizer states for AdamW were dominating memory and could be
+sharded across workers without correctness cost; the modern PyTorch
+FSDP and DeepSpeed implementations are descendants. The list goes on.
+Every form of parallelism solved a different bottleneck, and modern
+training combines all of them at once.
+
+The other half of this chapter is sparsity. Robert Jacobs, Michael
+Jordan, and their collaborators introduced \emph{adaptive mixtures of
+local experts} in 1991: a learner could be partitioned into
+specialist subnetworks, with a learned gating function deciding which
+specialist saw which input. The idea sat dormant in the era of dense
+networks. Noam Shazeer and his collaborators revived it in 2017 with
+the \emph{Sparsely-Gated Mixture-of-Experts Layer}, scaling models to
+137 billion parameters with only a small fraction active per token.
+The Switch Transformer in 2021 simplified the routing to top-1.
+GLaM, in 2022, showed that an MoE model could match a much larger
+dense model at substantially lower training cost. Mistral AI's
+Mixtral 8x7B in 2024 brought open-weight MoE to wide use. The
+appeal is clean: you get the parameter count of a large dense model
+at the per-token compute of a much smaller one, because most experts
+sit out most of the time.
+
+\paragraph{Where we stand.}
+A modern training stack composes data, tensor, pipeline, expert,
+and sequence parallelism, with the choice of composite tuned to the
+specific cluster's interconnect topology. ZeRO and FSDP shard
+optimizer states, gradients, and parameters across data-parallel
+ranks, with overlap between communication and compute. Mixed-precision
+training keeps activations in bf16 and master weights in fp32, with
+gradient accumulation across micro-batches. Mixture-of-Experts
+layers, in production designs, route each token to two experts out
+of eight or sixteen, with auxiliary load-balancing losses to
+discourage the gate from collapsing onto a few favorites. Inference
+serving stacks --- vLLM, TensorRT-LLM, and their relatives --- batch
+queries with PagedAttention, schedule them with continuous batching,
+and decode with speculative or parallel-sampling techniques. The
+infrastructure is an order of magnitude more complex than the model
+it serves, and almost none of it is in the original Transformer
+paper.
+
+\paragraph{What goes wrong.}
+Distributed training fails in ways that single-machine training does
+not. A network partition can hang a job for hours before anyone
+notices. A subtle ordering bug in a collective communication can
+corrupt gradients silently and produce a model that trains, but
+trains badly. Mixed precision can underflow on small gradients and
+overflow on large ones, with results that depend on which loss-scaling
+schedule the practitioner chose. Mixture-of-Experts brings its own
+zoo of failure modes. The router can collapse onto a handful of
+experts, leaving the rest under-trained. It can also collapse the
+other way, sending too many tokens to a single expert and forcing
+some of them to be dropped (\emph{capacity overflow}). The
+load-balancing loss is itself a hyperparameter that, if tuned wrong,
+either stabilizes the wrong equilibrium or destabilizes a good one.
+At inference time, an MoE model needs all of its experts in memory
+even though it uses only a fraction of them on any given token; the
+sparsity buys FLOPs but not bytes. The math in this chapter --- the
+all-to-all communication cost, the ZeRO memory accounting, the
+load-balancing-loss derivative --- is in the service of giving you
+enough algebra to predict where your particular system will break
+before you find out the expensive way.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
