@@ -853,6 +853,42 @@ Operations & Prompt length vs cache size
         loss curves and observe divergence under post-norm.
 \end{enumerate}
 
+\subsection*{Derivation Ledger (Ch. 4)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{QKV projections.}\
+        $Q = X W_Q$, $K = X W_K$, $V = X W_V$
+        --- Eq.~\eqref{eq:week4-qkv}.
+  \item \textbf{Scaled dot-product attention.}\
+        $\mathrm{Attn}(Q,K,V) = \mathrm{softmax}(QK^\top/\sqrt{d_k})V$
+        --- Eq.~\eqref{eq:week4-attn};
+        $\sqrt{d_k}$ scaling justified by Eq.~\eqref{eq:week4-qk-sum}
+        under independence/unit-variance assumption
+        Eq.~\eqref{eq:week4-qk-var-assumption}.
+  \item \textbf{Multi-head concatenation.}\
+        Eq.~\eqref{eq:week4-mha}; invariant $d = H \cdot d_k$.
+  \item \textbf{FFN families.}\
+        Classic 2-layer Eq.~\eqref{eq:week4-ffn-classic};
+        SwiGLU Eq.~\eqref{eq:week4-swiglu}.
+  \item \textbf{Pre-norm residual.}\
+        Eq.~\eqref{eq:week4-prenorm}; RMSNorm
+        Eq.~\eqref{eq:week4-rmsnorm}.
+  \item \textbf{Positional encodings.}\
+        Sinusoidal Eq.~\eqref{eq:week4-sinusoidal};
+        ALiBi bias Eq.~\eqref{eq:week4-alibi};
+        RoPE relative-position identity
+        $\tilde q_t^\top \tilde k_s = q_t^\top R_{s-t} k_s$
+        --- Eq.~\eqref{eq:week4-rope-relative} (one-step:
+        $R_t^\top R_s = R_{-t} R_s = R_{s-t}$).
+  \item \textbf{KV cache.}\
+        Per-token bytes $= 2 \cdot L \cdot G_{\rm eff} \cdot d_k \cdot b$
+        --- Eqs.~\eqref{eq:week4-kvcache}--\eqref{eq:week4-kvbytes}
+        with $G_{\rm eff} \in \{H, G, 1\}$ for MHA / GQA / MQA.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 4 Takeaway}
 
 \begin{quote}

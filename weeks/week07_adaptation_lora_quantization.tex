@@ -959,6 +959,35 @@ between ``adapt vs.\ retrieve'' will be a central engineering tradeoff.
 Week~10's governance framework will treat adapters as the primary
 unit of change-control audit.
 
+\subsection*{Derivation Ledger (Ch. 7)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{LoRA reparameterisation.}\
+        $W = W_0 + \frac{\alpha}{r}\, B A$, with $A \in \mathbb{R}^{r \times k}$,
+        $B \in \mathbb{R}^{d \times r}$ --- Eq.~\eqref{eq:lora-core}.
+  \item \textbf{LoRA parameter ratio.}\
+        $\rho_{\rm LoRA} = \frac{r(d+k)}{d k}$;
+        small whenever $r \ll \min(d, k)$, derived in §LoRA Memory.
+  \item \textbf{LoRA memory budget.}\
+        $M_{\rm LoRA} = b_{\rm bf16} N + (b_{\rm bf16} + b_{\rm grad} + b_{\rm opt}) N_\Delta + M_{\rm act}$
+        --- Eq.~\eqref{eq:week7-lora-mem}; specialises CH2's
+        Eq.~\eqref{eq:week2-mem-budget} to the case where only the
+        adapter parameters $N_\Delta$ carry gradients and optimiser
+        state.
+  \item \textbf{NF4 quantile construction.}\
+        $q_i = \Phi^{-1}((i + \tfrac{1}{2})/16)$;
+        16 equal-mass quantiles of a unit normal, derived in
+        §QLoRA \& NF4. Beats 4-bit uniform by matching the
+        empirical weight density.
+  \item \textbf{Rank saturation diagnostic.}\
+        Effective rank $\hat r$ from singular spectrum of $BA$;
+        if $\hat r \approx r$ at every layer, capacity is the
+        binding constraint --- consequence box in §Rank Selection.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 7 Takeaway}
 
 \begin{quote}

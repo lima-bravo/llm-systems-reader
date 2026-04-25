@@ -1015,6 +1015,47 @@ standardizes the tool-use schema of this chapter across clients
 and servers and turns the ``integrate against my API'' problem
 into a declarative one.
 
+\subsection*{Derivation Ledger (Ch. 9)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities. RAG / retrieval
+notation: query $q$, document set $D$, chunks $C$, retrieved set
+$R_k(q)$, gold-span set $G$.
+\begin{itemize}
+  \item \textbf{RAG conditional generation.}\
+        $p_\theta(y \mid q, R_k(q))$
+        --- Eq.~\eqref{eq:rag-conditional}.
+  \item \textbf{BM25.}\
+        IDF-weighted, length-normalised TF saturation
+        --- Eq.~\eqref{eq:bm25}.
+  \item \textbf{Dense cosine similarity.}\
+        $\cos(\mathbf{e}_q, \mathbf{e}_d)$ with the
+        normalisation / centering caveat (CH3 anisotropy)
+        --- Eq.~\eqref{eq:dense-cos}.
+  \item \textbf{ColBERT MaxSim.}\
+        Late-interaction sum of per-query-token max similarities
+        --- Eq.~\eqref{eq:colbert-maxsim}.
+  \item \textbf{Reciprocal-rank fusion.}\
+        $\mathrm{RRF}(d) = \sum_{j} 1 / (k + r_j(d))$
+        --- Eq.~\eqref{eq:rrf}.
+  \item \textbf{Precision@$k$.}\
+        $|R_k(q) \cap G| / k$
+        --- Eq.~\eqref{eq:precision-at-k}.
+  \item \textbf{Lost-in-the-middle setup.}\
+        Accuracy as a function of gold-document position index
+        --- Eq.~\eqref{eq:litm}.
+  \item \textbf{Trust-boundary invariant.}\
+        Tool / retrieval output is treated as untrusted input;
+        invariants preserved under adversarial content
+        --- Eq.~\eqref{eq:trust-invariant}.
+  \item \textbf{Evaluation metrics.}\
+        Context recall Eq.~\eqref{eq:context-recall},
+        context precision Eq.~\eqref{eq:context-precision},
+        faithfulness Eq.~\eqref{eq:faithfulness},
+        answer relevance Eq.~\eqref{eq:answer-relevance}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 9 Takeaway}
 
 \begin{quote}

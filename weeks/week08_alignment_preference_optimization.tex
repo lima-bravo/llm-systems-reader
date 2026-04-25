@@ -787,6 +787,37 @@ post-training lineage as a first-class audit artefact. RAG systems
 knowledge alignment might otherwise have to encode, and the decision
 of ``align vs.\ retrieve'' recurs throughout the rest of the book.
 
+\subsection*{Derivation Ledger (Ch. 8)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{Bradley-Terry preference model.}\
+        $P(y^+ \succ y^- \mid x) = \sigma(r(x, y^+) - r(x, y^-))$
+        --- Eq.~\eqref{eq:bt}; under \textbf{(A8.1)}.
+  \item \textbf{Reward-model loss.}\
+        Negative log-likelihood of preference triples
+        --- Eq.~\eqref{eq:rm-loss}.
+  \item \textbf{KL-regularised RLHF objective.}\
+        $\max_\pi \E_{x, y \sim \pi}[r_\phi(x,y)] - \beta \KL(\pi \,\|\, \pi_{\rm ref})$
+        --- Eq.~\eqref{eq:rlhf}.
+  \item \textbf{Closed-form RL optimum.}\
+        $\pi^*(y \mid x) = \frac{1}{Z(x)}\, \pi_{\rm ref}(y \mid x)\, \exp(r(x, y)/\beta)$
+        with $Z(x) = \sum_y \pi_{\rm ref}(y \mid x)\, \exp(r(x, y)/\beta)$
+        --- Eq.~\eqref{eq:dpo-optimum}; assumption \textbf{(A8.2)}
+        (support / absolute continuity).
+  \item \textbf{Implicit reward.}\
+        Inverting the closed form gives
+        $r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_{\rm ref}(y \mid x)} + \beta \log Z(x)$
+        --- Eq.~\eqref{eq:implicit-reward}.
+  \item \textbf{DPO loss.}\
+        Substituting the implicit reward into the BT log-likelihood
+        cancels $\log Z(x)$ on the preference \emph{difference} and
+        yields the closed-form loss
+        --- Eq.~\eqref{eq:dpo}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 8 Takeaway}
 
 \begin{quote}

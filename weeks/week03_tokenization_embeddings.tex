@@ -812,6 +812,31 @@ ratio for each target language and plan context budgets accordingly.
         into a CI pipeline.
 \end{enumerate}
 
+\subsection*{Derivation Ledger (Ch. 3)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{Tokenization pipeline.}\
+        Bytes $\to$ pre-tokens $\to$ subword sequence
+        --- Eq.~\eqref{eq:week3-pipeline}; deterministic under
+        \textbf{(A3.1)}.
+  \item \textbf{WordPiece score = PMI.}\
+        $\mathrm{score}(a,b) = \log\frac{P(ab)}{P(a)P(b)}$
+        --- Eq.~\eqref{eq:week3-wordpiece}; the score is the
+        per-merge unigram log-likelihood gain.
+  \item \textbf{Unigram-LM EM-prune.}\
+        E-step: posterior over segmentations;
+        M-step: $p(s) \leftarrow \mathbb{E}[\#s] / \sum_{s'} \mathbb{E}[\#s']$;
+        prune $s^* = \arg\min_s (\ell_V - \ell_{V \setminus \{s\}})$
+        --- Eq.~\eqref{eq:week3-unigram}.
+  \item \textbf{Embedding lookup.}\
+        $e_i = E_{\iota(w_i),:}$ --- Eq.~\eqref{eq:week3-embed}.
+  \item \textbf{Unembedding (weight tying).}\
+        Logit $z_v = e^\top E_v$ --- Eq.~\eqref{eq:week3-unembed}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 3 Takeaway}
 
 \begin{quote}

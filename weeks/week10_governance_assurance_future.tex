@@ -1068,6 +1068,30 @@ SDKs, agents, MCP). Much of that chapter's engineering ---
 credential management, scope control, audit logging,
 tool-schema validation --- is governance made concrete.
 
+\subsection*{Derivation Ledger (Ch. 10)}
+
+\begin{derivledger}
+Compact index of the chapter's central definitions and quantitative
+templates. Several entries are explicit \Norm\ (normative directive)
+items; they are listed here only so readers can locate them, not as
+mathematical claims.
+\begin{itemize}
+  \item \textbf{Risk-scoring template.}\
+        $R = f(S, L)$ with explicit uncertainty bands
+        --- Eq.~\eqref{eq:wk10-risk}.
+  \item \textbf{Residual risk after control.}\
+        $R_{\rm post} = R \cdot (1 - \eta)$ for control efficacy
+        $\eta \in [0, 1]$ --- Eq.~\eqref{eq:wk10-risk-residual}.
+  \item \textbf{Drift-trigger inequality.}\
+        Metric $m_t$ exits acceptance band
+        $|m_t - m_0| > \tau_{\rm drift}$
+        --- Eq.~\eqref{eq:wk10-drift}.
+  \item \textbf{Escalation rule.}\
+        Severity-thresholded rollback / human-review
+        --- Eq.~\eqref{eq:wk10-escalate}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 10 Takeaway}
 
 \begin{quote}

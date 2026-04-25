@@ -839,6 +839,35 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         strings. Plot recall rate vs duplication count.
 \end{enumerate}
 
+\subsection*{Derivation Ledger (Ch. 5)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{Causal LM pretraining objective.}\
+        $\mathcal{L} = -\sum_{t=1}^{T} \log p_\theta(w_t \mid w_{<t})$
+        --- Eq.~\eqref{eq:week5-pretrain-obj}; identical (up to
+        normalisation) to the cross-entropy of CH1
+        Eq.~\eqref{eq:nll-ce}.
+  \item \textbf{Compute-optimal scaling (Chinchilla form).}\
+        Solving the constrained $L(N, D)$ minimisation under
+        $C = 6ND$ produces $N^* \propto C^a$, $D^* \propto C^{1-a}$
+        --- Eq.~\eqref{eq:week5-chinchilla}; redundant with
+        Eq.~\eqref{eq:week2-chinchilla-opt} of CH2.
+  \item \textbf{Temperature decoding.}\
+        $p_\tau(v) \propto \exp(z_v / \tau)$
+        --- Eq.~\eqref{eq:week5-softmax-temp};
+        $\tau \to 0$ recovers greedy, $\tau \to \infty$ uniform.
+  \item \textbf{Nucleus (top-$p$) decoding.}\
+        Smallest set $S$ s.t. $\sum_{v \in S} p(v) \ge p_{\rm nuc}$,
+        renormalise --- Eq.~\eqref{eq:week5-nucleus}.
+  \item \textbf{Memorisation rate (empirical).}\
+        Per-string verbatim recall increases with duplication count
+        --- Eq.~\eqref{eq:week5-memorization} (\Emp\ scope: framed
+        as observation, not theorem).
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 5 Takeaway}
 
 \begin{quote}

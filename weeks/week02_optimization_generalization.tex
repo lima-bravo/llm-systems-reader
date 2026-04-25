@@ -847,6 +847,42 @@ mistake that better instrumentation would have caught.
         within numerical tolerance.
 \end{enumerate}
 
+\subsection*{Derivation Ledger (Ch. 2)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities; each cites the full
+derivation already given in the text.
+\begin{itemize}
+  \item \textbf{Empirical-risk objective.}\
+        $\mathcal{L}(\theta) = \tfrac{1}{N} \sum_i \ell(\theta; x_i)$
+        --- Eq.~\eqref{eq:week2-empirical-loss}.
+  \item \textbf{Minibatch SGD update.}\
+        Eq.~\eqref{eq:week2-sgd}; assumption (unbiased gradient
+        estimate, bounded variance) stated in §SGD-to-SDE.
+  \item \textbf{SGD-to-SDE (Langevin approximation).}\
+        $d\theta_t = -\nabla \mathcal{L}\, dt + \sqrt{\eta \Sigma}\, dW_t$
+        --- Eq.~\eqref{eq:week2-langevin}; requires small learning rate
+        and approximately Gaussian gradient noise.
+  \item \textbf{Adam / AdamW updates.}\
+        First and second moment recursions
+        Eqs.~\eqref{eq:week2-adam-m}--\eqref{eq:week2-adam-update};
+        decoupled weight-decay form Eq.~\eqref{eq:week2-adamw-update}.
+  \item \textbf{Mixed-precision memory budget.}\
+        $M = (b_{\rm param} + b_{\rm grad} + b_{\rm opt}) \cdot N + M_{\rm act}$
+        --- Eq.~\eqref{eq:week2-mem-budget}; reused by CH7 for LoRA and
+        QLoRA budgets.
+  \item \textbf{Gradient clipping.}\
+        Rescale $g \leftarrow g \cdot \min(1, \tau / \|g\|)$
+        --- Eq.~\eqref{eq:week2-gradclip}.
+  \item \textbf{Kaplan scaling law.}\
+        Power-law loss in $N, D, C$ --- Eq.~\eqref{eq:week2-kaplan}.
+  \item \textbf{Chinchilla compute-optimal.}\
+        Lagrangian over $L(N,D)$ under $C = 6ND$ yields
+        $N^* \propto C^a$, $D^* \propto C^{1-a}$
+        --- Eqs.~\eqref{eq:week2-chinchilla}--\eqref{eq:week2-chinchilla-opt}.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 2 Takeaway}
 
 \begin{quote}

@@ -750,6 +750,41 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         total-parameter count.
 \end{enumerate}
 
+\subsection*{Derivation Ledger (Ch. 6)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{Router softmax.}\
+        $g(x) = \mathrm{softmax}(W_g x)$
+        --- Eq.~\eqref{eq:week6-moe-router}.
+  \item \textbf{Top-$k$ expert selection.}\
+        $\mathcal{T}_k(x) = \mathrm{TopK}(g(x), k)$
+        --- Eq.~\eqref{eq:week6-moe-topk}.
+  \item \textbf{MoE output.}\
+        $y = \sum_{e \in \mathcal{T}_k(x)} g_e(x) \cdot \mathrm{FFN}_e(x)$
+        --- Eq.~\eqref{eq:week6-moe-out}; per-token FLOPs scale with $k$,
+        not with total expert count $E$.
+  \item \textbf{Capacity factor and dropped-token rate.}\
+        Per-expert capacity $\lceil k T \cdot \mathrm{CF} / E \rceil$
+        --- Eq.~\eqref{eq:week6-capacity}; tokens beyond capacity
+        drop or reroute.
+  \item \textbf{Load-balancing loss.}\
+        $\mathcal{L}_{\rm aux} = E \sum_{e} f_e \cdot P_e$
+        --- Eq.~\eqref{eq:week6-load-balance}; gradient flows
+        through $P_e$ (mean router probability) into router logits,
+        even though token assignment is non-differentiable.
+  \item \textbf{Router $z$-loss.}\
+        Penalises router-logit norm to stabilise training
+        --- Eq.~\eqref{eq:week6-zloss}.
+  \item \textbf{Unified scaling (active vs total params).}\
+        Loss is a function of active parameters per token, not total
+        --- Eq.~\eqref{eq:week6-unified-scaling}; this rewrites
+        Chinchilla Eq.~\eqref{eq:week2-chinchilla-opt} for sparse
+        models.
+\end{itemize}
+\end{derivledger}
+
 \subsection{Week 6 Takeaway}
 
 \begin{quote}
