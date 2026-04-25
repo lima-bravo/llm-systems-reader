@@ -1,6 +1,6 @@
 # When Your LLM Is Wrong, What Kind of Wrong Is It?
 
-*A diagnostic ladder — structure, meaning, context, grounding, environment — for the conversation between engineers and the people who use what they build.*
+*A diagnostic ladder — structure, meaning, context, groundedness, environment — for the conversation between engineers and the people who use what they build.*
 
 **Lodewijk Bonebakker**
 
@@ -16,7 +16,7 @@ This is, at this point, a nearly universal experience. The model produces someth
 
 The vocabulary the field has built for itself is sharp at the level of mechanism (cross-entropy training optimizes plausibility, not truth) and dull at the level of human experience (the answer just felt off). The gap between these two registers is where most production incidents are diagnosed badly, communicated unclearly, or fixed in the wrong place. This article proposes a closing of that gap: a five-axis model of LLM error, ordered from the most mechanical (what the model is best at) to the most human (what only the user can supply), that practitioners can hold in their heads and walk through in less than a minute.
 
-The five axes are *structure*, *meaning*, *context*, *grounding*, and *environment*. They form a ladder. At the bottom, the model is at its strongest and failures are rare. At the top, the model is, in a precise sense, at the mercy of the human, and failures are inevitable unless the human compensates. The model is not a theory. It is a vocabulary, with a procedure attached, designed to be useful in conversations with stakeholders who do not have a year to spend on neural-network internals.
+The five axes are *structure*, *meaning*, *context*, *groundedness*, and *environment*. They form a ladder. At the bottom, the model is at its strongest and failures are rare. At the top, the model is, in a precise sense, at the mercy of the human, and failures are inevitable unless the human compensates. The model is not a theory. It is a vocabulary, with a procedure attached, designed to be useful in conversations with stakeholders who do not have a year to spend on neural-network internals.
 
 ## Why a layered model, and why now
 
@@ -24,7 +24,7 @@ The instinct to organize language around layers is older than the language model
 
 Two strands of recent work make this organization newly relevant. Stevan Harnad's 1990 paper *The Symbol Grounding Problem* [1] asked how the symbols inside a computer could come to refer to anything outside the computer at all. Emily Bender and Alexander Koller's 2020 paper *Climbing towards NLU* [2] sharpened the question: a system trained only on linguistic form cannot, by that training alone, learn meaning, because meaning is a relation between form and the world that the form alone does not contain. The grounding problem is not a quirk of LLMs; it is the structural fact that the cross-entropy objective they are trained on cares about the plausibility of the next token, not its truth. The practitioner literature on hallucination [3] is, in the end, a practitioner-readable restatement of the same problem.
 
-The five-axis model proposed here is an attempt to operationalize the grounding distinction in a way practitioners can use. It places structure and meaning on the model side, environment on the human side, and context and grounding in between. The boundary between what the model can do and what the human must supply turns out to be the most useful division to teach.
+The five-axis model proposed here is an attempt to operationalize the grounding distinction in a way practitioners can use. It places structure and meaning on the model side, environment on the human side, and context and groundedness in between. The boundary between what the model can do and what the human must supply turns out to be the most useful division to teach.
 
 ## Structure: is the output well-formed?
 
@@ -50,15 +50,15 @@ The mechanism is the gap between what the user knows and what the prompt encodes
 
 Context failures are easy to recognize and harder to fix. The user can usually point at the answer and say what is wrong with it ("too long," "too technical," "misses the actual question"). The fix is almost always to give the model more of the situation: who you are, who you are writing for, why you need the answer, what would count as a good one. The asymmetry between the ease of recognition and the difficulty of fix is the diagnostic signature of a context failure.
 
-## Grounding: does the output connect to reality?
+## Groundedness: does the output connect to reality?
 
-The fourth axis is whether the output connects to verifiable reality or has drifted into plausible-sounding fabrication. The practitioner literature calls this hallucination: the model produces a fluent, confident, well-formed claim that does not correspond to any fact in the world.
+The fourth axis is whether the output is *grounded* — whether its claims connect to verifiable reality, or whether they have drifted into plausible-sounding fabrication. We use *groundedness* for the property the output either has or does not. *Grounding*, in the philosophical literature, is the name of the underlying problem: how symbols inside a system can come to refer to things outside it at all. The practitioner term for failures of groundedness is hallucination: the model produces a fluent, confident, well-formed claim that does not correspond to any fact in the world.
 
-Grounding failures are uniquely dangerous because no internal reading of the output reveals them. A hallucinated citation has the same structural form as a real one. A hallucinated statistic has the same surface plausibility as a true one. The check must come from outside the text. The model has produced the most probable continuation of its prompt; the most probable continuation is sometimes true, sometimes false, and the model cannot, on its own, tell the two apart.
+Groundedness failures are uniquely dangerous because no internal reading of the output reveals them. A hallucinated citation has the same structural form as a real one. A hallucinated statistic has the same surface plausibility as a true one. The check must come from outside the text. The model has produced the most probable continuation of its prompt; the most probable continuation is sometimes true, sometimes false, and the model cannot, on its own, tell the two apart.
 
-This is the place where the symbol-grounding literature is most directly useful. Harnad's question — how can symbols mean anything? — has, for current architectures, an honest answer: they cannot, on their own. The remedy at the system level is retrieval. Replace the question "what is the most probable thing to say" with "what is the most probable thing to say given these specific sources." Grounding is no longer the model's problem; it is the retriever's problem and the prompt's problem. Tool use extends the same idea to verification: a model that can call a calculator delegates arithmetic; a model that can query a database delegates fact lookup. The pattern is to take the work that demands grounding and move it outside the language model entirely.
+This is the place where the symbol-grounding literature is most directly useful. Harnad's question — how can symbols mean anything? — has, for current architectures, an honest answer: they cannot, on their own. The remedy at the system level is retrieval. Replace the question "what is the most probable thing to say" with "what is the most probable thing to say given these specific sources." The grounding problem is no longer the model's to solve alone; it is the retriever's problem and the prompt's problem. Tool use extends the same idea to verification: a model that can call a calculator delegates arithmetic; a model that can query a database delegates fact lookup. The pattern is to take the work that demands grounding and move it outside the language model entirely.
 
-The diagnostic discipline is to treat any factual claim by the model as a hypothesis. If the claim matters, verify it. If it cannot be verified, do not use it. The careful practitioner builds workflows that make verification cheap (retrieval, citations, linked sources) so that grounding failures are catchable by construction.
+The diagnostic discipline is to treat any factual claim by the model as a hypothesis. If the claim matters, verify it. If it cannot be verified, do not use it. The careful practitioner builds workflows that make verification cheap (retrieval, citations, linked sources) so that groundedness failures are catchable by construction.
 
 ## Environment: did the prompt encode the situation?
 
@@ -77,20 +77,20 @@ The five axes form a ladder because they are arranged in roughly increasing dist
 1. *Structure*: does the output parse, compile, validate against its schema?
 2. *Meaning*: read it as a self-contained artifact — does it contradict itself?
 3. *Context*: is it appropriate for the situation, audience, and purpose?
-4. *Grounding*: are the factual claims true?
+4. *Groundedness*: are the factual claims true?
 5. *Environment*: was the question itself fully specified?
 
-The discipline is that lower-axis failures are typically easier to diagnose and cheaper to remedy than higher-axis ones. A practitioner who jumps straight to "the model hallucinated" may have missed a context failure that does not require any change to the model at all. Conversely, a practitioner who never considers grounding will deploy systems that are confidently wrong about the world.
+The discipline is that lower-axis failures are typically easier to diagnose and cheaper to remedy than higher-axis ones. A practitioner who jumps straight to "the model hallucinated" may have missed a context failure that does not require any change to the model at all. Conversely, a practitioner who never considers groundedness will deploy systems that are confidently wrong about the world.
 
 Return to the developer with the customer-records function. We walk the ladder.
 
 *Structure* passes: the function parses and imports. *Meaning* passes: it does not contradict itself; the type signature matches the return. *Context* fails: the codebase uses a particular ORM and the model wrote raw list comprehensions instead. We add the codebase conventions to the prompt and the model writes ORM code.
 
-The function still produces wrong output. We walk again. Structure, meaning, context now all pass. *Grounding* fails: the model called `customers.filter_by_region(r)`, a method that looked plausible but does not exist on the actual ORM. We give the model the ORM definitions, by retrieval, and it picks a real method.
+The function still produces wrong output. We walk again. Structure, meaning, context now all pass. *Groundedness* fails: the model called `customers.filter_by_region(r)`, a method that looked plausible but does not exist on the actual ORM. We give the model the ORM definitions, by retrieval, and it picks a real method.
 
 The function still produces wrong output. The methods are real. The output is sensibly wrong: the regions are off. *Environment* fails: in this codebase, "region" is a sales territory id, not a country code. The user assumed the model could see what they meant by region. It could not. The user specifies what region means, and the function works.
 
-The walk shows the discipline. We did not stop at the first axis that passed. We did not jump to the most exotic explanation. We located the failure at the level where the remedy lives, and each fix targeted the right intervention point: prompt content for context, retrieval for grounding, prompt specification for environment.
+The walk shows the discipline. We did not stop at the first axis that passed. We did not jump to the most exotic explanation. We located the failure at the level where the remedy lives, and each fix targeted the right intervention point: prompt content for context, retrieval for groundedness, prompt specification for environment.
 
 ## What the model does not capture
 
@@ -108,7 +108,7 @@ The five-axis model is meant for the user-facing case in which a single output i
 
 The pedagogical use of the model is twofold. For users, it is a diagnostic ladder. For engineers, it is a translation layer between the technical vocabulary of the field — cross-entropy, retrieval, alignment, RLHF — and the user-facing vocabulary of "the model got it wrong." A complaint that arrives as "the bot hallucinated" can, after a one-minute walk through the axes, become "the prompt did not say what region meant, and the model assumed wrong." The fix is no longer in the model and the conversation moves where it belongs.
 
-The model also gives engineering teams a structured way to reason about where to spend their effort. Lower axes call for model-side and decoder-side fixes. Higher axes call for system-side fixes — retrieval, tool use, prompt-construction discipline, agent-context accumulation. A team that wants to improve grounding will work on retrieval, not on the language model. A team that wants to improve environment will work on its prompt-construction discipline, not on retrieval. Knowing which axis you are on tells you which part of the playbook to consult.
+The model also gives engineering teams a structured way to reason about where to spend their effort. Lower axes call for model-side and decoder-side fixes. Higher axes call for system-side fixes — retrieval, tool use, prompt-construction discipline, agent-context accumulation. A team that wants to improve groundedness will work on retrieval, not on the language model. A team that wants to improve environment will work on its prompt-construction discipline, not on retrieval. Knowing which axis you are on tells you which part of the playbook to consult.
 
 This is what the ladder is for. It is not a theory of language. It is a procedure for the moment in which an output is wrong and someone needs to say, in plain English, why.
 
