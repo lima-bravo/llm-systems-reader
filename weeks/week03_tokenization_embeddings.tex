@@ -1,6 +1,117 @@
 \section{Week 3: Tokenization and Embeddings — From Text to Vectors}
 \label{sec:week3-tokemb}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.} Chapter~1 spoke of probabilities over
+tokens as if a token were an obvious thing. It is not. A computer
+sees only numbers; a language has, in any reasonable accounting,
+an unbounded number of words, and even an unbounded number of
+\emph{ways} to write any given word. Before any model can predict
+the next token, somebody has to decide what counts as a token. The
+decision sounds technical and turns out to be deeply
+consequential. Tokenization is the model's alphabet. Whatever the
+model cannot see at the alphabet level, it cannot see at all.
+
+\paragraph{How we got here.} The earliest computational
+linguistics treated the word as the unit of analysis. This was
+intuitive --- a dictionary is a list of words --- and almost
+immediately catastrophic. English has too many of them.
+Inflectional languages (Finnish, Turkish, Hungarian) have far too
+many. Compound-forming languages (German, Dutch, Japanese) have
+unboundedly many. Every model encountered, in production, words
+that were not in its vocabulary. We called these
+\emph{out-of-vocabulary} tokens, and we replaced them with a
+single \texttt{<unk>} symbol that destroyed any information they
+carried. A model whose answer to ``what is X?'' is always
+``unknown'' is not a useful model.
+
+The character-level alternative, briefly fashionable in the
+mid-2010s, replaced the word with the letter. This eliminated the
+out-of-vocabulary problem at the cost of forcing the model to
+learn long-range dependencies the hard way. Each English word
+turned into five or six tokens; each context window had to be
+five or six times as long; the gradient signal grew correspondingly
+weaker. There were beautiful character-level models that could,
+just, work. There were no widely-deployed ones.
+
+The compromise that won was the \emph{subword}: a unit smaller than
+a word but larger than a letter, learned from the corpus rather
+than handed down by a linguist. Rico Sennrich, Barry Haddow, and
+Alexandra Birch, in 2016, adapted Philip Gage's 1994 byte-pair
+encoding (originally a data-compression algorithm) to neural
+machine translation. They showed that a vocabulary of around
+$32{,}000$ subword units could represent any string in any
+language, deterministically, with no out-of-vocabulary tokens at
+all. Mike Schuster and Kaisuke Nakajima, working on Google's
+voice search, had described a related approach called WordPiece a
+few years earlier; BERT made it famous in 2018. Taku Kudo at
+Google built a third, the Unigram language-model tokenizer, with
+its companion library SentencePiece in 2018, which used
+whitespace as a sentinel and so handled languages without space
+delimiters cleanly.
+
+By 2020 every modern language model was using one of these three
+algorithms or a small variant. By 2024 the variants had
+converged: byte-level BPE for English-heavy and code-heavy
+models, SentencePiece-Unigram for multilingual ones. The
+tokenizer is now a frozen artefact, trained once before
+pretraining begins and never modified, because changing it
+invalidates every token-ID the model has ever seen.
+
+\paragraph{Where we stand.} A modern tokenizer is small,
+deterministic, lossless, and finite. Given a string, it produces
+a sequence of integers. Given that sequence, it reconstructs the
+string. It does this without consulting a dictionary, which means
+it works for words it has never seen, including invented words,
+typos, and code identifiers. The mathematics in the rest of this
+chapter unpacks why the WordPiece score is the unigram
+log-likelihood gain of a merge, why the Unigram-LM tokenizer is
+trained by EM with a pruning step, and why the embedding layer
+that follows tokenization is a one-hot lookup masquerading as a
+matrix multiplication. The geometry of the resulting embedding
+space is not arbitrary. It encodes, in its directions and
+distances, statistical regularities of the training corpus. That
+is what we mean when we say the model ``learns the meaning of a
+word.''
+
+\paragraph{What goes wrong.} Tokenization is a quiet source of
+several user-visible problems. The most consequential is the
+multilingual disparity: the same sentence in Thai, Amharic, or
+Burmese costs typically two to five times as many tokens as the
+English original under a tokenizer trained on English-heavy data.
+This means a 32k-token context window covers far less Thai than
+English, and a per-token-priced API charges far more. The fairness
+implication is clear, and several frontier-model providers now
+publish multilingual-tuned tokenizers as a partial response.
+
+A second problem is brittleness at the token boundary. Two prompts
+a human would read as identical can segment differently if a
+whitespace is added, removed, or shifted. The model has learned
+the statistics of the segmentation it was trained on; the
+slightly different segmentation produced by a careless
+concatenation can shift the output enough to matter. Engineers
+who paste prompts together at runtime, without testing the
+resulting tokenization, sometimes ship products that misbehave in
+ways no unit test caught.
+
+A third problem is the ``the model doesn't know X'' phenomenon.
+The model often does know X. The token sequence that names X is
+just rare or split awkwardly across token boundaries, and the
+model's grip on it is correspondingly weak. Calling this an
+ignorance failure obscures the underlying tokenization issue.
+
+A fourth problem is adversarial. Unicode is permissive about
+homoglyphs (characters that look identical, like Latin and
+Cyrillic ``a''), about invisible code points, and about composed
+versus decomposed forms. An attacker can use these to write a
+prompt that, after tokenization, asks the model to do something
+the visible text does not. The mitigation is normalisation at
+ingress and logging at every layer; the math in this chapter does
+not solve the problem, but the engineering vocabulary of token
+boundaries is the vocabulary in which the problem is named.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
