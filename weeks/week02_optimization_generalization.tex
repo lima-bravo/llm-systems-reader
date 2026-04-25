@@ -1,6 +1,108 @@
 \section{Week 2: Optimization, Generalization, and Scaling Intuition}
 \label{sec:week2-optgen}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.} Chapter~1 told us \emph{what} we want a
+language model to do: assign a probability distribution to the next
+token. It said almost nothing about how to find the parameters that
+realise such a model. We now face that question. The model has, on
+the small side, a hundred million parameters; on the large side, a
+trillion. The loss surface is a function of all of them at once.
+There is no closed-form solution. There is no convex landscape to
+descend. There is, instead, a vast and largely unmapped territory,
+and our only tool for navigating it is the gradient at our feet.
+
+\paragraph{How we got here.} The mathematics of descending a
+function by following its gradient is older than electricity. In
+1847 the French mathematician Augustin-Louis Cauchy described the
+method of steepest descent in a short note to the
+\emph{Comptes Rendus}. Cauchy's problem was small enough that the
+gradient could be evaluated exactly. Ours is not. The trick that
+makes our problem tractable is a much later one: replace the true
+gradient with a noisy estimate computed from a small batch of
+examples. Robbins and Monro, in 1951, gave the conditions under
+which such a noisy iteration converges. They called it stochastic
+approximation. We call it stochastic gradient descent.
+
+The other trick we needed was a way to compute the gradient of a
+deep nonlinear function at all. The chain rule of calculus answers
+this in principle. The implementation is called
+back-propagation. Paul Werbos, in his 1974 Harvard PhD thesis,
+wrote down a recognisable version of it. Rumelhart, Hinton, and
+Williams brought it to the field's attention in their 1986 paper
+in \emph{Nature}. Without back-propagation a network of more than
+a few layers is computationally inert. With it the depth becomes
+free in a deep mathematical sense: the cost of computing the
+gradient is roughly the cost of computing the forward pass.
+
+For thirty years the field then argued about which optimiser was
+best. Momentum, RMSProp, Adagrad, Adadelta. Diederik Kingma and
+Jimmy Ba published Adam in 2014, combining momentum and adaptive
+per-parameter step sizes. AdamW, the variant in current use, came
+from Loshchilov and Hutter in 2017 and fixed a subtle but
+consequential issue with how Adam handled weight decay. By 2020
+the question of \emph{which} optimiser was largely settled. The
+question of \emph{how much to spend on what} took its place. Jared
+Kaplan and his coauthors at OpenAI, in 2020, observed that loss
+followed a power law in the three quantities of interest:
+parameter count, dataset size, and compute. Hoffmann and her
+colleagues at DeepMind, in 2022, ran a more careful study and
+concluded that previous large models had been trained on too few
+tokens for their parameter counts. They called this Chinchilla
+scaling. Today's compute-optimal recipes are descendants of that
+single argument.
+
+\paragraph{Where we stand.} A modern training recipe is a
+sequence of decisions, not an algorithm. Choose AdamW. Pick a
+peak learning rate, with a linear warmup from zero over the first
+few thousand steps and a cosine decay to a small fraction of peak
+over the remaining steps. Clip gradients at a global norm of one.
+Train in mixed precision (bf16 for most arithmetic, fp32 for
+optimiser state). Use gradient accumulation to fit a desired
+effective batch size. Check the loss curve daily and the gradient
+norm hourly. Pick a model size and a dataset size at the
+Chinchilla-optimal ratio for your compute budget. The mathematics
+in the rest of this chapter is the bookkeeping for these choices:
+the SGD-as-stochastic-differential-equation argument that
+explains why warmup helps, the AdamW update rule with its bias
+corrections, the mixed-precision memory budget that determines
+what fits on a GPU, the Lagrangian that produces the
+compute-optimal model and data sizes from a fixed budget.
+
+\paragraph{What goes wrong.} The dramatic failures of training
+are visible. A loss spike that never recovers. A gradient norm
+that blows up after step 50,000. A divergence that turns a
+beautiful run into a wasted week of cluster time. These look bad,
+and they cost money, but they are the easy ones. The engineer
+who notices them can usually diagnose them: a learning rate too
+high, a batch too small, a precision too low, an outlier example
+that wedged itself into the training distribution.
+
+The harder failures are the quiet ones. A model that trains to a
+respectable validation loss and yet generalises poorly to the
+distribution it will actually meet at deployment. A model that is
+slightly too small for the data it has seen, and so behaves as if
+it is memorising rather than learning. A model that is slightly
+too large for the data it has seen, and so behaves as if it has
+discovered a regularity that is not there. The double-descent
+curves we will discuss are not theoretical curiosities; they are
+the visible signature of the implicit regularisation done by
+overparameterisation, and getting the signature wrong is what
+turns a training run from a model into an expensive monument.
+
+There is a more sociological failure mode worth naming early. The
+field has acquired a habit of explaining results by appealing to
+``flat minima'' and ``benign overfitting'' as if these were
+mechanisms rather than observations. They are observations. We
+will treat them as such. The math in the rest of the chapter is
+not a sufficient theory of generalisation; nobody has one. It is
+a working set of identities and budget equations that, taken
+together, let an engineer reason about the regimes in which the
+training they are running is likely to behave well, and the
+regimes in which it is not.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
