@@ -1,47 +1,95 @@
 \section{Week 7: Model Adaptation, LoRA, Quantization, and Deployment Reality}
 
-\subsection{Introduction: Why Adaptation Is an Engineering Problem, Not a Research Curiosity}
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
 
-Weeks~5 and~6 described how to pretrain a base model on tens of trillions of
-tokens. That effort is the most expensive single line item in modern AI, and a
-typical organization will do it never.
-What they will do, dozens of times, is \emph{adapt} a pretrained model to
-something more specific: a product domain, a proprietary tone, a regulated
-terminology, a safety policy, a pinned behaviour.
-This is where most practitioner value is created, and it is also where most
-deployment-time failures originate.
+\paragraph{The problem.}
+A pretrained base model is, in some sense, an artifact of staggering
+generality. It can write Python, summarize French literature, draft
+a polite refusal to a request for medical advice, and produce a
+plausible recipe for cassoulet. It cannot, however, reliably speak
+in your company's tone of voice, follow your organization's
+terminology conventions, or honour your jurisdiction's regulatory
+constraints. Almost no organization will train a base model. Almost
+every organization will need to adapt one. The problem of this
+chapter is what to do when you have a base model that is almost what
+you want and a budget that does not stretch to retraining the whole
+thing. The naive answer --- continue training all of the parameters
+on your task data --- works in principle but is wasteful in
+practice: it costs as much memory as pretraining itself, it produces
+a full-sized checkpoint per task, and it has a habit of overwriting
+useful general-purpose knowledge with task-specific noise.
 
-This chapter is about the space of techniques that sit between \emph{using
-a base model as is} and \emph{retraining it from scratch}.
-The modern centre of gravity is parameter-efficient fine-tuning
-\citep{houlsby2019adapters, hu2021lora, lialin2023peftsurvey}, combined with
-post-training quantization
-\citep{dettmers2022llmint8, frantar2023gptq, lin2024awq, xiao2023smoothquant}
-and, increasingly, a unification of the two under QLoRA
-\citep{dettmers2023qlora}.
-Engineers who understand both halves --- the low-rank mathematics of
-adapters and the arithmetic of reduced-precision formats --- can move a
-foundation model into production at one to two orders of magnitude lower
-cost than teams who do not.
+\paragraph{How we got here.}
+The first response was \emph{adapter modules}. Neil Houlsby and his
+collaborators at Google, in 2019, inserted small trainable
+bottleneck layers into a frozen pretrained Transformer and showed
+that fine-tuning only those layers recovered most of the
+full-fine-tuning quality at a fraction of the parameter cost. The
+adapter idea was good but architecturally invasive. In 2021, Edward
+Hu and his collaborators at Microsoft proposed an alternative they
+called \emph{Low-Rank Adaptation} (LoRA): instead of inserting new
+modules, they updated each weight matrix by a low-rank correction,
+$W_0 + AB^\top$ with $A$ and $B$ tall and thin. The trick rested on
+an empirical observation called the \emph{intrinsic dimensionality
+hypothesis}: the directions in weight space along which a model
+genuinely changes during fine-tuning are far fewer than the model's
+parameter count would suggest. LoRA exploited this by parameterizing
+only those directions. It became the field's default within
+eighteen months.
 
-The chapter has five aims.
-First, to explain precisely why full fine-tuning is the wrong default for
-almost every team.
-Second, to derive LoRA and its variants from the intrinsic-dimensionality
-hypothesis and evaluate when they break.
-Third, to develop a disciplined vocabulary for quantization --- FP32, FP16,
-BF16, INT8, FP8, INT4/NF4 --- and for the algorithms that compress models
-into those formats without destroying them.
-Fourth, to describe QLoRA as the production-favourite combination and to
-put LLM.int8() and SmoothQuant beside it.
-Fifth, to close with the adaptation-and-serving \emph{system}: registries,
-adapter composition, regression testing, rollback, and the human-factors
-failure modes that dog adaptation projects in regulated environments.
+The other thread came from the bottom up. As models grew, even
+\emph{loading} them onto an accelerator became a problem. The
+remedy was \emph{quantization}: store the parameters in fewer than
+the standard 16 or 32 bits, and live with the resulting arithmetic
+error. Tim Dettmers and his collaborators showed in 2022 that, with
+careful per-channel scaling and outlier handling, an LLM could be
+served in 8-bit integers with negligible quality loss
+(LLM.int8()). Compression-aware methods followed --- GPTQ, AWQ,
+SmoothQuant --- each addressing a different failure mode of naive
+rounding. In 2023 Dettmers's team unified the two threads with
+QLoRA: quantize the frozen base model to 4 bits, then train a LoRA
+adapter on top. This combination made the adaptation of
+70-billion-parameter models tractable on a single 48GB GPU. It is
+now the production default.
 
-Throughout, we treat a ``model'' not as a single static artefact but as a
-pair $(W_0, \Delta)$: a large, rarely-changing base and a small, frequently
-changing delta. This reframing --- one base, many deltas --- is the
-single most important operational insight in the chapter.
+\paragraph{Where we stand.}
+The modern view treats a deployed model not as a single artifact
+but as a pair: a large, rarely-changing base $W_0$ stored in 4 or 8
+bits, and a small, frequently-changing delta $\Delta$ stored in
+fp16 or bf16. The base is shared across tasks; the delta is what
+makes a checkpoint specific. Engineers manage adapter registries
+the way they once managed model registries: a dozen LoRA adapters
+might sit in front of one base, with a router selecting among them
+per request. Quantization formats now include INT8, FP8, INT4, and
+the information-theoretically motivated NF4. Calibration
+procedures, outlier-aware quantizers, and quant-aware fine-tuning
+have made 4-bit serving routine for models that would, in fp16,
+have been infeasible to deploy at all.
+
+\paragraph{What goes wrong.}
+The math behind LoRA is the math of low-rank matrix updates, and the
+empirical claim that the intrinsic dimensionality is small is just
+that --- empirical. For some tasks the rank required is higher than
+LoRA's typical $r=8$ or $r=16$, and the resulting adapter
+underperforms full fine-tuning in ways that may not show up on the
+benchmarks the team chose. Quantization introduces rounding error
+that, in expectation, is small but, on the right adversarial
+example, is decisive: a model that scores within 0.1 of its fp16
+counterpart on a standard benchmark may give noticeably worse
+answers on rare or compositional inputs. Adapter composition
+\emph{looks} like a clean addition --- if I have an adapter for tone
+and an adapter for terminology, surely I can add them --- but the
+resulting weights are not, in general, a faithful representation of
+the union of behaviors. And there is the operational class of
+failure that has nothing to do with the math: an adapter trained on
+out-of-date documents will gracefully and confidently produce
+out-of-date answers; an adapter trained without a regression test
+suite will silently regress capabilities the base model had. The
+mathematics in this chapter --- the rank-update identities, the
+quantization error bounds, the QLoRA gradient flow --- exists to
+let you predict which of these failures your particular setup is
+asking for.
 
 \subsection{Learning Objectives}
 
