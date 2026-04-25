@@ -1,6 +1,101 @@
 \section{Week 5: Pretraining, GPT-Style Models, and In-Context Learning}
 \label{sec:week5-pretrain}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.}
+Suppose you have a Transformer and a great deal of text. The
+question is what to do with the text in order to obtain a model that
+is, in some useful sense, fluent. The classical answer was to pick a
+narrow task --- translation, summarization, sentiment classification
+--- and supervise the model on labelled examples of that task. The
+trouble with this answer was that labelled examples are expensive,
+that any single task is a thin slice of what language can be used
+for, and that a model trained only on translation has no obvious
+reason to be good at anything else. We wanted, instead, a single
+training procedure that produced a single model that was, in some
+broad sense, capable. The procedure that emerged is called
+\emph{pretraining}: take an enormous unlabelled corpus, ask the
+model to predict the next token in that corpus, and trust that, in
+order to predict the next token well, the model will be forced to
+acquire a great deal of useful structure --- syntax, world
+knowledge, arithmetic, reasoning, the layout of a Python script.
+The trust, it turned out, was not entirely misplaced.
+
+\paragraph{How we got here.}
+Predicting the next token is an old idea. Claude Shannon, in 1951,
+estimated the entropy of English by playing a game in which human
+subjects guessed the next letter of a withheld passage. The
+performance of the guessers gave him a lower bound on the
+predictability of the language. He treated the guessers as a model.
+The connection between language modelling and information theory
+has been with us ever since. What was missing for half a century
+was a sufficiently expressive learner and a sufficiently large
+corpus. Both arrived together in the 2010s. By the time GPT-2
+appeared in 2019, the recipe had stabilized: take a decoder-only
+Transformer, train it on a heroically filtered slice of the open
+web, and minimize cross-entropy on the next-token prediction. By
+the time GPT-3 appeared in 2020 \citep{brown2020language}, the
+field had a phenomenon to explain. Tom Brown and his collaborators
+showed that a sufficiently large pretrained model could perform
+new tasks --- arithmetic, translation, question answering --- with
+no parameter updates at all, simply by being shown a few examples
+in the prompt. They called this \emph{in-context learning}, and
+nobody, including the authors, fully understood why it worked.
+
+The other thread to follow is the question of how big to make the
+model and how much to train it. Jared Kaplan and his collaborators
+at OpenAI, in 2020, plotted loss against parameter count, dataset
+size, and compute, and found smooth power laws over many orders of
+magnitude. The empirical regularity was reassuring; the prescription
+that followed was that, given a fixed compute budget, you should
+spend most of it on parameters. Two years later, Jordan Hoffmann
+and the Chinchilla team at DeepMind reanalyzed the question with
+better experiments and showed that Kaplan's recommended ratio was
+substantially off: for compute-optimal training you should scale
+parameters and tokens roughly together, not parameters faster than
+tokens. The Chinchilla paper changed how the field budgeted
+compute, and most modern open models reflect its prescription.
+
+\paragraph{Where we stand.}
+A modern pretraining run takes a curated corpus on the order of
+trillions of tokens, packs it into long sequences with attention
+masks at document boundaries, and trains a decoder-only Transformer
+under cross-entropy with a cosine-decayed learning rate. The
+objective itself --- predict the next token --- has not changed
+since GPT-1. What has changed is the scale, the data quality, and
+the engineering. At inference time the same model is sampled rather
+than argmax-decoded, with one of a small zoo of strategies (greedy,
+beam, temperature, top-$k$, nucleus / top-$p$, min-$p$) that trade
+off determinism against diversity. Few-shot prompting, despite the
+absence of any clear theoretical foundation, remains a workhorse
+technique: you put a handful of examples in the context and let the
+model continue the pattern.
+
+\paragraph{What goes wrong.}
+Cross-entropy training on internet-scale text has costs that the
+loss function itself does not see. The training data contains
+copyrighted material, personal information, and a great deal of
+text that the model will, under the right pressure, regurgitate
+verbatim --- a phenomenon called \emph{memorization}, with its
+own measurement literature \citep{carlini2021extracting,
+carlini2023quantifying}. The training data also contains the
+prejudices of its authors, which the model will reproduce
+fluently. The model will be confidently wrong about things its
+training data was confidently wrong about, and will be plausibly
+wrong about things its training data did not contain. Few-shot
+prompting is brittle: changing the order of the examples, the
+formatting of the labels, or even the choice of separator can shift
+accuracy by tens of points, and these effects have no principled
+fix. The much-celebrated phenomenon of \emph{emergent capabilities}
+--- abilities that appear suddenly at scale --- has been argued by
+\citet{schaeffer2023mirage} to be partly an artefact of metric
+choice rather than a fact about model behavior. None of this means
+the recipe does not work. It means the recipe works in a way that
+is harder to characterize than its champions sometimes admit, and
+the math in this chapter exists to help you tell the difference.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
