@@ -108,9 +108,9 @@ LLMs perform best.
 A structural failure is the kind a parser can catch. The fix lives
 in the decoding stack --- JSON-mode, schema-validated sampling,
 regex-constrained generation, finite-state-machine guards over the
-token distribution. Frontier models in 2026 are good enough at
-structure that engineering teams who still have to debug structural
-failures regularly are usually doing something unusual: deeply
+token distribution. In current practice, frontier models are good
+enough at structure that engineering teams who still have to debug
+structural failures regularly are usually doing something unusual: deeply
 nested formats, formats outside the training distribution, or
 outputs long enough to drift mid-stream.
 
@@ -148,7 +148,8 @@ in subtle ways. Domain expertise unmasks this: the technical reader
 who knows the territory catches inconsistencies the casual reader
 does not. Remedies are inference-time --- ask the model to check
 its own work, sample multiple completions and compare them, use
-chain-of-thought to externalize the reasoning. These all trade
+structured self-check prompts or separate verifier passes. These
+all trade
 inference compute against meaning reliability.
 
 \section*{Context: is the output appropriate for the situation?}
@@ -205,8 +206,10 @@ own, tell the two apart.
 
 This is the place where the symbol-grounding literature is most
 directly useful. Harnad's question --- how can symbols mean
-anything? --- has, for current architectures, an honest answer:
-they cannot, on their own. The remedy at the system level is
+anything? --- remains unresolved for text-only next-token models in
+isolation. In practice, system design addresses this limitation by
+linking models to external evidence and tools. The remedy at the
+system level is
 retrieval. Replace the question ``what is the most probable thing
 to say'' with ``what is the most probable thing to say given these
 specific sources.'' The grounding problem is no longer the model's
