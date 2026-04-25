@@ -1,51 +1,72 @@
 \section{Week 8: Alignment, Instruction Tuning, and Preference Optimization}
 
-\subsection{Introduction: Why Alignment Is Its Own Engineering Discipline}
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
 
-A pretrained language model (Week~5) is a superb statistical model of
-text on the internet. That is exactly and only what we trained it to
-be. It is not a helpful assistant, not a polite conversational
-partner, not a reliable refuser of harmful requests, and not a
-bounded agent. Everything that separates a ``base model'' from
-``ChatGPT'' is the result of a second training regime, commonly
-referred to as \emph{alignment} or \emph{post-training}, and it is
-where the text-prediction machine is shaped into a deployable
-product.
+\paragraph{The problem.}
+A pretrained language model is a beautifully calibrated predictor of
+the next token in a corpus. That is exactly what we asked it to be,
+and it is not the same thing as a helpful assistant. A base model
+will gladly continue an essay that begins ``the best way to commit
+fraud is''; it will produce a confident answer to a question whose
+answer it does not know; it will agree with the most recent claim in
+the conversation regardless of whether the claim is true. None of
+these behaviors are bugs in the pretraining objective. They are what
+the pretraining objective optimizes. The problem of this chapter is
+how to take a base model that is statistically faithful to its
+training data and turn it into something that is, in some
+operational sense, helpful, honest, and harmless --- and how to do
+so without destroying the capability we paid so much to acquire.
 
-This chapter treats alignment as an engineering discipline. We will
-distinguish \emph{capability} (what a model can do) from
-\emph{alignment} (how a model behaves when given the choice), derive
-the three canonical post-training stages (SFT, reward modelling,
-RL), work through RLHF and DPO at the level of the objective and
-its gradients, and examine the empirically documented failure modes
-that alignment does and does \emph{not} solve.
+\paragraph{How we got here.}
+The first instinct was to fine-tune the model on examples of the
+behavior one wanted. This is supervised fine-tuning (SFT), and it
+is the first stage of essentially every modern post-training
+pipeline. SFT works for instruction-following but is brittle for
+nuanced preferences: it is hard to write a single ``correct'' answer
+to a question like ``how should I phrase this difficult email?''.
+The breakthrough came when researchers gave up on writing correct
+answers and started ranking pairs of model outputs instead. Paul
+Christiano and his collaborators at OpenAI showed in 2017 that a
+preference learner could learn complex behaviors from human ranking
+data alone. By 2022 the recipe had a name: \emph{Reinforcement
+Learning from Human Feedback}. Long Ouyang and his collaborators
+described the production pipeline behind InstructGPT: SFT, then a
+reward model trained on human pairwise preferences via the
+Bradley-Terry choice model, then PPO against that reward model with
+a KL penalty back to the SFT model to keep the policy from drifting
+into nonsense. ChatGPT, released in late 2022, was an instance of
+this pipeline.
 
-Two framings are worth establishing upfront. First: alignment does
-not add new knowledge. It reshapes the output distribution
-conditional on knowledge the model already has. Post-training cannot
-teach a model that a particular drug interaction exists if the
-pretraining corpus never mentioned it; post-training can only
-change how the model responds when the pretraining distribution says
-it does. Engineers who misunderstand this build the wrong
-expectations into their evaluations and often blame the wrong
-training stage for failures.
+RLHF works, but it is operationally heavy: it requires holding
+three or four copies of the model in memory at once and tuning a
+reinforcement-learning algorithm whose stability is famously
+delicate. In 2023, Rafael Rafailov and his collaborators at Stanford
+asked whether the RL step could be skipped. They derived a
+closed-form expression for the policy that maximizes the RLHF
+objective, plugged it back into the Bradley-Terry preference
+likelihood, and produced a single supervised loss that they called
+\emph{Direct Preference Optimization} (DPO). DPO is simpler, more
+stable, and roughly matches RLHF on most benchmarks. A small zoo of
+DPO descendants --- IPO, KTO, ORPO, SimPO --- followed, each
+addressing some specific weakness in the original. In parallel,
+Anthropic's \emph{Constitutional AI} and the broader \emph{RLAIF}
+program reduced the human-labelling burden by using AI feedback in
+place of human feedback, with mixed results.
 
-Second: alignment is inherently \emph{normative}. It encodes a
-decision about what the model should and should not do, which is to
-say a decision about values. ``Aligned'' is not a purely technical
-property; it is always aligned to someone's values, and the
-engineer's job is to know whose, to document them, and to design
-systems that can be audited against them. This chapter deliberately
-mixes technical content with systems and human-factors material
-because alignment fails most often at the seam between them.
-
+\paragraph{Where we stand.}
 The reference pipeline we will trace is summarized in
-Figure~\ref{fig:rlhf-pipeline}: pretraining, then supervised
-fine-tuning, then preference data collection, then either a reward
-model plus reinforcement learning (``classical'' RLHF) or a direct
-preference-optimization loss (DPO and descendants). Every modern
-chat assistant is a variant of this pipeline, with differences
-almost entirely in the data and the preference-optimization step.
+Figure~\ref{fig:rlhf-pipeline}. A modern alignment stack starts with
+SFT on a curated mixture of instruction-response pairs, both
+human-written and synthetic. It then collects preference data ---
+pairs of model outputs ranked by human or AI annotators against a
+written rubric --- and uses that data either to train a reward
+model and run PPO (classical RLHF) or to drive a direct preference
+loss (DPO and friends). Most production teams now mix the two
+approaches: a DPO pass for cheap iteration, an RLHF pass for the
+final policy. The SFT stage is usually run as a LoRA on the base
+model; the preference stage is usually a LoRA on the SFT. A safety
+classifier runs in parallel as a defense in depth.
 
 \begin{figure}[ht]
   \centering
@@ -58,6 +79,30 @@ almost entirely in the data and the preference-optimization step.
   is usually a LoRA on the SFT.}
   \label{fig:rlhf-pipeline}
 \end{figure}
+
+\paragraph{What goes wrong.}
+Alignment is the part of the modern pipeline whose failure modes are
+most visible to end users. The model can be made to refuse harmful
+requests in some phrasings but not in others; this is the
+\emph{jailbreak} literature. The reward model can be optimized so
+hard that the policy learns to satisfy the reward model's
+peculiarities rather than the underlying preferences --- this is
+\emph{reward hacking}, and Goodhart's law in slightly different
+clothing. The annotators may, despite the best rubric, prefer
+sycophantic answers, with the result that the model learns to
+agree with the user's premise even when the premise is wrong; this
+is \emph{sycophancy}, and it is harder to remove than to introduce.
+Aligning the model toward helpfulness can degrade other capabilities
+in ways that benchmarks miss --- the so-called \emph{alignment
+tax}. And there is the deeper problem that ``aligned'' is always
+aligned \emph{to someone's values}: the rubric encodes a normative
+choice, and the engineer's job is to know whose values are encoded,
+to document them, and to design a system that can be audited
+against them. Alignment is, in the end, an engineering discipline
+about a moral question, and the math in this chapter --- the
+Bradley-Terry likelihood, the PPO clipped objective, the DPO
+log-ratio --- is the bookkeeping for a problem that the math alone
+cannot solve.
 
 \subsection{Learning Objectives}
 
