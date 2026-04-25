@@ -1,6 +1,111 @@
 \section{Week 4: The Transformer --- Attention as the Core Computational Primitive}
 \label{sec:week4-transformer}
 
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.}
+A sentence is a sequence in which almost any word can, in principle,
+depend on almost any other. The pronoun in the last clause may refer
+to a noun in the first. The verb tense at the end of a paragraph may
+be set by an adverb at the beginning. If you want to predict the next
+word in a passage, you need an architecture in which information from
+arbitrary distances in the past can reach the present without being
+attenuated, garbled, or forgotten. The architecture must also be
+trainable on hardware that prefers to do many things at once. Those
+two requirements --- arbitrary-range memory and parallel
+computation --- are in tension, and the history of sequence
+modelling is largely the history of trying to satisfy both at once.
+
+\paragraph{How we got here.}
+The earliest neural sequence models were recurrent. Jeffrey Elman's
+1990 paper, with the unpretentious title \emph{Finding Structure in
+Time}, defined a network that maintained a hidden state and updated
+it one token at a time. The hidden state was meant to summarize the
+past. In practice, it did so badly: gradients flowing back through
+many time steps either vanished, leaving the network unable to
+learn long-range dependencies, or exploded, leaving it unable to
+learn anything at all. Sepp Hochreiter and J\"urgen Schmidhuber
+diagnosed this in 1997 and proposed the Long Short-Term Memory cell,
+which used carefully gated arithmetic to let some signals pass
+through unmolested. The LSTM was, for two decades, the workhorse of
+sequence modelling.
+
+The next move came in machine translation. Ilya Sutskever, Oriol
+Vinyals, and Quoc Le showed in 2014 that a pair of LSTMs could
+translate sentences end to end: one LSTM encoded the source
+sentence into a fixed-length vector, and another LSTM decoded that
+vector into the target sentence. The trick almost worked. The
+catch was the fixed-length vector, which had to compress the entire
+source sentence into a few thousand numbers regardless of how long
+the sentence was. For short sentences this was fine; for longer
+ones it was disastrous. Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua
+Bengio responded in 2015 with what they called \emph{attention}: at
+each step of the decoder, instead of relying on the bottleneck
+vector, the model would compute a weighted sum over all the
+encoder's hidden states, with the weights chosen by the decoder
+itself. The bottleneck disappeared. Translations got better.
+
+The Transformer, introduced in 2017 by Ashish Vaswani and
+collaborators at Google in a paper titled \emph{Attention Is All You
+Need}, took the next step. They asked, in effect: if attention is
+the part that works, what happens if we throw away the recurrence
+entirely? The answer was that you got a model that could be trained
+in parallel across an entire sequence, that suffered no
+gradient-decay over distance, and that scaled, when given more data
+and more parameters, in ways the recurrent models had never
+managed. Every Large Language Model in production today is a
+descendant of that paper.
+
+\paragraph{Where we stand.}
+The modern Transformer is a stack of identical blocks, each of which
+does two things and then adds the result to a running sum (the
+\emph{residual stream}). The first thing is self-attention: every
+token computes a query, every other token computes a key and a
+value, the query and keys are dotted together to produce a similarity
+score, the scores are normalized into weights, and each token's new
+representation is the weighted sum of the values. The whole
+operation is a content-addressable lookup, scaled by
+$1/\sqrt{d_k}$ to keep the dot products from saturating the softmax,
+and masked so that future tokens cannot attend to the past during
+training. The second thing each block does is run the result through
+a position-wise feed-forward network --- a small two-layer MLP
+applied independently to each token. Around both operations,
+modern designs put a normalization layer (LayerNorm or its cheaper
+cousin RMSNorm) before the operation rather than after, a choice
+called \emph{pre-norm} that turns out to make very deep stacks
+trainable. Position information, which the attention mechanism does
+not encode on its own, is added separately --- originally as fixed
+sinusoids, more recently through rotary position embeddings (RoPE)
+that have a clean relative-position interpretation. To save memory
+during inference, modern designs share keys and values across groups
+of heads (Grouped-Query Attention) and store the keys and values of
+past tokens in a cache that grows linearly with context length.
+That, with thousands of careful engineering decisions on top, is the
+present state of the art.
+
+\paragraph{What goes wrong.}
+The attention mechanism is quadratic in the sequence length. The
+score matrix has $T^2$ entries, and at long contexts that becomes
+the dominant cost both in compute and in memory. A great deal of
+recent engineering --- FlashAttention, sliding windows, sparse
+attention, state-space hybrids --- exists to push back against this
+cost, with mixed success. Position encodings that worked beautifully
+inside the training range often degrade outside it; a model trained
+on 4{,}000-token contexts will not, in general, behave well on
+40{,}000-token contexts without some form of position-extrapolation
+surgery. The model's attention can collapse onto a few high-norm
+``sink'' tokens that the architecture seems to use as registers,
+distorting any interpretation that treats attention weights as
+explanations of behavior. And there is the well-documented
+\emph{lost-in-the-middle} effect: a model handed a long document
+will reliably attend to the beginning and end and underweight the
+middle, regardless of where the answer actually lies. The
+mathematics of this chapter --- the variance-preserving scale, the
+softmax denominator, the RoPE rotation, the KV-cache budget ---
+will give you the tools to predict where each of these failure modes
+comes from and which architectural choice each one is the price of.
+
 \subsection{Learning Objectives}
 
 By the end of this week, you should be able to:
