@@ -18,34 +18,187 @@
 % INTRODUCTION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Preface}
-\addcontentsline{toc}{section}{Preface}
+\section*{Preface: A Letter to the Reader}
+\addcontentsline{toc}{section}{Preface: A Letter to the Reader}
 
-This reader is intended for readers with a strong background in mathematics,
-statistics, and computer science who wish to reason rigorously about modern
-Large Language Model (LLM) systems.
+\subsection*{The thing in front of you}
+\addcontentsline{toc}{subsection}{The thing in front of you}
 
-The focus is not on using LLMs as black boxes, but on understanding them as
-\emph{engineered socio-technical systems}, integrating:
-\begin{itemize}
-  \item probabilistic modeling,
-  \item large-scale optimization,
-  \item systems engineering tradeoffs,
-  \item human factors and failure modes.
-\end{itemize}
+You have, almost certainly, already used a Large Language Model. You
+asked it to draft an email, or to debug a stubborn piece of code, or
+to explain a concept that a textbook had failed to make stick. The
+answer it gave you was probably useful. It was also, at some level,
+a surprise --- not because the technology is new (it is not, really;
+its lineage is more than a century old), but because the experience
+of being addressed in fluent prose by a system with no body, no
+mind, and no opinions felt different from anything you had asked a
+computer to do before.
 
-Each weekly handout combines theory, systems design considerations, and
-practical experimentation.
+It is worth pausing on that surprise. The interesting question, for
+the kind of engineer who wants to build systems around these models
+or repair them when they misbehave, is not whether the answer was
+correct. The interesting question is what the system was actually
+\emph{doing}. We are about to take it apart, slowly, and put it back
+together. By the time you finish this reader you will not, in any
+deep sense, find these systems mysterious. You may, however, find
+them more remarkable than you do today, and you will certainly find
+them less trustworthy in some specific and useful ways.
+
+\subsection*{How we got here}
+\addcontentsline{toc}{subsection}{How we got here}
+
+It is worth remembering that the field has a history. The Russian
+mathematician Andrey Markov, in 1913, sat down with a copy of
+Pushkin's \emph{Eugene Onegin} and counted the alternation of vowels
+and consonants. He did this, in part, to make a philosophical point:
+that conditional probability does not require independence. He gave
+us a model of language as a sequence of dependencies a full century
+before we had the data or the hardware to make that model useful.
+
+Claude Shannon followed in 1948 with his theory of information,
+which gave us a way to measure how surprising a sequence is, and
+therefore how well a model has captured a language's regularities.
+For decades after that the field crawled. The n-gram era of speech
+recognition counted word triples on hard drives that filled rooms.
+The connectionist revival of the 1980s put neural networks back on
+the table. Bengio, Ducharme, Vincent, and Jauvin built a neural
+language model in 2003 that almost nobody outside the field
+noticed. Mikolov and his colleagues showed in 2013 that words could
+be embedded in a vector space where ``king minus man plus woman''
+landed near ``queen''. Sutskever, Vinyals, and Le followed with
+sequence-to-sequence translation in 2014. Bahdanau, Cho, and Bengio
+introduced attention in 2015. Vaswani and his coauthors at Google
+removed the recurrence in 2017 and gave us the Transformer.
+
+And then the field stopped crawling. GPT-1 in 2018, GPT-2 in 2019,
+GPT-3 in 2020, ChatGPT at the end of 2022, GPT-4 the following
+spring. Each of these was a substantial engineering effort by
+hundreds of people whose names will not appear in this book. But
+the lineage matters. None of these systems came out of nowhere.
+None of them required anything that we could not, in retrospect,
+have predicted from the trajectory. The mathematics of the
+Transformer is the mathematics of attention, which is the
+mathematics of weighted sums, which is, in the end, the mathematics
+of probability. The whole edifice rests on a few sturdy ideas, and
+this reader is in the business of giving you those ideas one at a
+time.
+
+\subsection*{How to read this book}
+\addcontentsline{toc}{subsection}{How to read this book}
+
+This is a reader for engineers. It assumes you have the
+mathematical background of an undergraduate in a quantitative
+discipline --- some calculus, some linear algebra, some probability,
+the rough shape of an optimization argument. It does not assume you
+have any prior exposure to deep learning or to LLMs in particular.
+
+The book is organised into eleven chapters, one per topic. Every
+chapter follows the same structure. It opens with a short narrative
+section called \emph{Setting the Scene}, which describes the
+problem space the chapter is about, the lineage of ideas that
+brought us to the current best practice, what that current best
+practice is, and the characteristic ways the practice fails. The
+narrative is followed by a notation block that fixes the symbols
+and standing assumptions. Then come the derivations, the worked
+numeric examples, the figures, and a final \emph{Proved vs Assumed}
+recap that separates what the chapter has rigorously established
+from what it has empirically observed. The chapter closes with
+bridges to other chapters and a compact \emph{Derivation Ledger}
+that indexes the central identities.
+
+The narrative comes first deliberately. The math in the body of
+each chapter is the bookkeeping for what the narrative describes.
+A reader who knows what a thing is for tends to derive it more
+easily; a reader who derives it first sometimes loses track of why
+it matters. We write the why first. Then the how.
+
+If you are reading the book front-to-back you will find that the
+chapters build on one another. Cross-entropy from Chapter~1
+reappears in Chapter~5 as the pretraining objective. The
+mixed-precision memory budget from Chapter~2 reappears in
+Chapter~7 as the LoRA budget. The trust boundary defined in
+Chapter~9 reappears in Chapter~11 as the agent-loop invariant. The
+dependency graph below makes the cross-references explicit so that
+a reader who already knows part of the material can skip in safely.
+
+\subsection*{What goes wrong, and why this is the most important
+section of the book}
+\addcontentsline{toc}{subsection}{What goes wrong}
+
+A language model trained on cross-entropy is, by construction, the
+most probable thing the model can say given the prompt. The most
+probable thing is not the same as the true thing. The model has
+no native concept of truth at all. It has a beautifully calibrated
+sense of plausibility and a great deal of memorised plausibility,
+which is sometimes the same as truth and sometimes is not. This is
+the seed of \emph{hallucination} --- the polite name we give to a
+fluent, confident, plausible, wrong answer.
+
+Cross-entropy training cares about the average. It does not, by
+itself, care about edge cases. The careful question that produces
+a careful answer often differs from the careless question that
+produces a wrong one only by a few tokens. We will see this as
+\emph{prompt brittleness}, the fact that two prompts a human would
+read as equivalent can produce two qualitatively different outputs.
+
+A model that is fluent is not, by default, a model that is
+helpful. A pretrained base model will happily complete an essay
+that begins ``the best way to commit fraud is''; making it refuse
+to do so is the work of \emph{alignment}, and alignment is its own
+discipline of trade-offs. We will see how the discipline arrived,
+what it bought, and what it cost --- the so-called \emph{alignment
+tax} on capability, the \emph{sycophancy} that emerges when the
+model is rewarded too much for agreeing with the annotator, the
+\emph{reward hacking} that lets the model find a high-reward path
+that no annotator would ever endorse.
+
+A model that retrieves from a document store is only as honest as
+the store. We will see how retrieval can hallucinate, how the
+model can be \emph{lost in the middle} of a long context, and how
+a malicious tool output can be crafted to look like a system
+instruction --- the class of attack we call \emph{prompt
+injection}, which is to LLM systems roughly what SQL injection
+once was to web applications.
+
+These failure modes are not embarrassments to be hidden. They are
+the working vocabulary of the engineer who deploys these systems
+into the world. Every chapter ends with a discussion of the
+characteristic failures of the technique it presents. Read those
+sections carefully. They are where the unhelpful intuition that
+``the model just knows'' meets the more useful intuition of
+``the model is doing exactly what we asked, and what we asked is
+not quite what we meant.''
+
+\subsection*{A note on tone}
+\addcontentsline{toc}{subsection}{A note on tone}
+
+The narrative sections in this book are written in plain language
+because the technical sections are not. The technical sections are
+written precisely because precision is what they are for. The
+narrative sections aim at intuition because intuition is what
+allows you to recover when the precision fails --- which it will,
+because every model is wrong about something and every system has
+a failure mode the documentation did not anticipate. We have tried
+to acknowledge the people who built the ideas on which this field
+stands, because giving credit is a courtesy, and because knowing
+who first solved a problem helps you guess who has thought hardest
+about its limits.
+
+If a passage feels like it is trying to dazzle you, please tell us;
+we will rewrite it. The intent is not awe. The intent is that you
+put the book down able to reason about a class of system that did
+not exist when you began reading.
 
 \subsection*{Reading Order and Chapter Dependencies}
 \addcontentsline{toc}{subsection}{Reading Order and Chapter Dependencies}
 
-The chapters are arranged so that each one's notation and results build on
-its predecessors. Figure~\ref{fig:chapter_dependencies} shows the directed
-dependency graph; arrows point from a source chapter to any chapter that
-reuses its definitions, identities, or assumptions. Readers familiar with
-parts of the stack can enter later in the graph, but should still read any
-chapter whose outputs feed the target chapter along the arrows shown.
+The chapters are arranged so that each one's notation and results
+build on its predecessors. Figure~\ref{fig:chapter_dependencies}
+shows the directed dependency graph; arrows point from a source
+chapter to any chapter that reuses its definitions, identities, or
+assumptions. Readers familiar with parts of the stack can enter
+later in the graph, but should still read any chapter whose
+outputs feed the target chapter along the arrows shown.
 
 \input{figures/chapter_dependencies}
 
