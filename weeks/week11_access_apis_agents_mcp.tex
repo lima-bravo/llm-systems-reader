@@ -1,53 +1,97 @@
 \section{Week 11: Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol}
 
-\subsection{Introduction: From Weights to Applications}
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
 
-The preceding ten chapters built a language model: tokenized the
-data, trained the transformer, scaled it, adapted it, aligned it,
-embedded it in a retrieval system, and governed the result. This
-chapter asks the complementary question: once the model exists,
-\emph{how do engineers actually use it}? The answer in 2026 is
-almost never ``load the weights into memory and call
-\texttt{model.generate}.'' It is instead: send an HTTP request
+\paragraph{The problem.}
+The first ten chapters of this book described how to construct a
+language model. This chapter describes how engineers actually use
+one. The two are not the same. In 2026, a developer who wants to
+build a product on top of a frontier model does not download
+weights and call \texttt{model.generate}. They send an HTTP request
 with a JSON body to a provider endpoint, receive a streamed
-response, possibly invoke tools the model asked for, possibly
-route that through a Model Context Protocol server, and wrap the
-whole thing in an SDK inside a host application.
+response, possibly let the model call tools that they have
+described in a schema, possibly route the whole thing through a
+Model Context Protocol server, and wrap the result in an SDK
+inside a host application. Each of those layers is the result of
+a deliberate engineering decision; each layer has its own failure
+modes; each layer is the place where one team's bug becomes another
+team's incident report. The problem of this chapter is the surface
+between the model and the application that uses it, and the
+discipline required to operate that surface in production.
 
-The gap between a trained model and a useful product is filled by
-a stack of protocols, libraries, and runtime patterns that has
-stabilized rapidly over the last three years. Early access to GPT-3
-in 2020 was a raw completions endpoint; by 2024 the de-facto
-interface had become the chat-completions schema plus tool use;
-by late 2024 Anthropic proposed the Model Context Protocol (MCP)
-to standardize the next layer --- how agents discover and invoke
-arbitrary tools and resources \citep{mcp_intro}. In parallel, IDE-
-integrated agents (GitHub Copilot, Cursor, Claude Code) moved from
-autocomplete toys to systems that can write, test, and commit
-multi-file changes.
+\paragraph{How we got here.}
+The first widely available LLM API was OpenAI's GPT-3 completions
+endpoint in 2020. The contract was simple: send a string, get a
+string back. Within two years it had grown a chat-completion schema
+that distinguished system, user, and assistant turns; a function-
+calling extension that let the model emit structured JSON conforming
+to a developer-supplied schema; streaming over server-sent events;
+prompt caching for cost control; and a retry-and-rate-limit
+discipline that essentially every other provider has copied. By
+2024 most providers --- Anthropic, Google, xAI, Cohere, Mistral,
+the open-source serving ecosystem --- exposed an OpenAI-compatible
+endpoint, because the interface had won by default.
 
-This chapter surveys the engineering surface of that stack. We
-treat four main threads. First, the \emph{access stack} as a
-layered architecture, from weights and runtime up through wire
-protocols, SDKs, orchestration, and host applications. Second,
-the \emph{inference API contract} --- chat messages, sampling
-parameters, streaming, structured outputs, tool use, prompt
-caching --- that almost every provider now exposes in
-OpenAI-compatible form. Third, \emph{agents}: how a pure
-completions API becomes a control loop with memory, tools, and
-planning, and the frameworks (LangGraph, AutoGen, CrewAI,
-PydanticAI, smolagents, Claude Agent SDK) that codify the
-patterns. Fourth, the \emph{Model Context Protocol}: an open
-JSON-RPC 2.0 standard that lets any LLM host talk to any tool
-server, finally taming the combinatorial M$\times$N integration
-problem.
+The next layer was agents. The earliest agentic systems --- ReAct,
+AutoGPT, BabyAGI --- were research demonstrations in which a
+single while-loop drove a language model to take actions in service
+of a goal. The frameworks that followed (LangChain, then LangGraph,
+AutoGen, CrewAI, PydanticAI, smolagents, the Claude Agent SDK)
+codified the patterns: a control loop, a memory store, a tool
+registry, and a stopping criterion. In parallel, IDE-integrated
+agents --- GitHub Copilot, Cursor, Claude Code --- moved from
+autocomplete demos to systems that could read a repository, write a
+multi-file change, run the tests, and commit the result.
 
-A recurring theme: \textbf{the LLM is not the system}. By the time
-a user sees output in Cursor or a ChatGPT conversation, a dozen
-moving parts upstream --- a retry wrapper, a token bucket, a tool
-loop, a cache --- have already shaped the result. Understanding
-those parts is the difference between using an LLM and operating
-one.
+The most recent layer is the \emph{Model Context Protocol},
+proposed by Anthropic in late 2024 and adopted across the
+ecosystem in 2025. MCP is, structurally, a JSON-RPC 2.0 standard
+for how an LLM host (Claude Desktop, Cursor, an SDK harness) talks
+to a tool server. Its appeal is that it dissolves the
+combinatorial M$\times$N integration problem: instead of every host
+implementing every tool, every host speaks MCP and every tool
+speaks MCP, and the wiring is plumbing rather than engineering.
+Standardization mattered, just as it had for HTTP and SQL.
+
+\paragraph{Where we stand.}
+A modern LLM application is a layered stack. At the bottom are the
+weights and the inference runtime (vLLM, TensorRT-LLM, the
+provider's proprietary stack). Above that is the wire protocol,
+typically OpenAI-compatible chat completions with streaming. Above
+that is the SDK --- a typed client library that handles retries,
+rate limiting, structured-output validation, and cost accounting.
+Above that is the orchestration layer --- the agent framework, the
+RAG pipeline, the memory and session management. At the top is the
+host application, which is the only thing the user sees. MCP cuts
+across the orchestration layer, providing a standard way for the
+host to discover and invoke tools and resources. The whole stack is
+designed for change: any layer can be replaced, in principle,
+without disturbing the others.
+
+\paragraph{What goes wrong.}
+The transition from research demo to production system is where the
+failure modes accumulate. Rate limits turn into cascading retries
+that overwhelm the provider; this is the \emph{thundering herd}
+problem from distributed systems, with a new wrapper. Tool
+schemas drift between development and production, so a tool the
+model has been trained to call no longer accepts the JSON the model
+emits. Streaming responses arrive out of order, or fail
+mid-stream, or are silently truncated by an intermediate proxy.
+Prompt caches return stale results when the cache key
+representation changes between client versions. Agent loops can
+enter pathological cycles --- repeating the same tool call until
+budget is exhausted --- and the cost of an unbounded agent run can
+reach four figures before anyone notices. The MCP standard helps
+with integration but introduces new trust boundaries: a malicious
+MCP server can exfiltrate data, lie about tool results, or inject
+instructions into a model's context. The \emph{prompt injection}
+attack vector grows alongside every new capability the agent gains.
+The math, conventions, and defensive patterns in this chapter ---
+the streaming protocol, the tool-schema contract, the agent-loop
+invariants, the MCP transport layer --- are the discipline required
+to operate this surface without becoming the next incident
+report.
 
 \subsection{Learning Objectives}
 
