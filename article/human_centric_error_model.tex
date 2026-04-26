@@ -35,7 +35,8 @@ records by region and returns the names sorted by purchase total.
 The function passed code review. It runs without error. The output
 is wrong, and nobody can quite explain why.
 
-This is, at this point, a nearly universal experience. The model
+This is, by now, a familiar experience for engineering teams using
+LLMs in production. The model
 produces something that looks right. It is wrong in ways that are
 hard to articulate. The team falls back on the practitioner
 vocabulary that has accumulated over the last five years: someone
@@ -53,7 +54,7 @@ or fixed in the wrong place. This article proposes a closing of
 that gap: a five-axis model of LLM error, ordered from the most
 mechanical (what the model is best at) to the most human (what only
 the user can supply), that practitioners can hold in their heads
-and walk through in less than a minute.
+and walk through quickly.
 
 The five axes are \emph{structure}, \emph{meaning}, \emph{context},
 \emph{groundedness}, and \emph{environment}. They form a ladder. At
@@ -67,7 +68,7 @@ who do not have a year to spend on neural-network internals.
 \section*{Why a layered model, and why now}
 
 The instinct to organize language around layers is older than the
-language model. Linguists since the early twentieth century have
+language model. Linguists since the mid-twentieth century have
 distinguished syntax (the rules of well-formedness), semantics
 (what an utterance means), and pragmatics (the situational effect
 it has). Each layer has its own rules and its own diagnostic
@@ -83,6 +84,10 @@ Koller's 2020 paper \emph{Climbing towards NLU} [2] sharpened the
 question: a system trained only on linguistic form cannot, by that
 training alone, learn meaning, because meaning is a relation
 between form and the world that the form alone does not contain.
+The position has not gone unchallenged --- subsequent work has
+argued that distributional structure carries more semantic
+information than a strict form-only argument allows --- but the
+form-meaning gap is real enough for the purposes of this article.
 The grounding problem is older and more general than any
 particular training objective. It manifests in current systems
 through the cross-entropy loss they are trained on: the loss
@@ -112,11 +117,12 @@ LLMs perform best.
 A structural failure is the kind a parser can catch. The fix lives
 in the decoding stack --- JSON-mode, schema-validated sampling,
 regex-constrained generation, finite-state-machine guards over the
-token distribution. In current practice, frontier models are good
-enough at structure that engineering teams who still have to debug
-structural failures regularly are usually doing something unusual: deeply
-nested formats, formats outside the training distribution, or
-outputs long enough to drift mid-stream.
+token distribution. In current practice, frontier models handle
+short, well-specified formats reliably; engineering teams who still
+have to debug structural failures regularly are usually doing
+something more demanding: deeply nested formats, formats outside
+the training distribution, long-running structured-output streams,
+or multi-step tool-call traces.
 
 The diagnostic risk on this axis is the inverse of the failure
 rate. Structural correctness is so easy to verify that practitioners
@@ -384,7 +390,7 @@ diagnostic ladder. For engineers, it is a translation layer
 between the technical vocabulary of the field --- cross-entropy,
 retrieval, alignment, RLHF --- and the user-facing vocabulary of
 ``the model got it wrong.'' A complaint that arrives as ``the bot
-hallucinated'' can, after a one-minute walk through the axes,
+hallucinated'' can, after a quick walk through the axes,
 become ``the prompt did not say what region meant, and the model
 assumed wrong.'' The fix is no longer in the model and the
 conversation moves where it belongs.
