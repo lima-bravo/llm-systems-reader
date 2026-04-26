@@ -1,17 +1,28 @@
 \section{Week 5 Refresher: Pretraining Objective and Decoding Controls}
 
 \subsection*{Setting the Scene}
-Week 5 combines familiar probability from Week 1 with optimization reasoning from Week 2. The main risk is treating decoding knobs as independent when they all reshape one distribution.
+Week 5 connects statistical learning and generation behavior. Historically, this is where language modeling moved from ``fit data well'' to ``control generation behavior under constraints.'' The critical insight is that decoding is distribution shaping, not retraining.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Autoregressive objective:} same NLL foundation as Week 1.
-  \item \textbf{Temperature scaling:}
+  \item $z_i$: logit for candidate token $i$.
+  \item $p_i$: probability of candidate token $i$ after normalization.
+  \item $\tau$: temperature parameter.
+  \item $k$: top-$k$ truncation count.
+  \item $p$: top-$p$ cumulative mass threshold.
+  \item $N,D$: model/data scale variables in scaling discussions.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Autoregressive NLL objective:} same probability chain as Week 1, now at pretraining scale.
+  \item \textbf{Temperature transform:}
   \[
     p_i(\tau)=\frac{\exp(z_i/\tau)}{\sum_j \exp(z_j/\tau)}.
   \]
-  \item \textbf{Top-$k$/top-$p$:} truncation plus renormalization.
-  \item \textbf{Scaling fits:} compute/data/parameter tradeoffs are empirical surfaces.
+  \item \textbf{Top-$k$ and top-$p$:} support truncation followed by renormalization on retained set.
+  \item \textbf{Objective/metric distinction:} training objective may not align perfectly with deployment metric.
+  \item \textbf{Scaling fits:} compute/data/parameter fronts are empirical and objective-dependent.
 \end{itemize}
 
 \subsection*{Pointers}
@@ -21,5 +32,62 @@ Week 5 combines familiar probability from Week 1 with optimization reasoning fro
   \item Attention architecture assumptions: see Week 4 refresher.
 \end{itemize}
 
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Train model to minimize autoregressive NLL.
+  \item Convert logits to probabilities at inference.
+  \item Apply decoding transform (temperature/truncation).
+  \item Sample outputs from transformed distribution.
+  \item Evaluate behavior with metrics that may differ from training objective.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Autoregressive objective:} predict each token conditioned on prefix.
+  \item \textbf{Decoding policy:} rule for turning model distribution into emitted tokens.
+  \item \textbf{Temperature:} entropy-control knob on logits.
+  \item \textbf{Top-$k$:} fixed-cardinality truncation.
+  \item \textbf{Top-$p$:} mass-based truncation.
+  \item \textbf{Scaling law:} empirical relation between loss and resource axes.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Temperature)}
+Take logits $z=(2,1,0)$.
+With $\tau=1$:
+\[
+p\approx(0.665,0.245,0.090).
+\]
+With $\tau=2$:
+\[
+p\approx(0.506,0.307,0.186).
+\]
+Higher temperature flattens the distribution, increasing diversity and risk simultaneously.
+
+\subsection*{Worked Example (Decode Policy Choice for Same Model)}
+Suppose next-token distribution after softmax is:
+\[
+(0.52,0.24,0.12,0.07,0.05).
+\]
+Under top-$k$ with $k=2$, support becomes first two tokens, renormalized to
+\[
+\left(\frac{0.52}{0.76},\frac{0.24}{0.76}\right)\approx(0.684,0.316).
+\]
+Under top-$p$ with $p=0.9$, first four tokens are retained (mass $0.95$), renormalized to:
+\[
+(0.547,0.253,0.126,0.074).
+\]
+Same trained model, different generation behavior due only to policy.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Decoding does not retrain the model; it samples from a transformed output distribution.
+  \item Top-$k$ and top-$p$ can behave similarly in peaked distributions and very differently in flat distributions.
+  \item Apparent ``emergence'' can be caused by metric discontinuities, not abrupt capability phase transitions.
+\end{itemize}
+
 \subsection*{Further Refresh}
-Goodfellow et al., Hoffmann et al. (2022), decoding coverage in modern LLM lecture notes.
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Hoffmann et al. (2022)} --- compute-optimal scaling interpretation.
+  \item \textbf{Holtzman et al.} --- nucleus sampling and degeneration analysis.
+  \item Standard decoding notes from CS224N/modern LLM systems courses.
+\end{itemize}

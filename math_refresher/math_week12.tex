@@ -1,23 +1,78 @@
 \section{Week 12 Refresher: Diagnostic Decomposition and Multi-Objective Reasoning}
 
 \subsection*{Setting the Scene}
-The closing week asks for disciplined diagnosis: separate failure sources before choosing interventions. The mathematics is modest, but clarity in decomposition is essential.
+The closing week consolidates mathematical judgment rather than introducing a new heavy formalism. The field moved from single-score evaluation toward structured diagnosis because one scalar cannot describe heterogeneous failure causes. The critical insight is decomposition before intervention.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Axis decomposition:} structure, meaning, context, grounding, environment are different diagnostic questions.
-  \item \textbf{Conditional analysis:} inspect error rates by slice before global averages.
-  \item \textbf{Correlation vs intervention:} fit quality does not imply control leverage.
-  \item \textbf{Tradeoff surfaces:} optimize over accuracy, safety, latency, and cost jointly.
+  \item Axis labels: structure, meaning, context, grounding, environment.
+  \item Conditional slice: subset of cases defined by context/task conditions.
+  \item Tradeoff surface: set of feasible points across accuracy, safety, latency, and cost.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Failure-axis decomposition:} structure, meaning, context, grounding, environment are separate tests.
+  \item \textbf{Conditional error analysis:} inspect slices and contexts, not only aggregate rates.
+  \item \textbf{Correlation vs intervention:} observed association does not imply remediation leverage.
+  \item \textbf{Multi-objective tradeoffs:} optimize over accuracy, safety, latency, and cost jointly.
+  \item \textbf{Diagnostic ordering:} simple structural failures should be ruled out before attributing deep semantic or governance causes.
+\end{itemize}
+
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Observe failure instance and classify candidate axes.
+  \item Check low-level structural and context conditions first.
+  \item Test grounding and environment causes next.
+  \item Select intervention matched to diagnosed failure pathway.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Structure failure:} format/syntax/protocol violation.
+  \item \textbf{Meaning failure:} semantic mismatch despite fluent output.
+  \item \textbf{Context failure:} missing or misused prompt/task constraints.
+  \item \textbf{Grounding failure:} unsupported factual claims.
+  \item \textbf{Environment failure:} external system/tool mismatch.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Axis Decision)}
+Suppose an answer is fluent but cites a nonexistent document.
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Structure:} pass (syntax and format are valid).
+  \item \textbf{Meaning:} partial pass (language coherent).
+  \item \textbf{Grounding:} fail (claim cannot be verified against source evidence).
+\end{itemize}
+The corrective action should prioritize grounding controls (retrieval/citation verification), not merely prompt rephrasing.
+
+\subsection*{Worked Example (Axis-Matched Intervention)}
+Case: answer includes correct format and plausible language but wrong regulation citation.
+\begin{itemize}[leftmargin=1.5em]
+  \item Structure: pass.
+  \item Meaning: partial pass.
+  \item Grounding: fail (citation not verifiable).
+\end{itemize}
+Intervention path:
+\begin{enumerate}[leftmargin=1.5em]
+  \item add retrieval requirement from authoritative corpus,
+  \item enforce citation-span verification before final response,
+  \item reject answer if citation cannot be matched.
+\end{enumerate}
+Reasoning: this is not primarily a prompt-style failure; it is evidence-path failure.
+
+\subsection*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Calibration and uncertainty: see Week 1 refresher.
-  \item Evaluation slicing and retrieval grounding: see Week 9 refresher.
-  \item Risk and assurance framing: see Week 10 refresher.
-  \item Runtime constraints and failure budgets: see Week 11 refresher.
+  \item A plausible answer can still be ungrounded.
+  \item One failure can belong to multiple axes; diagnosis is often multi-label.
+  \item The strongest fix is the one that changes the relevant information pathway.
 \end{itemize}
 
 \subsection*{Further Refresh}
-Murphy (probabilistic modeling), measurement reliability notes, and practical error-analysis guidance from modern evaluation courses.
+\begin{itemize}[leftmargin=1.5em]
+  \item Evaluation slicing and retrieval grounding: see Week 9 refresher.
+  \item Risk and assurance framing: see Week 10 refresher.
+  \item Runtime constraints and failure budgets: see Week 11 refresher.
+  \item \textbf{Murphy} --- probabilistic uncertainty reasoning.
+  \item \textbf{Error analysis/evaluation notes} --- slicing and diagnostic methodology.
+\end{itemize}

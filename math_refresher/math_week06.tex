@@ -1,22 +1,69 @@
 \section{Week 6 Refresher: Systems Arithmetic and Sparse Routing}
 
 \subsection*{Setting the Scene}
-The question shifts from ``can we train?'' to ``what is the bottleneck?'' Most of the math is accounting: FLOPs, bytes, bandwidth, and routing constraints.
+The core mathematics here is systems constraint reasoning. The historical shift to large-scale LLMs forced training/inference analysis to include network and memory constraints, not only FLOPs. The key insight is that bottlenecks migrate.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Throughput triangle:} compute limit, memory limit, communication limit.
-  \item \textbf{MoE routing:} top-$k$ gate scores renormalized over selected experts.
-  \item \textbf{Capacity limits:} overflow tokens can be dropped or rerouted.
-  \item \textbf{Arithmetic intensity:} FLOPs per byte predicts whether kernels are compute- or memory-bound.
+  \item $I$: arithmetic intensity (FLOPs per byte).
+  \item $k$: number of selected experts per token in top-$k$ routing.
+  \item $N_{\text{active}}$: active parameters per token.
+  \item $N_{\text{total}}$: total resident parameters.
+  \item CF: capacity factor (expert slot overprovision multiplier).
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item Optimization and memory accounting: see Week 2 refresher.
-  \item Attention complexity and KV behavior: see Week 4 refresher.
-  \item Decoding and token-rate implications: see Week 5 refresher.
+  \item \textbf{Bottleneck triad:} compute, memory bandwidth, and interconnect communication.
+  \item \textbf{MoE routing:} gate scores select top-$k$ experts and renormalize mass on selected experts.
+  \item \textbf{Capacity factor:} finite per-expert token slots induce drop/reroute decisions.
+  \item \textbf{Arithmetic intensity:} $\text{FLOPs}/\text{byte}$ predicts memory-bound vs compute-bound behavior.
+  \item \textbf{Active vs total parameters:} sparse models can have large total memory footprint while using small active compute per token.
+\end{itemize}
+
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Compute workload demand (FLOPs and bytes/token).
+  \item Compare with device and interconnect limits.
+  \item Identify bottleneck (compute, memory, communication).
+  \item Apply sparse routing and reassess new bottleneck.
+  \item Validate with throughput/latency measurements.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Arithmetic intensity:} FLOPs per byte transferred.
+  \item \textbf{Dispatch/combine:} route tokens to experts and gather outputs.
+  \item \textbf{Capacity factor:} overprovisioning multiplier for expert token slots.
+  \item \textbf{Token drop:} overflow handling when expert capacity exceeded.
+  \item \textbf{All-to-all:} communication primitive central to MoE scaling.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Intensity Intuition)}
+Assume a kernel performs $2\times10^{12}$ FLOPs and moves $8\times10^{11}$ bytes.
+\[
+I=\frac{2\times10^{12}}{8\times10^{11}}=2.5\ \text{FLOPs/byte}.
+\]
+If hardware requires much higher intensity for compute saturation, this kernel is memory-bound.
+
+\subsection*{Worked Example (MoE Bottleneck Migration)}
+Assume dense model requires 100 units compute and 40 units communication per batch.  
+After MoE sparsification, active compute drops to 45, but dispatch/combine communication rises to 80.  
+System shifts from compute-bound to communication-bound.  
+Interpretation: sparse compute improved one axis but exposed another, so optimization must target network scheduling or expert placement.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Sparse compute does not imply sparse communication.
+  \item MoE can reduce compute/token while increasing routing complexity.
+  \item High model parameter count can coexist with low active compute and high memory residency.
 \end{itemize}
 
 \subsection*{Further Refresh}
-Harchol-Balter queueing/performance texts, distributed systems lecture notes, MoE primary papers (Shazeer/Switch/Mixtral line).
+\begin{itemize}[leftmargin=1.5em]
+  \item Optimization and memory accounting: see Week 2 refresher.
+  \item Attention complexity and KV behavior: see Week 4 refresher.
+  \item Decoding/token-rate implications: see Week 5 refresher.
+  \item \textbf{Shazeer et al. / Switch Transformer papers} --- sparse routing mechanics and load balancing.
+  \item \textbf{Harchol-Balter performance modeling} --- bottleneck and throughput reasoning.
+\end{itemize}

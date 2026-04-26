@@ -1,32 +1,131 @@
 \section{Week 2 Refresher: Optimization and Scaling}
 
 \subsection*{Setting the Scene}
-This week asks for comfort with iterative optimization and with the limits of what scaling fits can promise. The honest target is operational fluency: understand each update step, then understand where the assumptions enter.
+Week 2 uses optimization theory as an engineering discipline. The loss from Week 1 tells us \emph{what} to optimize; this week studies \emph{how} optimization behaves under stochastic gradients, finite precision arithmetic, and finite compute budgets.
 
-\subsection*{Core Reminders}
+Historically, deterministic gradient methods gave the first general template. Momentum methods then addressed oscillatory or noisy updates. Adaptive optimizers (RMSProp/Adam line) improved practical stability under heterogeneous gradient scales. Large-scale training then forced two additional layers of reasoning: numerical precision management and empirical scaling laws for planning model/data/compute tradeoffs.
+
+The critical insight along this path is that optimization rules are not interchangeable implementation details. They encode assumptions about noise, curvature, and numerical regime. This chapter's mathematics is the language for checking when those assumptions are plausible.
+
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Gradient descent update:}
+  \item $\theta$: model parameters.
+  \item $\mathcal{L}(\theta)$: objective (loss) as function of parameters.
+  \item $\nabla\mathcal{L}(\theta)$: gradient vector.
+  \item $\eta_t$: learning rate at step $t$.
+  \item $\hat g_t$: stochastic (minibatch) gradient estimate.
+  \item $m_t, v_t$: first and second moment EMAs.
+  \item $\beta_1,\beta_2$: EMA decay coefficients.
+  \item $\tau$: clipping threshold.
+  \item $N,D$: model/data scale variables used in scaling-law fits.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Gradient as first-order local direction.} If $\mathcal{L}(\theta)$ is differentiable, then for small $\Delta$:
+  \[
+    \mathcal{L}(\theta+\Delta)\approx \mathcal{L}(\theta) + \nabla \mathcal{L}(\theta)^\top \Delta.
+  \]
+  Choosing $\Delta=-\eta\nabla\mathcal{L}$ gives first-order descent.
+
+  \item \textbf{Stochastic gradient descent (SGD):}
   \[
     \theta_{t+1}=\theta_t-\eta_t \nabla \mathcal{L}(\theta_t).
   \]
-  \item \textbf{Momentum/EMA idea:} smooth noisy gradients with exponential averaging.
-  \item \textbf{Adam bias correction:} startup bias appears because EMA starts at zero.
-  \item \textbf{Gradient clipping:}
+  In practice, $\nabla \mathcal{L}$ is replaced by minibatch estimate $\hat g_t$.
+
+  \item \textbf{Momentum as exponential averaging.}  
+  With $m_t=\beta m_{t-1} + (1-\beta)\hat g_t$, updates use smoothed direction $m_t$.
+
+  \item \textbf{Bias correction for startup EMA.}  
+  Because $m_0=0$, early EMAs are biased toward zero. Adam uses
+  \[
+    \hat m_t=\frac{m_t}{1-\beta_1^t},\qquad \hat v_t=\frac{v_t}{1-\beta_2^t}.
+  \]
+
+  \item \textbf{Gradient clipping rule:}
   \[
     g \leftarrow g \cdot \min\left(1,\frac{\tau}{\|g\|}\right).
   \]
-  \item \textbf{Mixed precision:} loss scaling protects small gradients from underflow.
-  \item \textbf{Scaling law caution:} empirical fits are regime-specific, not universal physical laws.
+  This bounds update magnitude without changing direction when clipping is active.
+
+  \item \textbf{Mixed precision with loss scaling.}  
+  Multiply loss by $s$, backpropagate, divide gradients by $s$ before optimizer step. This avoids subnormal underflow in reduced precision formats.
+
+  \item \textbf{Scaling-law interpretation.}  
+  Empirical forms such as
+  \[
+    L(N,D)=L_\infty + aN^{-\alpha} + bD^{-\beta}
+  \]
+  are fitted regularities in specific regimes, not universal laws.
 \end{itemize}
 
-\subsection*{Pointer to Earlier Math}
-For cross-entropy, KL, and calibration notation, see Week 1 refresher.
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item First-order approximation motivates gradient descent.
+  \item Minibatch estimation introduces noise, requiring variance management.
+  \item Momentum/adaptive moments stabilize noisy trajectories.
+  \item Bias correction fixes startup distortion in adaptive moments.
+  \item Clipping and precision controls handle numerical and tail-event instability.
+  \item Scaling fits summarize many such runs for planning decisions.
+\end{enumerate}
 
-\subsection*{Common Failure Points}
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Reading Adam's corrected moments as exact unbiased estimates in all nonstationary settings.
-  \item Treating compute-optimal scaling curves as guarantees outside observed data/model regimes.
+  \item \textbf{Gradient:} local rate-of-change vector for loss.
+  \item \textbf{Learning rate:} step size in parameter space.
+  \item \textbf{Minibatch noise:} estimation error from finite sample gradients.
+  \item \textbf{Momentum/EMA:} smoothed running estimate of gradient direction.
+  \item \textbf{Second moment estimate:} running estimate of squared gradients.
+  \item \textbf{Bias correction:} startup debiasing of EMAs.
+  \item \textbf{Gradient clipping:} norm-bound safeguard against spikes.
+  \item \textbf{Warmup:} gradual LR increase to stabilize early dynamics.
+  \item \textbf{Scaling law:} empirical relation among model size, data, compute, and loss.
 \end{itemize}
 
-\subsection*{Further Refresh}
-Goodfellow--Bengio--Courville (\emph{Deep Learning}), CS229/CS231n optimization notes, Hoffmann et al. (Chinchilla).
+\subsection*{Worked Example (Training-Dynamics Diagnosis)}
+Suppose a run exhibits:
+\begin{itemize}[leftmargin=1.5em]
+  \item training loss oscillation in first 2k steps,
+  \item occasional gradient norm spikes from 12 to 140,
+  \item mixed-precision overflow warnings.
+\end{itemize}
+
+Use the week's reasoning chain:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Diagnose instability source.} Early oscillation plus spikes suggests oversized effective step on high-curvature/noisy minibatches.
+  \item \textbf{Apply clipping policy.} With threshold $\tau=20$, a spike at norm 140 is rescaled by factor $20/140\approx0.143$.
+  \item \textbf{Check EMA startup behavior.} For $\beta_1=0.9$ and constant scalar gradient 2:
+\[
+m_1=0.1\cdot2=0.2,\quad m_2=0.9(0.2)+0.1(2)=0.38,\quad m_3=0.542.
+\]
+  Bias-corrected:
+\[
+\hat m_3=\frac{m_3}{1-0.9^3}=\frac{0.542}{0.271}\approx2.00.
+\]
+  \item \textbf{Stabilize numerics.} Increase loss-scaling headroom or use dynamic scaling rollback on overflow.
+  \item \textbf{Interpret outcome.} If oscillation dampens while validation trend improves, intervention matched failure mechanism.
+\end{enumerate}
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Adam corrections are not magic; under drifting distributions they are approximate.
+  \item Clipping controls step magnitude, not objective geometry.
+  \item Mixed precision saves memory/throughput but shifts numerical failure modes.
+  \item Scaling-law extrapolations degrade when data quality and objective shift.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Loss and KL notation: see Week 1 refresher.
+  \item Matrix and norm geometry used by clipping and curvature intuition: see Week 3 refresher.
+\end{itemize}
+
+\subsection*{References and What To Use Them For}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Goodfellow--Bengio--Courville, \emph{Deep Learning}} --- SGD, momentum, adaptive optimization intuition.
+  \item \textbf{Kingma and Ba (Adam)} --- original adaptive-moment method and bias correction rationale.
+  \item \textbf{CS229/CS231n notes} --- optimization diagnostics and practical training heuristics.
+  \item \textbf{Hoffmann et al. (2022)} --- compute-optimal scaling interpretation and planning.
+  \item \textbf{Bottou et al., optimization for large-scale ML} --- stochastic optimization theory background.
+\end{itemize}

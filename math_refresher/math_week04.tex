@@ -1,25 +1,75 @@
 \section{Week 4 Refresher: Attention, Shapes, and Complexity}
 
 \subsection*{Setting the Scene}
-Attention math is clean once dimensions are explicit. Most confusion comes from shape mismatches and from skipping the scaling argument too quickly.
+Week 4 is where linear algebra becomes computational architecture. The historical move from recurrence/convolution to attention was motivated by path length and parallelism: make long-range interactions explicit as matrix operations.
 
-\subsection*{Core Reminders}
+The critical insight is that attention is not mysterious. It is a chain of shape-constrained multiplications plus a normalization. If the shape bookkeeping is clear, the reasoning remains clear.
+
+\subsection*{Notation Introduced in This Chapter}
+\begin{itemize}[leftmargin=1.5em]
+  \item $T$: sequence length.
+  \item $d_{\text{model}}$: model hidden width.
+  \item $H$: number of attention heads.
+  \item $d_k$: per-head key/query dimension.
+  \item $Q,K,V$: query/key/value matrices.
+  \item $M$: additive mask matrix applied before softmax.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Scaled attention:}
   \[
     \mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top+M}{\sqrt{d_k}}\right)V.
   \]
-  \item \textbf{Masking:} causal masks forbid attending to future positions.
-  \item \textbf{Multi-head attention:} separate projections, then concatenate and project.
-  \item \textbf{Residual + normalization:} stabilize optimization and preserve gradient flow.
-  \item \textbf{Complexity baseline:} attention score matrix is quadratic in sequence length.
+  \item \textbf{Mask semantics:} causal mask forbids looking right; padding mask blocks non-content locations.
+  \item \textbf{Head decomposition:} independent projections create multiple interaction subspaces.
+  \item \textbf{Residual and normalization:} preserve signal and training stability in deep stacks.
+  \item \textbf{Complexity source:} score matrix is $T\times T$, so interaction cost grows with sequence length.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Project input vectors into $Q,K,V$.
+  \item Form pairwise compatibility scores via $QK^\top$.
+  \item Apply structural constraints with mask $M$.
+  \item Normalize row-wise with softmax.
+  \item Aggregate values and return contextualized representations.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Shape and vector geometry reminders: see Week 3 refresher.
-  \item Softmax stability reminders: see Week 1 refresher.
+  \item \textbf{Query:} representation of what current position is asking for.
+  \item \textbf{Key:} representation of what each position offers.
+  \item \textbf{Value:} content payload mixed by attention weights.
+  \item \textbf{Mask:} hard structural restriction on allowable dependencies.
+  \item \textbf{Head:} one parallel attention subspace.
+  \item \textbf{KV cache:} stored keys/values for efficient autoregressive decoding.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Shape Sanity)}
+Let $T=4$, $d_{\text{model}}=8$, heads $H=2$, so $d_k=4$.
+\[
+Q,K,V \in \mathbb{R}^{4\times 4}\ \text{per head},\quad QK^\top \in \mathbb{R}^{4\times 4}.
+\]
+After softmax over rows, multiply by $V$ to return $\mathbb{R}^{4\times 4}$ per head, concatenate to $\mathbb{R}^{4\times 8}$.
+
+\subsection*{Worked Example (Reasoning Chain with Causal Mask)}
+For token position $t=3$ in a length-4 causal sequence, allowed keys are positions $\{1,2,3\}$ only.  
+In row 3 of $QK^\top$, mask sets column 4 score to $-\infty$ before softmax.  
+Result: attention weight at $(3,4)$ is exactly 0.  
+Interpretation: causality is enforced at score level, not corrected later at output level.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item ``Masking'' is a constraint on attention scores, not a post-hoc output edit.
+  \item Quadratic attention cost refers to score interactions, not all block components equally.
+  \item KV cache changes decoding-time behavior, not pretraining-time complexity class.
 \end{itemize}
 
 \subsection*{Further Refresh}
-Vaswani et al. (2017), The Annotated Transformer, Strang linear algebra chapters on matrix products and projections.
+\begin{itemize}[leftmargin=1.5em]
+  \item Shape and vector geometry reminders: see Week 3 refresher.
+  \item Softmax stability reminders: see Week 1 refresher.
+  \item \textbf{Vaswani et al. (2017)} --- architectural equations and design rationale.
+  \item \textbf{Annotated Transformer} --- equation-by-equation implementation mapping.
+\end{itemize}

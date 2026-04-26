@@ -1,9 +1,19 @@
 \section{Week 7 Refresher: Low-Rank Adaptation and Quantization}
 
 \subsection*{Setting the Scene}
-This week is mostly two ideas: constrain update rank, and constrain numeric precision. Both are approximation tools with explicit tradeoffs.
+Week 7 studies approximation as a design tool. The evolution from full fine-tuning to parameter-efficient adaptation and quantized deployment was driven by memory/cost constraints. The key insight is to treat each approximation as a hypothesis with measurable error, not a free performance gain.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
+\begin{itemize}[leftmargin=1.5em]
+  \item $W$: base weight matrix, $\Delta W$: adaptation update.
+  \item $A,B$: low-rank factors in LoRA update.
+  \item $d,k$: layer input/output dimensions.
+  \item $r$: LoRA rank.
+  \item $\alpha$: LoRA scaling constant.
+  \item $\rho$: trainable parameter fraction versus full fine-tuning.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{LoRA update form:}
   \[
@@ -13,16 +23,59 @@ This week is mostly two ideas: constrain update rank, and constrain numeric prec
   \[
     \rho=\frac{r(d+k)}{dk}.
   \]
-  \item \textbf{Quantization view:} real value $\to$ codebook/scale representation.
-  \item \textbf{Error tradeoff:} lower precision saves memory and bandwidth, increases approximation error.
+  \item \textbf{Quantization model:} real values mapped to finite codes plus scale metadata.
+  \item \textbf{Error tradeoff:} memory/bandwidth gains versus approximation and calibration drift risk.
+  \item \textbf{Budget accounting:} adaptation and base-model memory are separate components.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Choose adaptation parameterization (full vs low-rank).
+  \item Compute trainable parameter and memory deltas.
+  \item Apply numeric approximation (quantization).
+  \item Measure quality drift and failure concentration.
+  \item Decide deployment gate from explicit thresholds.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Rank, norms, and vector spaces: see Week 3 refresher.
-  \item Optimizer/memory arithmetic: see Week 2 refresher.
-  \item Systems bottlenecks: see Week 6 refresher.
+  \item \textbf{Rank:} dimensionality of adaptation subspace.
+  \item \textbf{LoRA scaling factor:} controls update magnitude relative to rank.
+  \item \textbf{Quantizer:} mapping from continuous values to discrete levels.
+  \item \textbf{Calibration set:} data used to estimate quantization scales.
+  \item \textbf{Drift threshold:} maximum acceptable quality loss for deployment.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Parameter Fraction)}
+Let $d=k=4096$ and $r=16$:
+\[
+\rho=\frac{16(4096+4096)}{4096\cdot4096}
+=\frac{131072}{16777216}\approx 0.0078.
+\]
+This is about $0.78\%$ of full fine-tuning parameters for that layer.
+
+\subsection*{Worked Example (Quality Gate Under Approximation)}
+Suppose full fine-tuned baseline scores 78.4 on target benchmark.  
+LoRA+quantized candidate scores 77.1 overall, but subgroup analysis shows:
+\begin{itemize}[leftmargin=1.5em]
+  \item common cases: -0.6
+  \item rare long-context cases: -3.8
+\end{itemize}
+Reasoning: average drop may appear acceptable, but concentrated degradation violates deployment intent for long-context tasks.  
+Decision: reject current quantization profile or introduce subgroup-aware gate.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item A low-rank update is a hypothesis about task-adaptation dimensionality, not a theorem.
+  \item Quantization quality is distribution-dependent; outlier channels can dominate failure.
+  \item ``Near parity'' must be defined metric-by-metric, not as a vague label.
 \end{itemize}
 
 \subsection*{Further Refresh}
-LoRA (Hu et al.), QLoRA (Dettmers et al.), numerical linear algebra references for low-rank approximations.
+\begin{itemize}[leftmargin=1.5em]
+  \item Rank and linear-algebra background: see Week 3 refresher.
+  \item Optimizer/memory arithmetic: see Week 2 refresher.
+  \item Systems bottlenecks and throughput: see Week 6 refresher.
+  \item \textbf{LoRA (Hu et al.)} --- low-rank adaptation mechanics.
+  \item \textbf{QLoRA (Dettmers et al.)} --- quantization plus adapter training.
+\end{itemize}

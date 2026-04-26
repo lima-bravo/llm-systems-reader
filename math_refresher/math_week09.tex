@@ -1,22 +1,75 @@
 \section{Week 9 Refresher: Retrieval Metrics and Evaluation Arithmetic}
 
 \subsection*{Setting the Scene}
-This week is where model math meets system math. Retrieval and evaluation require clear metric definitions; otherwise, comparisons drift into opinion.
+Week 9 formalizes an important systems lesson: a good final answer is a composition of retrieval and generation quality. The field evolved from lexical IR metrics to hybrid retrieval and RAG-specific faithfulness diagnostics. The critical insight is decomposition: do not grade a pipeline with one undifferentiated score.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Precision/recall at $k$:} always define denominator conventions.
-  \item \textbf{Lexical vs dense scoring:} BM25 and cosine answer different matching questions.
-  \item \textbf{Fusion logic:} rank fusion can improve robustness when retrieval signals disagree.
-  \item \textbf{Evaluation decomposition:} separate retrieval quality from generation quality.
+  \item $k$: retrieval cutoff.
+  \item $R_k$: top-$k$ retrieved set.
+  \item $G$: gold relevant set.
+  \item Precision@$k$, Recall@$k$: standard ranking metrics.
+  \item $q$: query embedding/vector.
+  \item $d$: document/chunk embedding/vector.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Ranking metrics:} precision@$k$, recall@$k$, and MRR-type metrics measure different behaviors.
+  \item \textbf{Sparse vs dense retrieval:} lexical overlap and embedding similarity capture different relevance modes.
+  \item \textbf{Fusion methods:} rank fusion stabilizes retrieval when signals disagree.
+  \item \textbf{Evaluation decomposition:} retrieval-stage errors and generation-stage errors require separate diagnostics.
+  \item \textbf{Grounding metrics:} answer support must be checked against retrieved evidence, not linguistic plausibility.
+\end{itemize}
+
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Define relevance and evidence assumptions.
+  \item Measure retrieval coverage/precision.
+  \item Measure generation quality conditioned on retrieved context.
+  \item Measure grounding/faithfulness of final claims.
+  \item Localize failure stage before proposing fix.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Gold relevance set:} trusted set of truly relevant items.
+  \item \textbf{Precision@k:} fraction of top-$k$ retrieved items that are relevant.
+  \item \textbf{Recall@k:} fraction of relevant items captured in top-$k$.
+  \item \textbf{Reranker:} second-stage scoring model for refined ranking.
+  \item \textbf{Faithfulness:} proportion of answer claims supported by context.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Precision and Recall@k)}
+Suppose the gold relevant set has 4 items. Top-5 retrieval returns 3 relevant items.
+\[
+\mathrm{Precision@5}=\frac{3}{5}=0.6,\qquad
+\mathrm{Recall@5}=\frac{3}{4}=0.75.
+\]
+Interpretation: ranking quality and evidence coverage are both incomplete, but in different ways.
+
+\subsection*{Worked Example (Failure Localization)}
+Pipeline A improves final answer score from 68 to 72.  
+But decomposition reveals:
+\begin{itemize}[leftmargin=1.5em]
+  \item retrieval recall@5 dropped from 0.81 to 0.70,
+  \item generation conditioned on gold context improved substantially.
+\end{itemize}
+Interpretation: generator improved, retriever regressed.  
+Action: fix retrieval stage rather than over-tuning generation prompts.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Better answer fluency can hide retrieval failures.
+  \item High retrieval recall can coexist with poor final answers if synthesis is weak.
+  \item Metric definitions require explicit edge-case conventions.
+\end{itemize}
+
+\subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Embedding geometry: see Week 3 refresher.
   \item Calibration/uncertainty interpretation: see Week 1 refresher.
   \item Systems throughput constraints: see Week 6 refresher.
+  \item \textbf{Manning et al., \emph{IIR}} --- BM25, ranking metrics, IR evaluation.
+  \item \textbf{FAISS/HNSW papers} --- ANN retrieval behavior and tradeoffs.
 \end{itemize}
-
-\subsection*{Further Refresh}
-Manning et al. (\emph{Introduction to Information Retrieval}), FAISS/HNSW papers, modern RAG evaluation notes.

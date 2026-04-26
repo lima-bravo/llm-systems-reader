@@ -1,25 +1,76 @@
 \section{Week 8 Refresher: Preferences, KL Regularization, and Policy Updates}
 
 \subsection*{Setting the Scene}
-Preference optimization reuses Week 1 probability identities and Week 2 optimization ideas. What changes is the supervision signal: pairwise choices instead of plain next-token labels.
+Preference learning replaced ``next token is correct'' supervision with ``output A is preferred over B.'' The field evolved from reward modeling plus RLHF toward simpler direct preference objectives, but the same probabilistic logic remains underneath.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
+\begin{itemize}[leftmargin=1.5em]
+  \item $x$: prompt/context.
+  \item $y^+, y^-$: preferred and dispreferred responses.
+  \item $r(x,y)$: reward/score function.
+  \item $\sigma(\cdot)$: logistic sigmoid function.
+  \item $\pi$: current policy distribution.
+  \item $\pi_{\mathrm{ref}}$: reference policy.
+  \item $\beta$: KL regularization coefficient.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Bradley--Terry form:}
   \[
     P(y^+ \succ y^- \mid x)=\sigma(r(x,y^+)-r(x,y^-)).
   \]
-  \item \textbf{KL regularization intuition:} keep policy close to a reference while improving target behavior.
-  \item \textbf{Pairwise loss behavior:} margins matter more than absolute scores.
-  \item \textbf{Support condition:} log-ratios are unstable if reference assigns near-zero mass.
+  \item \textbf{KL regularization role:} constrain policy shift while optimizing preference-aligned behavior.
+  \item \textbf{Pairwise objective geometry:} score differences (margins) drive learning signal.
+  \item \textbf{Support condition:} near-zero reference probability destabilizes log-ratio terms.
+  \item \textbf{Objective-vs-behavior distinction:} optimizing preference loss does not automatically guarantee safety or honesty on all distributions.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Convert pairwise labels into likelihood terms.
+  \item Learn scoring or policy update from pairwise margins.
+  \item Add KL regularization to bound policy drift.
+  \item Validate on held-out safety/helpfulness metrics.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item KL/cross-entropy basics: see Week 1 refresher.
-  \item Optimization mechanics: see Week 2 refresher.
-  \item Adaptation substrate (LoRA/QLoRA): see Week 7 refresher.
+  \item \textbf{Preference pair:} chosen vs rejected response for same prompt.
+  \item \textbf{Margin:} score difference between preferred and non-preferred outputs.
+  \item \textbf{KL penalty:} regularizer limiting divergence from reference policy.
+  \item \textbf{Support mismatch:} missing probability mass causing unstable ratios.
+  \item \textbf{Over-optimization:} objective improves while true quality degrades.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Pairwise Probability)}
+If $r(x,y^+)=2.0$ and $r(x,y^-)=0.5$:
+\[
+P(y^+\succ y^-|x)=\sigma(1.5)\approx0.817.
+\]
+Interpretation: the model assigns roughly $82\%$ preference probability to $y^+$ under this reward gap.
+
+\subsection*{Worked Example (Preference Gain vs Safety Drift)}
+Suppose after tuning:
+\begin{itemize}[leftmargin=1.5em]
+  \item preference win-rate improves from 62\% to 73\%,
+  \item refusal-on-unsafe-prompts worsens from 91\% to 84\%.
+\end{itemize}
+Reasoning: preference objective improved but safety behavior regressed.  
+Implication: keep preference metric and safety metric as separate acceptance gates; one does not substitute for the other.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Lower KL does not mean better helpfulness; it means less policy drift.
+  \item Better reward-model fit does not guarantee lower downstream harm.
+  \item Pairwise preferences encode relative order, not absolute truth.
 \end{itemize}
 
 \subsection*{Further Refresh}
-RLHF and DPO primary papers; logistic regression and pairwise comparison notes.
+\begin{itemize}[leftmargin=1.5em]
+  \item KL/cross-entropy foundations: see Week 1 refresher.
+  \item Optimization mechanics: see Week 2 refresher.
+  \item Adaptation substrate (LoRA/QLoRA): see Week 7 refresher.
+  \item \textbf{Christiano/Stiennon/Ouyang papers} --- RLHF workflow and assumptions.
+  \item \textbf{Rafailov et al. (DPO)} --- direct preference objective derivation.
+\end{itemize}

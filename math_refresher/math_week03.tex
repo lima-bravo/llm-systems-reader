@@ -1,31 +1,88 @@
 \section{Week 3 Refresher: Tokenization and Embedding Geometry}
 
 \subsection*{Setting the Scene}
-Before transformers can reason over text, text is mapped to symbols, then to vectors. The mathematics here is mostly linear algebra plus careful distinctions about representation.
+This week answers a hidden question: what mathematical object is a ``token'' once the model starts computing? The field evolved from count-based lexical models to distributed vectors, then to context-dependent embeddings in transformer systems. The critical insight was that representation is not a cosmetic preprocessing step. It defines the geometry in which similarity, retrieval, and attention operate.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Embedding lookup as linear map:}
+  \item $V$: tokenizer vocabulary (finite symbol set).
+  \item $\iota(\cdot)$: tokenizer mapping from text to token IDs.
+  \item $\mathrm{onehot}(i)$: basis vector for token index $i$.
+  \item $E$: embedding matrix.
+  \item $e_i$: embedding vector for token $i$.
+  \item $u,v,q,d$: generic vectors used in similarity comparisons.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Tokenizer as function.} A tokenizer defines mapping $\iota:\text{text}\to\{1,\dots,|V|\}$. Every downstream probability is conditioned on this representation choice.
+  \item \textbf{One-hot basis and embedding lookup.}
   \[
     e_i = E^\top \mathrm{onehot}(i).
   \]
-  \item \textbf{BPE/WordPiece/Unigram:} all are segmentation procedures with different optimization heuristics.
-  \item \textbf{Cosine similarity:}
+  This is linear algebra row selection.
+  \item \textbf{Segmentation criteria.} BPE, WordPiece, and Unigram optimize different objectives (merge frequency, likelihood-style score, probabilistic segmentation).
+  \item \textbf{Similarity metrics.}
   \[
-    \cos(u,v)=\frac{u^\top v}{\|u\|\|v\|}.
+    u^\top v \quad \text{vs} \quad \cos(u,v)=\frac{u^\top v}{\|u\|\|v\|}.
   \]
-  \item \textbf{Norm effects:} same dot product does not imply same cosine ranking.
-  \item \textbf{Anisotropy:} embedding spaces can collapse toward dominant directions.
+  Dot product includes magnitude effects; cosine removes scale.
+  \item \textbf{Anisotropy and concentration.} Contextual embeddings can cluster in narrow directional cones, weakening naive nearest-neighbor interpretations.
 \end{itemize}
 
-\subsection*{Pointer to Earlier Math}
-For softmax probabilities and perplexity dependence, see Week 1 refresher.
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Tokenization defines discrete symbols.
+  \item Symbol IDs become one-hot basis vectors.
+  \item Embedding matrix maps one-hot vectors into continuous space.
+  \item Similarity metric defines neighborhood structure.
+  \item Neighborhood structure influences retrieval and downstream context selection.
+\end{enumerate}
 
-\subsection*{Common Failure Points}
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Mixing sequence-position indices with vocabulary indices.
-  \item Treating static embedding analogies as guaranteed behavior in contextual embeddings.
+  \item \textbf{Vocabulary:} finite symbol inventory used by the model.
+  \item \textbf{Token ID:} integer index assigned by tokenizer.
+  \item \textbf{One-hot vector:} canonical basis vector for a token ID.
+  \item \textbf{Embedding matrix:} learned lookup table from IDs to vectors.
+  \item \textbf{Dot product:} magnitude-sensitive alignment score.
+  \item \textbf{Cosine similarity:} direction-only alignment score.
+  \item \textbf{Anisotropy:} directional imbalance in vector space.
 \end{itemize}
 
-\subsection*{Further Refresh}
-Jurafsky--Martin (\emph{SLP}), Strang (\emph{Linear Algebra}), CS224N retrieval/embedding lectures.
+\subsection*{Worked Example (Why Metric Choice Changes Outcomes)}
+Let query vector be $q=(10,0)$ and two candidates:
+\[
+d_1=(1,0),\quad d_2=(1,1).
+\]
+Dot product ranking:
+\[
+q^\top d_1 = 10,\quad q^\top d_2 = 10.
+\]
+Tie under dot product.
+Cosine ranking:
+\[
+\cos(q,d_1)=1,\quad \cos(q,d_2)=\frac{1}{\sqrt{2}}\approx0.707.
+\]
+Now $d_1$ is clearly preferred directionally.  
+Reasoning implication: if your retrieval objective is semantic direction, cosine normalization is often essential; if magnitude encodes useful confidence/strength, dot-product behavior may be intentional.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Keep sequence-position indices separate from vocabulary indices.
+  \item Tokenization choice changes sequence length and therefore perplexity comparability.
+  \item Static-word-vector intuitions transfer only partially to contextual embeddings.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Probability/perplexity interpretation: see Week 1 refresher.
+\end{itemize}
+
+\subsection*{References and What To Use Them For}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Jurafsky--Martin, \emph{SLP}} --- tokenizer design and language representation.
+  \item \textbf{Strang, \emph{Linear Algebra}} --- vector spaces, norms, geometry.
+  \item \textbf{Mikolov et al.} --- distributed embedding intuition.
+  \item \textbf{CS224N materials} --- modern embedding/retrieval implementation context.
+\end{itemize}

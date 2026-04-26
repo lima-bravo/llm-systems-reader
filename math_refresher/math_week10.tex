@@ -1,21 +1,69 @@
 \section{Week 10 Refresher: Risk Arithmetic and Assurance Logic}
 
 \subsection*{Setting the Scene}
-Governance sections often look non-mathematical, but they rely on explicit quantification choices. The purpose here is to remember which quantities are estimates, which are policy scores, and which are decision gates.
+Governance math is not abstract compliance language; it is decision logic under uncertainty. The field evolved from safety engineering (hazards, layered controls, assurance cases) into AI governance artifacts. The critical insight is traceability: every risk claim must be connected to measurable evidence and triggerable controls.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Risk decomposition:} severity and likelihood are distinct inputs, often with uncertain calibration.
-  \item \textbf{Layered controls:} independent-control assumptions are convenient and often optimistic.
-  \item \textbf{Threshold policies:} indicator functions define trigger logic; sensitivity matters near thresholds.
-  \item \textbf{Evidence chains:} claim $\to$ measurement $\to$ control $\to$ audit artifact.
+  \item $R$: baseline risk score.
+  \item $R_{\text{res}}$: residual risk after controls.
+  \item $\eta_i$: efficacy of control $i$.
+  \item $m_t$: monitored metric at time $t$.
+  \item $m_0$: baseline metric value.
+  \item $\epsilon$: escalation threshold.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item Metric reliability and uncertainty: see Week 1 refresher.
-  \item Evaluation decomposition and harness logic: see Week 9 refresher.
+  \item \textbf{Risk decomposition:} severity and likelihood are different axes with different uncertainty.
+  \item \textbf{Layered controls:} multiplicative residual-risk models assume forms of independence.
+  \item \textbf{Trigger logic:} indicator functions implement threshold decisions.
+  \item \textbf{Assurance structure:} claim $\to$ evidence $\to$ control action $\to$ artifact.
+  \item \textbf{Correlation caveat:} multiplicative risk-reduction models are optimistic under shared-cause failures.
+\end{itemize}
+
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Define risk factors and their measurement status.
+  \item Model baseline and post-control residual risk.
+  \item Apply threshold policy to operational metrics.
+  \item Attach each decision to auditable evidence.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Hazard:} undesirable outcome class to prevent/mitigate.
+  \item \textbf{Control efficacy:} estimated fractional risk reduction from a control.
+  \item \textbf{Residual risk:} remaining risk after controls.
+  \item \textbf{Threshold policy:} decision rule on monitored metrics.
+  \item \textbf{Assurance artifact:} evidence item supporting a claim.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Single vs Two Controls)}
+If baseline risk score is $R=1.0$, and control efficacies are $\eta_1=0.4$, $\eta_2=0.3$:
+\[
+R_1=R(1-\eta_1)=0.6,\qquad
+R_{12}=R(1-\eta_1)(1-\eta_2)=0.42.
+\]
+Interpretation: layered controls reduce residual risk multiplicatively under the model assumptions.
+
+\subsection*{Worked Example (Threshold and Escalation)}
+Suppose drift metric baseline is $m_0=0.12$ and policy threshold is $\epsilon=0.05$.  
+Current observed $m_t=0.19$ gives deviation $|m_t-m_0|=0.07>\epsilon$.  
+Escalation rule triggers high-review mode.  
+Reasoning chain: measured metric -> threshold test -> policy action -> logged evidence.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Multiplicative control models can be optimistic if failures are correlated.
+  \item Governance thresholds are policy design decisions, not immutable laws.
+  \item Audit readiness is about traceable evidence chains, not only numeric scores.
 \end{itemize}
 
 \subsection*{Further Refresh}
-Leveson (\emph{Engineering a Safer World}), NIST AI RMF, statistical decision-threshold lecture notes.
+\begin{itemize}[leftmargin=1.5em]
+  \item Metric reliability and uncertainty: see Week 1 refresher.
+  \item Evaluation decomposition and harness logic: see Week 9 refresher.
+  \item \textbf{Leveson, \emph{Engineering a Safer World}} --- hazard/control argument structure.
+  \item \textbf{NIST AI RMF} --- operational governance controls and documentation patterns.
+\end{itemize}

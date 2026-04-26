@@ -1,39 +1,167 @@
 \section{Week 1 Refresher: Probability, Likelihood, and Calibration}
 
 \subsection*{Setting the Scene}
-We begin where every later chapter quietly depends on us being precise: probability as bookkeeping for uncertainty. The first objective is not to prove new theorems. It is to recover the small moves that make the chapter mathematics readable without strain.
+This chapter uses a specific branch of probability theory: the branch that turns uncertain events into measurable predictive statements. In practice, the reader will use four ingredients repeatedly: conditional probability, the chain rule, expectation, and logarithmic scoring.
 
-\subsection*{Core Reminders}
+The path to this toolkit was gradual and each step added a new capability:
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Chain rule for sequences:}
+  \item \textbf{Axiomatic probability (Kolmogorov):} gave a rigorous language for uncertainty over events.
+  \item \textbf{Conditional probability and chain decompositions:} made sequential prediction mathematically legal.
+  \item \textbf{Information theory (Shannon):} interpreted uncertainty as expected coding burden.
+  \item \textbf{Relative entropy (Kullback--Leibler):} measured model mismatch relative to the true distribution.
+  \item \textbf{Statistical learning formulation:} converted these quantities into trainable optimization objectives.
+\end{itemize}
+This sequence is exactly the reasoning path used in modern language modeling.
+
+The critical insight for this week is that language modeling does not require a new probability theory. It requires careful use of known results in a specific sequence. We use conditional probability to represent next-token prediction, chain rule to represent whole sequences, logarithms to make optimization stable and additive, and information-theoretic quantities to interpret what loss values mean.
+
+The purpose of this refresher is to rebuild that sequence gently. The target is not symbolic performance. The target is that each mathematical move has a clear intent in the reasoning chain.
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Conditional probability as prediction primitive.} If $A$ and $B$ are events with $P(B)>0$, then
+  \[
+    P(A\mid B)=\frac{P(A\cap B)}{P(B)}.
+  \]
+  For language modeling, $A$ is ``next token equals $x_t$'' and $B$ is ``context is $x_{<t}$''.
+
+  \item \textbf{Chain rule as sequence constructor.}
   \[
     p(x_{1:T}) = \prod_{t=1}^{T} p(x_t \mid x_{<t}).
   \]
-  \item \textbf{Maximum likelihood to NLL:} maximizing likelihood is equivalent to minimizing negative log-likelihood.
-  \item \textbf{Cross-entropy and KL identity:}
+  This is not a modeling trick; it is repeated application of conditional probability.
+
+  \item \textbf{Likelihood to optimization objective.} Maximum likelihood chooses parameters that maximize probability of observed data. Because products are awkward numerically, we apply log:
+  \[
+    \arg\max_\theta \prod_i a_i(\theta)=\arg\max_\theta \sum_i \log a_i(\theta).
+  \]
+  Then we minimize negative average log-likelihood (NLL).
+
+  \item \textbf{Expectation as average under a distribution.} If $X$ is discrete:
+  \[
+    \mathbb{E}[f(X)] = \sum_x p(x)f(x).
+  \]
+  This lets us interpret empirical losses as estimates of population quantities.
+
+  \item \textbf{Entropy, cross-entropy, and KL in one chain.}
+  For distributions $p$ (reference/true) and $q$ (model):
+  \[
+    H(p) = -\sum_x p(x)\log p(x),\quad
+    H(p,q) = -\sum_x p(x)\log q(x),
+  \]
+  \[
+    D_{\mathrm{KL}}(p\|q)=\sum_x p(x)\log\frac{p(x)}{q(x)}.
+  \]
+  Then
   \[
     H(p,q) = H(p) + D_{\mathrm{KL}}(p\|q).
   \]
-  \item \textbf{Softmax stability trick:}
+  This identity explains why minimizing cross-entropy is equivalent to minimizing KL divergence up to an additive term independent of the model.
+
+  \item \textbf{Softmax as probability map from logits:}
+  \[
+    \mathrm{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}.
+  \]
+  \textbf{Shift invariance (numerical stability):}
   \[
     \mathrm{softmax}(z) = \mathrm{softmax}(z - c\mathbf{1}) \quad \text{for any scalar } c.
   \]
-  \item \textbf{Perplexity:} $\mathrm{PPL}=\exp(H)$ for natural-log cross-entropy.
-  \item \textbf{Calibration:} confidence and correctness are different objects; ECE is a binned estimator, not a perfect truth metric.
+\nobreak
+  Usually $c=\max_i z_i$ to avoid overflow.
+
+  \item \textbf{Perplexity as exponentiated cross-entropy.}
+  \[
+    \mathrm{PPL}=\exp(H)
+  \]
+  when $H$ is in nats. Perplexity is interpretable only with fixed tokenization and log base.
+
+  \item \textbf{Calibration distinction.} A model can assign high probability and still be wrong frequently. Loss and calibration answer different questions.
 \end{itemize}
 
-\subsection*{Common Failure Points}
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Conditional probability defines next-token prediction.
+  \item Chain rule extends next-token predictions to full-sequence probabilities.
+  \item Likelihood turns full-sequence probabilities into a training objective.
+  \item Log transform converts objective from product form to additive form.
+  \item Empirical averaging converts sample objective to dataset objective.
+  \item Cross-entropy/KL decomposition gives interpretation of what minimizing the objective does.
+  \item Softmax provides a valid distribution over vocabulary for each context.
+  \item Calibration analysis audits whether confidence values are trustworthy after fitting.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item Confusing \emph{high probability} with \emph{high calibration quality}.
-  \item Treating KL as a distance metric (it is not symmetric).
-  \item Forgetting that perplexity is tokenization-dependent.
+  \item \textbf{Random variable:} a map from outcomes to numerical values.
+  \item \textbf{Conditional probability:} probability under restricted information.
+  \item \textbf{Likelihood:} probability of observed data viewed as function of parameters.
+  \item \textbf{Log-likelihood:} logarithm of likelihood; additive over samples/tokens.
+  \item \textbf{NLL:} negative log-likelihood; minimized in training.
+  \item \textbf{Entropy $H(p)$:} uncertainty of true distribution.
+  \item \textbf{Cross-entropy $H(p,q)$:} expected code length when coding $p$ with model $q$.
+  \item \textbf{KL divergence $D_{\mathrm{KL}}(p\|q)$:} mismatch penalty from using $q$ when truth is $p$.
+  \item \textbf{Logits:} pre-softmax scores in $\mathbb{R}^{|V|}$.
+  \item \textbf{Softmax:} normalization from logits to a probability simplex.
+  \item \textbf{Perplexity:} exponentiated average NLL/cross-entropy (with fixed log base).
+  \item \textbf{Calibration:} correspondence between predicted confidence and observed accuracy.
+  \item \textbf{ECE:} binned estimate of calibration gap.
 \end{itemize}
 
-\subsection*{Mini Numeric Checks}
+\subsection*{Worked Example (Non-Toy, End-to-End Reasoning)}
+Assume a validation slice with $N=1000$ predicted tokens. We observe:
 \begin{itemize}[leftmargin=1.5em]
-  \item If $H=1.0$ nats, then $\mathrm{PPL}\approx 2.72$.
-  \item If $H=1.2$ nats, then $\mathrm{PPL}\approx 3.32$.
+  \item Mean NLL $=1.10$ nats.
+  \item Mean confidence of top-1 predictions $=0.78$.
+  \item Actual top-1 accuracy $=0.64$.
+\end{itemize}
+Now reason in the chain used in this chapter:
+
+\textbf{Step 1: Loss to perplexity.}
+\[
+\mathrm{PPL}=\exp(1.10)\approx 3.00.
+\]
+Interpretation: average uncertainty corresponds to about three equiprobable choices per token on this slice.
+
+\textbf{Step 2: Loss does not equal calibration.}  
+Despite moderate loss, confidence-accuracy gap is
+\[
+\Delta_{\mathrm{cal}} = 0.78 - 0.64 = 0.14.
+\]
+The model is overconfident by 14 percentage points on average.
+
+\textbf{Step 3: Why this matters for downstream chapters.}  
+Week 8 (alignment) can reduce harmful outputs while still leaving calibration issues.  
+Week 9 (RAG/evaluation) can improve factual grounding while confidence remains miscalibrated.  
+Therefore this week's distinction between fit quality and confidence quality is operational, not philosophical.
+
+\textbf{Step 4: Practical intervention path.}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Keep objective fit diagnostics (NLL/perplexity).
+  \item Add calibration diagnostics (reliability bins, ECE).
+  \item Apply temperature scaling on held-out data.
+  \item Re-check both loss and calibration after scaling.
+\end{enumerate}
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item A lower NLL does \emph{not} guarantee calibrated confidence.
+  \item KL is a divergence, not a metric; direction matters.
+  \item Perplexity is only comparable under matched tokenization and log base.
+  \item ECE is a binned approximation and depends on binning and sample size.
 \end{itemize}
 
-\subsection*{Further Refresh}
-Murphy (\emph{Probabilistic Machine Learning}), Bishop (\emph{PRML}), Cover--Thomas (\emph{Elements of Information Theory}), Guo et al. (2017, calibration).
+\subsection*{If You Get Stuck}
+\begin{itemize}[leftmargin=1.5em]
+  \item Rewrite every probability expression in words before manipulating symbols.
+  \item Track whether each quantity is theoretical, empirical estimate, or model output.
+  \item Check if the reasoning step is algebraic (identity) or statistical (estimation).
+\end{itemize}
+
+\subsection*{References and What To Use Them For}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Murphy, \emph{Probabilistic Machine Learning}} --- conditional probability, expectation, estimation viewpoint.
+  \item \textbf{Bishop, \emph{Pattern Recognition and Machine Learning}} --- likelihood-based learning, cross-entropy objectives.
+  \item \textbf{Cover--Thomas, \emph{Elements of Information Theory}} --- entropy, cross-entropy, KL interpretation.
+  \item \textbf{Guo et al. (2017)} --- practical calibration diagnostics and temperature scaling.
+  \item \textbf{Wasserman, \emph{All of Statistics}} --- fast refresh on estimation, uncertainty, and empirical risk language.
+\end{itemize}

@@ -1,26 +1,78 @@
 \section{Week 11 Refresher: Latency, Queues, and Reliability Budgets}
 
 \subsection*{Setting the Scene}
-API and agent work depends on small arithmetic that is easy to skip and costly to ignore. The queue is patient until saturation, then suddenly unforgiving.
+Week 11 brings probability back into systems operations. Queueing theory, retry arithmetic, and budget constraints determine whether an otherwise capable model can be deployed reliably. The key insight is compounding: small per-request probabilities become large system effects at scale.
 
-\subsection*{Core Reminders}
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Latency split:} total latency is prefill plus token-generation stream.
-  \item \textbf{Queueing warning:} in simple M/M/1,
+  \item $\lambda$: request arrival rate.
+  \item $\mu$: service rate.
+  \item $\rho=\lambda/\mu$: utilization.
+  \item $\mathbb{E}[W]$: expected waiting time.
+  \item $p_f$: per-attempt failure probability.
+  \item $\mathbb{E}[K]$: expected number of attempts.
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Latency decomposition:} prefill latency plus per-output-token decode latency.
+  \item \textbf{Queueing baseline:} in M/M/1,
   \[
     \mathbb{E}[W]=\frac{1}{\mu-\lambda},
   \]
-  so waiting time explodes as $\lambda \to \mu$.
-  \item \textbf{Retry arithmetic:} expected attempts increase nonlinearly with failure probability.
-  \item \textbf{Cost model:} token pricing is linear in count, but retries and truncations change expected spend.
+  so wait time grows sharply near saturation.
+  \item \textbf{Retry expectation:} repeated failures produce nonlinear expected attempts.
+  \item \textbf{Token cost model:} base cost is linear in tokens, expected cost depends on retries and aborts.
+  \item \textbf{Termination guards:} bounded steps/tokens/cost enforce finite agent behavior.
 \end{itemize}
 
-\subsection*{Pointers}
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Estimate traffic intensity $(\lambda/\mu)$.
+  \item Predict queue delay and saturation risk.
+  \item Incorporate retries into effective load and expected cost.
+  \item Enforce runtime guards for bounded execution.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Arrival rate $\lambda$:} requests per unit time.
+  \item \textbf{Service rate $\mu$:} processing capacity per unit time.
+  \item \textbf{Utilization $\rho$:} $\lambda/\mu$.
+  \item \textbf{Retry multiplier:} expected attempts per successful request.
+  \item \textbf{Budget guard:} hard bound on cost/tokens/steps.
+\end{itemize}
+
+\subsection*{Worked Mini Example (Retries)}
+Let per-attempt failure probability be $p_f=0.2$ and assume independent retries with no cap.
+\[
+\mathbb{E}[K]=\frac{1}{1-p_f}=\frac{1}{0.8}=1.25.
+\]
+If average successful request cost is \$0.04, expected cost with retries is roughly
+\[
+0.04\times 1.25 = \$0.05.
+\]
+
+\subsection*{Worked Example (Queue and Retry Coupling)}
+If base arrival rate is 80 req/s and retries add 25\% expected attempts, effective arrival becomes:
+\[
+\lambda_{\text{eff}} = 80 \times 1.25 = 100\ \text{req/s}.
+\]
+If service rate is $\mu=110$ req/s, utilization rises from $0.73$ to $0.91$.  
+Interpretation: retry policy can push system into tail-latency regime even when baseline looked safe.
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Systems can meet average SLOs while failing badly in tails.
+  \item Queueing approximations are useful planning tools, not exact traffic simulators.
+  \item Reliability controls (backoff, circuit breaking) alter both latency and cost.
+\end{itemize}
+
+\subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Systems scaling and bottlenecks: see Week 6 refresher.
   \item Evaluation and trust boundaries: see Week 9 refresher.
   \item Risk thresholding and controls: see Week 10 refresher.
+  \item \textbf{Harchol-Balter} --- queueing and latency scaling.
+  \item \textbf{SRE workbooks} --- retries/backoff/overload control design.
 \end{itemize}
-
-\subsection*{Further Refresh}
-Harchol-Balter (performance modeling), SRE reliability workbooks, queueing lecture notes.
