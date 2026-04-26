@@ -1,0 +1,25 @@
+\section{Week 8 Refresher: Preferences, KL Regularization, and Policy Updates}
+
+\subsection*{Setting the Scene}
+Preference optimization reuses Week 1 probability identities and Week 2 optimization ideas. What changes is the supervision signal: pairwise choices instead of plain next-token labels.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Bradley--Terry form:}
+  \[
+    P(y^+ \succ y^- \mid x)=\sigma(r(x,y^+)-r(x,y^-)).
+  \]
+  \item \textbf{KL regularization intuition:} keep policy close to a reference while improving target behavior.
+  \item \textbf{Pairwise loss behavior:} margins matter more than absolute scores.
+  \item \textbf{Support condition:} log-ratios are unstable if reference assigns near-zero mass.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item KL/cross-entropy basics: see Week 1 refresher.
+  \item Optimization mechanics: see Week 2 refresher.
+  \item Adaptation substrate (LoRA/QLoRA): see Week 7 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+RLHF and DPO primary papers; logistic regression and pairwise comparison notes.

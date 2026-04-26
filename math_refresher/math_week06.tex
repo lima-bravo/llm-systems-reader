@@ -1,0 +1,22 @@
+\section{Week 6 Refresher: Systems Arithmetic and Sparse Routing}
+
+\subsection*{Setting the Scene}
+The question shifts from ``can we train?'' to ``what is the bottleneck?'' Most of the math is accounting: FLOPs, bytes, bandwidth, and routing constraints.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Throughput triangle:} compute limit, memory limit, communication limit.
+  \item \textbf{MoE routing:} top-$k$ gate scores renormalized over selected experts.
+  \item \textbf{Capacity limits:} overflow tokens can be dropped or rerouted.
+  \item \textbf{Arithmetic intensity:} FLOPs per byte predicts whether kernels are compute- or memory-bound.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Optimization and memory accounting: see Week 2 refresher.
+  \item Attention complexity and KV behavior: see Week 4 refresher.
+  \item Decoding and token-rate implications: see Week 5 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Harchol-Balter queueing/performance texts, distributed systems lecture notes, MoE primary papers (Shazeer/Switch/Mixtral line).

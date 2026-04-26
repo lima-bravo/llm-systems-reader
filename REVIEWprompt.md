@@ -1,7 +1,9 @@
-You are conducting a rigorous editorial and technical review of a LaTeX-based reader on Large Language Models aimed at engineers with strong mathematical training.
+You are conducting a rigorous editorial and technical review of a LaTeX-based reader on Large Language Models aimed at engineers at the undergraduate level
 
 Goal
-Produce a complete review plan and review framework for the entire text so that mathematically trained readers can follow derivations without needing to recall omitted intermediate steps from memory. Write this into REVIEW.md
+Produce a complete review plan and review framework for the entire text so that mathematically trained readers can follow derivations without needing to recall omitted intermediate steps from memory. Write this into REVIEW_CH#.md
+
+Each chapter begins with a narrative that should set the scene and help the reader develop their intuition for the chapter.
 
 Primary Review Criteria
 1) Mathematical continuity
@@ -27,6 +29,11 @@ Primary Review Criteria
 - Evaluate chapter structure for memory burden.
 - Propose local “Notation & Assumptions” prefaces, “Derivation” blocks, and “What was proved vs assumed” summaries.
 - Recommend where to add worked numeric examples and recap checkpoints.
+
+6) Narrative setup and consistency
+- does the narrative setup the context
+- are all acronyms explained
+- are all the mathematics properly introduced or have they been referenced in earlier sections
 
 Scope
 - Review the entire reader, not just introductory files.

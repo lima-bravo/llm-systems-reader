@@ -1,0 +1,31 @@
+\section{Week 3 Refresher: Tokenization and Embedding Geometry}
+
+\subsection*{Setting the Scene}
+Before transformers can reason over text, text is mapped to symbols, then to vectors. The mathematics here is mostly linear algebra plus careful distinctions about representation.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Embedding lookup as linear map:}
+  \[
+    e_i = E^\top \mathrm{onehot}(i).
+  \]
+  \item \textbf{BPE/WordPiece/Unigram:} all are segmentation procedures with different optimization heuristics.
+  \item \textbf{Cosine similarity:}
+  \[
+    \cos(u,v)=\frac{u^\top v}{\|u\|\|v\|}.
+  \]
+  \item \textbf{Norm effects:} same dot product does not imply same cosine ranking.
+  \item \textbf{Anisotropy:} embedding spaces can collapse toward dominant directions.
+\end{itemize}
+
+\subsection*{Pointer to Earlier Math}
+For softmax probabilities and perplexity dependence, see Week 1 refresher.
+
+\subsection*{Common Failure Points}
+\begin{itemize}[leftmargin=1.5em]
+  \item Mixing sequence-position indices with vocabulary indices.
+  \item Treating static embedding analogies as guaranteed behavior in contextual embeddings.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Jurafsky--Martin (\emph{SLP}), Strang (\emph{Linear Algebra}), CS224N retrieval/embedding lectures.

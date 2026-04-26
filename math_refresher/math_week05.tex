@@ -1,0 +1,25 @@
+\section{Week 5 Refresher: Pretraining Objective and Decoding Controls}
+
+\subsection*{Setting the Scene}
+Week 5 combines familiar probability from Week 1 with optimization reasoning from Week 2. The main risk is treating decoding knobs as independent when they all reshape one distribution.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Autoregressive objective:} same NLL foundation as Week 1.
+  \item \textbf{Temperature scaling:}
+  \[
+    p_i(\tau)=\frac{\exp(z_i/\tau)}{\sum_j \exp(z_j/\tau)}.
+  \]
+  \item \textbf{Top-$k$/top-$p$:} truncation plus renormalization.
+  \item \textbf{Scaling fits:} compute/data/parameter tradeoffs are empirical surfaces.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item CE/KL/perplexity: see Week 1 refresher.
+  \item Optimizer and scaling-law mechanics: see Week 2 refresher.
+  \item Attention architecture assumptions: see Week 4 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Goodfellow et al., Hoffmann et al. (2022), decoding coverage in modern LLM lecture notes.

@@ -1,0 +1,25 @@
+\section{Week 4 Refresher: Attention, Shapes, and Complexity}
+
+\subsection*{Setting the Scene}
+Attention math is clean once dimensions are explicit. Most confusion comes from shape mismatches and from skipping the scaling argument too quickly.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Scaled attention:}
+  \[
+    \mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top+M}{\sqrt{d_k}}\right)V.
+  \]
+  \item \textbf{Masking:} causal masks forbid attending to future positions.
+  \item \textbf{Multi-head attention:} separate projections, then concatenate and project.
+  \item \textbf{Residual + normalization:} stabilize optimization and preserve gradient flow.
+  \item \textbf{Complexity baseline:} attention score matrix is quadratic in sequence length.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Shape and vector geometry reminders: see Week 3 refresher.
+  \item Softmax stability reminders: see Week 1 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Vaswani et al. (2017), The Annotated Transformer, Strang linear algebra chapters on matrix products and projections.

@@ -1,0 +1,26 @@
+\section{Week 11 Refresher: Latency, Queues, and Reliability Budgets}
+
+\subsection*{Setting the Scene}
+API and agent work depends on small arithmetic that is easy to skip and costly to ignore. The queue is patient until saturation, then suddenly unforgiving.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Latency split:} total latency is prefill plus token-generation stream.
+  \item \textbf{Queueing warning:} in simple M/M/1,
+  \[
+    \mathbb{E}[W]=\frac{1}{\mu-\lambda},
+  \]
+  so waiting time explodes as $\lambda \to \mu$.
+  \item \textbf{Retry arithmetic:} expected attempts increase nonlinearly with failure probability.
+  \item \textbf{Cost model:} token pricing is linear in count, but retries and truncations change expected spend.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Systems scaling and bottlenecks: see Week 6 refresher.
+  \item Evaluation and trust boundaries: see Week 9 refresher.
+  \item Risk thresholding and controls: see Week 10 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Harchol-Balter (performance modeling), SRE reliability workbooks, queueing lecture notes.

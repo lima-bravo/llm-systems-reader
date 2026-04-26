@@ -248,7 +248,8 @@ stacks these axes compose multiplicatively.
 \begin{figure}[h]
 \centering
 \input{figures/parallelism_axes}
-\caption{Six parallelism dimensions layered in modern LLM training.
+\caption{The five parallelism axes layered in modern LLM training:
+  data, tensor, pipeline, sequence/ring, and expert parallelism.
   Production stacks typically compose three or four of them
   simultaneously; expert parallelism applies only to MoE layers.}
 \label{fig:week6-parallelism-axes}
@@ -704,10 +705,15 @@ Design consequences:
 A useful planning tool is \emph{arithmetic intensity}: FLOPs per byte
 of memory traffic. An NVIDIA H100 has roughly $1000$ TFLOPs and
 $3$ TB/s HBM, so its ``ridge point'' is near $330$ FLOPs/byte. A
-matmul of size $M \times N \times K$ has arithmetic intensity
-$\approx 2 M N K / (M K + N K + M N) \cdot b$ bytes$^{-1}$; for
-typical LLM matmuls at training (large $M$ from batch) this is
-hundreds of FLOPs/byte and compute-bound. Per-token inference of a
+matmul of size $M \times N \times K$ (i.e.\ $A \in \mathbb{R}^{M\times K}$
+times $B \in \mathbb{R}^{K\times N}$, output $C \in \mathbb{R}^{M\times N}$,
+with $b$ bytes per element) costs $2MNK$ FLOPs and reads/writes
+$b\,(MK + NK + MN)$ bytes, so arithmetic intensity is
+\begin{equation*}
+\mathrm{AI} \;\approx\; \frac{2MNK}{b\,(MK + NK + MN)}\;\;\mathrm{FLOPs/byte}.
+\end{equation*}
+For typical LLM matmuls at training (large $M$ from batch) this
+is hundreds of FLOPs/byte and compute-bound. Per-token inference of a
 single prompt has $M = 1$ and is bandwidth-bound -- explaining why
 \emph{batching} is the single largest lever for inference throughput
 (Week~7).

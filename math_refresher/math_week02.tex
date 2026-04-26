@@ -1,0 +1,32 @@
+\section{Week 2 Refresher: Optimization and Scaling}
+
+\subsection*{Setting the Scene}
+This week asks for comfort with iterative optimization and with the limits of what scaling fits can promise. The honest target is operational fluency: understand each update step, then understand where the assumptions enter.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Gradient descent update:}
+  \[
+    \theta_{t+1}=\theta_t-\eta_t \nabla \mathcal{L}(\theta_t).
+  \]
+  \item \textbf{Momentum/EMA idea:} smooth noisy gradients with exponential averaging.
+  \item \textbf{Adam bias correction:} startup bias appears because EMA starts at zero.
+  \item \textbf{Gradient clipping:}
+  \[
+    g \leftarrow g \cdot \min\left(1,\frac{\tau}{\|g\|}\right).
+  \]
+  \item \textbf{Mixed precision:} loss scaling protects small gradients from underflow.
+  \item \textbf{Scaling law caution:} empirical fits are regime-specific, not universal physical laws.
+\end{itemize}
+
+\subsection*{Pointer to Earlier Math}
+For cross-entropy, KL, and calibration notation, see Week 1 refresher.
+
+\subsection*{Common Failure Points}
+\begin{itemize}[leftmargin=1.5em]
+  \item Reading Adam's corrected moments as exact unbiased estimates in all nonstationary settings.
+  \item Treating compute-optimal scaling curves as guarantees outside observed data/model regimes.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Goodfellow--Bengio--Courville (\emph{Deep Learning}), CS229/CS231n optimization notes, Hoffmann et al. (Chinchilla).

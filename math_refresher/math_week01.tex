@@ -1,0 +1,39 @@
+\section{Week 1 Refresher: Probability, Likelihood, and Calibration}
+
+\subsection*{Setting the Scene}
+We begin where every later chapter quietly depends on us being precise: probability as bookkeeping for uncertainty. The first objective is not to prove new theorems. It is to recover the small moves that make the chapter mathematics readable without strain.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Chain rule for sequences:}
+  \[
+    p(x_{1:T}) = \prod_{t=1}^{T} p(x_t \mid x_{<t}).
+  \]
+  \item \textbf{Maximum likelihood to NLL:} maximizing likelihood is equivalent to minimizing negative log-likelihood.
+  \item \textbf{Cross-entropy and KL identity:}
+  \[
+    H(p,q) = H(p) + D_{\mathrm{KL}}(p\|q).
+  \]
+  \item \textbf{Softmax stability trick:}
+  \[
+    \mathrm{softmax}(z) = \mathrm{softmax}(z - c\mathbf{1}) \quad \text{for any scalar } c.
+  \]
+  \item \textbf{Perplexity:} $\mathrm{PPL}=\exp(H)$ for natural-log cross-entropy.
+  \item \textbf{Calibration:} confidence and correctness are different objects; ECE is a binned estimator, not a perfect truth metric.
+\end{itemize}
+
+\subsection*{Common Failure Points}
+\begin{itemize}[leftmargin=1.5em]
+  \item Confusing \emph{high probability} with \emph{high calibration quality}.
+  \item Treating KL as a distance metric (it is not symmetric).
+  \item Forgetting that perplexity is tokenization-dependent.
+\end{itemize}
+
+\subsection*{Mini Numeric Checks}
+\begin{itemize}[leftmargin=1.5em]
+  \item If $H=1.0$ nats, then $\mathrm{PPL}\approx 2.72$.
+  \item If $H=1.2$ nats, then $\mathrm{PPL}\approx 3.32$.
+\end{itemize}
+
+\subsection*{Further Refresh}
+Murphy (\emph{Probabilistic Machine Learning}), Bishop (\emph{PRML}), Cover--Thomas (\emph{Elements of Information Theory}), Guo et al. (2017, calibration).

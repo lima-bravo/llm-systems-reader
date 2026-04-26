@@ -1,0 +1,28 @@
+\section{Week 7 Refresher: Low-Rank Adaptation and Quantization}
+
+\subsection*{Setting the Scene}
+This week is mostly two ideas: constrain update rank, and constrain numeric precision. Both are approximation tools with explicit tradeoffs.
+
+\subsection*{Core Reminders}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{LoRA update form:}
+  \[
+    \Delta W = \frac{\alpha}{r}BA,\quad B\in\mathbb{R}^{d\times r},\ A\in\mathbb{R}^{r\times k}.
+  \]
+  \item \textbf{Trainable parameter fraction:}
+  \[
+    \rho=\frac{r(d+k)}{dk}.
+  \]
+  \item \textbf{Quantization view:} real value $\to$ codebook/scale representation.
+  \item \textbf{Error tradeoff:} lower precision saves memory and bandwidth, increases approximation error.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Rank, norms, and vector spaces: see Week 3 refresher.
+  \item Optimizer/memory arithmetic: see Week 2 refresher.
+  \item Systems bottlenecks: see Week 6 refresher.
+\end{itemize}
+
+\subsection*{Further Refresh}
+LoRA (Hu et al.), QLoRA (Dettmers et al.), numerical linear algebra references for low-rank approximations.
