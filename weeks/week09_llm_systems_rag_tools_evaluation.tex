@@ -4,8 +4,13 @@
 \addcontentsline{toc}{subsection}{Setting the Scene}
 
 \paragraph{The problem.}
-A pretrained, aligned language model is, in the abstract, an
-extraordinarily capable thing. It is also bounded in two ways that
+Imagine your support engineer's internal chatbot, asked at 9~a.m.\
+about a customer's outage that started overnight. The model has
+been instruction-tuned. It has been alignment-tested. It has not,
+and cannot, read the on-call runbook that was updated at 2~a.m.,
+the incident timeline in the ticketing system, or the customer's
+account record. A pretrained, aligned language model is, in the
+abstract, an extraordinarily capable thing. It is also bounded in two ways that
 matter in production. It cannot know facts that postdate its
 training cutoff, and it has no way to act on the world: it can
 describe a database query but it cannot run one, it can recommend a
@@ -102,8 +107,10 @@ as ``just a string.''
 
 By the end of this week, you should be able to:
 \begin{itemize}
-  \item articulate the system-boundary framing and explain why most
-        LLM failures are system failures;
+  \item articulate the system-boundary framing and explain why,
+        in pipeline-style deployments, most user-visible failures
+        trace to the surrounding system rather than the model in
+        isolation;
   \item design a RAG pipeline from corpus to answer, including
         chunking, embedding, indexing, retrieval, reranking, and
         context packing;
@@ -542,13 +549,20 @@ attacker-controlled arguments''.
 
 \emph{Trust boundary.} Define
 $\mathcal{T} = \{\text{system prompt},\, \text{user query } q\}$ as
-trusted and $\mathcal{U} = R_{k_R}(q)$ as untrusted. The core safety
-invariant is:
+trusted and $\mathcal{U} = R_{k_R}(q)$ as untrusted. The core
+safety invariant, stated as a policy that is enforceable by tests
+rather than a property the model satisfies by construction, is:
 \begin{equation}
   \text{no string in } \mathcal{U} \text{ may change the interpretation
   of a string in } \mathcal{T}.
   \label{eq:trust-invariant}
 \end{equation}
+Operational checks: red-team prompts injected into $\mathcal{U}$
+must not (a) cause the system prompt to be revealed in $y$,
+(b) cause unauthorised tool calls to fire, or (c) change the
+generator's compliance with instructions in $\mathcal{T}$. The
+invariant is upheld in code, not by the model's good will; the
+defenses below make it testable.
 
 \emph{Defenses.} Operationally, upholding
 Eq.~\eqref{eq:trust-invariant} requires (i) structured escaping at
@@ -1116,9 +1130,13 @@ $R_k(q)$, gold-span set $G$.
 \subsection{Week 9 Takeaway}
 
 \begin{quote}
-Most LLM failures are system failures. The model is one component
-in a pipeline that also includes retrievers, tools, prompt
-construction, and evaluation. Treat prompts as versioned software,
+In production deployments built around RAG, tool use, and
+agentic loops, most user-visible failures trace to the surrounding
+system rather than the model in isolation: bad chunking, missing
+retrieval, prompt-construction bugs, untested instructions,
+evaluation drift. The model is one component in a pipeline that
+also includes retrievers, tools, prompt construction, and
+evaluation. Treat prompts as versioned software,
 retrieval as a quality-measured subsystem, tool use as structured
 I/O, and evaluation as a continuous, independently-owned program.
 Ship systems, not models.
