@@ -266,9 +266,26 @@ trained on cross-entropy (Chapter~1) optimizes for the
 \emph{plausibility} of the next token given the prefix.
 Plausibility is a local property. A token can be plausible at
 every position in a sequence and still produce, at the end of the
-sequence, a global contradiction. The model has no internal
-mechanism that checks the output as a whole against itself;
-coherence is a side-effect of training, not an enforced invariant.
+sequence, a global contradiction. A single forward pass has no
+architectural verifier; the model emits each token conditioned on
+the prefix without checking the output as a whole against itself,
+and coherence is a side-effect of training rather than an enforced
+invariant.
+
+Recent training narrows the gap. Reasoning-trained models --- the
+OpenAI o1/o3 line, DeepSeek R1, Claude with extended thinking ---
+learn to walk back contradictions in their own reasoning traces
+during generation, in effect performing a form of self-checking
+inside the inference call. Outside the model, inference-time
+techniques sample multiple completions and compare them
+(self-consistency), invoke the model to critique and revise its
+own output (self-refine, Reflexion), or hand the output to a
+separate verifier model trained for this purpose. Agentic systems
+(Chapter~11) extend the same pattern by adding explicit
+critique-and-revise loops to a chain of LM calls. None of these is
+a guarantee in the way a JSON parser is for structure; each is a
+mitigation that trades inference compute and orchestration
+complexity for reduced inconsistency.
 
 This is the axis that benchmarks tend to overstate. A model that
 scores 85 on a multiple-choice reading-comprehension test may
@@ -283,11 +300,10 @@ slightly different meanings across a long output.
 In diagnosis, the question to ask is not whether the output sounds
 right but whether it \emph{is} right considered as a self-contained
 artifact. Read it once for fluency, then again for contradictions.
-A model whose meaning is unreliable can be improved by asking it
-to check its own work, by using chain-of-thought prompting that
-externalizes the reasoning, and by sampling multiple completions
-and comparing them. These are, in the language of Chapter~5, ways
-of trading inference compute against meaning reliability.
+When the cost of a meaning failure justifies the additional
+compute, engage the appropriate inference-time mitigation from the
+list above. These are, in the language of Chapter~5, ways of
+trading inference compute against meaning reliability.
 
 \subsubsection{Context: is the output appropriate for the situation?}
 
