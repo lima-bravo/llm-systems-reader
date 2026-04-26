@@ -197,12 +197,15 @@ vocabulary, not an algebraic decomposition.
 context $\to$ grounding $\to$ environment) reflects the empirical
 tendency of modern LLMs: they are strong at the bottom and weak at
 the top. The ordering is a heuristic, not a theorem.
-\textbf{(A12.3)} The grounding and environment axes are
-fundamentally outside the model's reach: no amount of additional
-training, by itself, will let the model verify a claim against the
-world or supply context the user did not. These axes are addressed
-by \emph{system} mechanisms (Chapter~9) rather than \emph{model}
-mechanisms.
+\textbf{(A12.3)} Training alone is \emph{insufficient} to close
+the grounding and environment axes: the model cannot, by training
+on additional text, verify a claim against the present-day world
+or recover context the user has not written into the prompt.
+Inference-time mechanisms can close part of the gap (retrieval,
+tool use, agentic critique loops, calibrated abstention,
+clarifying-question training), and the chapter assumes these are
+system-level interventions (Chapter~9, Chapter~11) layered on top
+of the model rather than properties internal to it.
 \end{notationbox}
 
 \subsection{The Five Axes}
@@ -486,11 +489,17 @@ that does not require any change to the model at all. Conversely,
 a practitioner who never considers grounding will deploy systems
 that are confidently wrong about the world.
 
-A useful heuristic, when the failure feels mixed, is to ask which
-axis, if it had been correct, would have made the others
-correctable. A grounded answer in the wrong tone can be fixed by
-the user; a fluent answer about a fact that does not exist cannot.
-That heuristic tends to point at the limiting axis.
+When a single output fails on more than one axis, the procedure
+is to label all axes that fail (the failure label is a subset
+$F \subseteq \{$structure, meaning, context, groundedness,
+environment$\}$, not a single name) and to address them in
+ladder order: the lowest-axis failure in $F$ is fixed first
+because higher-axis fixes assume the lower axes hold. A useful
+heuristic for prioritising the work is to ask which axis, if it
+had been correct, would have made the others correctable: a
+grounded answer in the wrong tone can be fixed by the user, but
+a fluent answer about a fact that does not exist cannot. The
+limiting axis is the one to pay first.
 
 \subsection{Connections to Earlier Chapters}
 
@@ -674,8 +683,9 @@ you the failure is at the structure axis, fix the schema. When it
 tells you the failure is at the environment axis, write more of
 yourself into the prompt. When it tells you the failure is
 somewhere between, accept the interpretive work, walk both, and
-discuss the result with someone who knows the territory. The model
-is most useful when it is held loosely.
+discuss the result with someone who knows the territory. Hold the
+ladder loosely: treat it as a vocabulary and an ordering hint,
+not as a unique decomposition of every output.
 
 Of all the things this book has tried to give you, this chapter is
 the one most likely to change shape under contact with a real user
