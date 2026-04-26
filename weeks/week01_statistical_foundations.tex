@@ -12,13 +12,14 @@
 predict the next word. You are reading this sentence. Your eye has
 not yet reached its end, and yet some part of you is already
 guessing how it will finish. The guess is not certain. It is not
-random either. It is shaped by everything you have ever read, and
+arbitrary either. It is shaped by everything you have ever read, and
 by the few words that came just before. If we wanted to teach a
 machine to do the same, we would need to give it a way to assign,
 to each possible continuation, a number that captures \emph{how
 likely} that continuation is given everything it has seen so far.
 That is the entire problem of language modelling, written in a
-single sentence. Everything in this book is the elaboration.
+single sentence. The remainder of this chapter, and the chapters
+that follow, are the elaboration.
 
 \paragraph{How we got here.} The idea that one symbol in a sequence
 depends on the symbols before it is older than the computer. In
@@ -73,9 +74,9 @@ particular penalty is the right one. The short version is that
 cross-entropy is what you always end up at when you ask, formally,
 ``minimise the surprise of seeing the data we actually saw, and
 nothing more.'' It is a maximum-likelihood estimator. It is a
-proper scoring rule. It is the information-theoretic distance
-between two distributions, plus a constant the model cannot
-control. We will see all three of these views in the pages that
+proper scoring rule. It is the information-theoretic divergence
+between two distributions (KL divergence is asymmetric, hence not a
+true distance), plus a constant the model cannot control. We will see all three of these views in the pages that
 follow, because each one buys a different intuition.
 
 \paragraph{What goes wrong.} A model trained on cross-entropy is,
@@ -90,8 +91,9 @@ truth: we call it \emph{hallucination}. It is not a bug. It is the
 loss surface doing exactly what we asked of it.
 
 There are several specific consequences of this gap. The first is
-that the model has no native concept of confidence in the sense a
-human reader would mean. It has a probability distribution over
+that the model has no native, externally calibrated task-level
+confidence in the sense a human reader would mean. It has a
+probability distribution over
 next tokens, which is not the same thing. We will distinguish
 \emph{probability} (the model's number), \emph{confidence} (how
 strongly the model commits to that number), and
@@ -176,9 +178,15 @@ $\bits$.
 
 \textbf{Assumptions used in this chapter.}
 \begin{itemize}
-  \item[A1.1] Token sequences are realisations of a stochastic process; the
-  set of (context, token) pairs used for MLE is treated as i.i.d.\ under
-  the empirical measure $\hat{p}$.
+  \item[A1.1a] Sequences in $\mathcal{D}$ are i.i.d.\ realisations of an
+  unknown sequence distribution. (Sequence-level independence.)
+  \item[A1.1b] The token-level empirical loss treats the union of
+  (context, token) pairs across sequences as i.i.d.\ under the
+  empirical measure $\hat{p}$. This is a derived computational
+  convenience: token-level pairs within a sequence are not
+  independent under the true sequence distribution, but their
+  contributions to the average NLL are unweighted by sequence
+  identity.
   \item[A1.2] The vocabulary $V$ is finite and fixed; distributions over
   $V$ are strictly positive after softmax (so $\log q_\theta$ is finite
   everywhere).
@@ -243,11 +251,11 @@ $\mathcal{L}_{\mathrm{NLL}}(\theta) := -\frac{1}{N_{\mathrm{tok}}}
 \log P_\theta(\mathcal{D})$.
 
 \begin{derivation}[: MLE to token-normalised NLL]
-Using A1.1 (i.i.d.\ sequences) and the chain rule (\ref{eq:chain}):
+Using A1.1a (i.i.d.\ sequences) and the chain rule (\ref{eq:chain}):
 \begin{align}
 P_\theta(\mathcal{D})
   &= \prod_{i=1}^{N} P_\theta(x^{(i)})
-  && \text{(A1.1: i.i.d.\ sequences)} \label{eq:mle-1} \\
+  && \text{(A1.1a: i.i.d.\ sequences)} \label{eq:mle-1} \\
   &= \prod_{i=1}^{N} \prod_{t=1}^{T_i}
        P_\theta\!\big(x^{(i)}_t \mid x^{(i)}_{<t}\big)
   && \text{(chain rule, \ref{eq:chain})} \label{eq:mle-2} \\
@@ -301,8 +309,10 @@ $H(p, q) := \E_{x \sim p}[-\log q(x)] = -\sum_x p(x) \log q(x)$.
 \end{derivation}
 
 \Ident\ Minimising NLL is identical to minimising cross-entropy against
-$\hat p$. This is a general fact about MLE under exponential-family
-parameterisations and is not specific to language modelling.
+$\hat p$. This is a general fact about MLE for any probabilistic
+model whose likelihood factorises over the data --- it does not
+depend on the parameterisation belonging to an exponential family,
+and it is not specific to language modelling.
 
 \paragraph{Connection to KL divergence.}
 \Ident\ For any distributions $p, q$ on a common finite support with
@@ -431,7 +441,7 @@ positions---a phenomenon we revisit in Week~3.
 (\ref{eq:mle})$\Leftrightarrow$(\ref{eq:nll-ce}), the identity
 (\ref{eq:ce-kl}) $H(p,q) = H(p) + \KL(p\parallel q)$, and the softmax
 shift invariance of (\ref{eq:softmax}).
-\textbf{Assumed here:} A1.1 (i.i.d.\ pairs), A1.2 (strictly positive
+\textbf{Assumed here:} A1.1b (token-pair averaging), A1.2 (strictly positive
 softmax), and the chain-rule factorisation (\ref{eq:chain}).
 \textbf{Empirically observed (not proved):} that cross-entropy
 training on large corpora yields models whose outputs \emph{look}
@@ -530,10 +540,15 @@ monotone,
 Minimising cross-entropy and minimising perplexity define the same
 optimisation problem.
 
-\Cons\ Perplexity has an intuitive reading: it is the ``effective
-vocabulary size'' the model is uncertain over at each step. A
-perplexity of $1$ corresponds to a perfectly deterministic predictor; a
-perplexity of $|V|$ corresponds to the uniform distribution. The
+\Cons\ Perplexity admits a heuristic reading as an ``effective
+vocabulary size'' the model is uncertain over at each step --- the
+size of a uniform distribution that would have the same entropy.
+This is intuition only, not a theorem: a perplexity of $20$ does
+not imply the model is choosing among $20$ specific tokens. It does
+imply the conditional distribution has the same entropy as the
+uniform on $20$ symbols. A perplexity of $1$ corresponds to a
+perfectly deterministic predictor; a perplexity of $|V|$ corresponds
+to the uniform distribution over the full vocabulary. The
 exponential scale makes small differences in cross-entropy (in $\nats$)
 visually salient on a log-plot of PPL.
 
@@ -658,14 +673,22 @@ overconfident in the high-probability regime
 
 \subsubsection{Expected Calibration Error}
 
-\Def\ The \emph{Expected Calibration Error} (ECE) is the
-$L_1$-weighted calibration gap across bins:
+\Def\ Let the \emph{calibration function} $c(p) := \Pr[\text{correct}
+\mid \hat q = p]$ denote the conditional accuracy of the predictor
+when its top-class probability is $p$ (defined a.e.\ with respect to
+the distribution of $\hat q$). The \emph{Expected Calibration Error}
+(ECE) is the $L_1$-weighted gap between this calibration function and
+the diagonal:
 \begin{equation}
 \mathrm{ECE}(q; \mathcal{D}_{\mathrm{cal}})
-  := \E_{p^\star \sim \mathrm{dist}(\hat q)}
-       \big[\, \big| \Pr[\text{correct} \mid \hat q = p^\star] - p^\star \big| \,\big].
+  := \E_{\hat q}\!\big[\,\big| c(\hat q) - \hat q \big|\,\big].
 \label{eq:ece-population}
 \end{equation}
+Because $\hat q$ is continuous in general, the conditioning
+$\Pr[\text{correct} \mid \hat q = p]$ should be read as the
+regular-conditional version, and the operational estimator below
+replaces the point conditioning by binning into neighbourhoods
+$\mathcal{I}_k$.
 
 \begin{derivation}[: finite-bin ECE estimator]
 Replace the expectation in (\ref{eq:ece-population}) by its empirical
@@ -680,7 +703,11 @@ $N$, using the binning (\ref{eq:bin-defs}):
 \label{eq:ece}
 \end{align}
 The replacement uses $\widehat{\Pr}[\hat q \in \mathcal{I}_k] = |B_k|/N$
-and plug-in estimators for the conditional expectations.
+and plug-in estimators for the conditional expectations. Empty bins
+($|B_k| = 0$) contribute zero to the sum by the leading
+$|B_k|/N$ weight; their $\mathrm{acc}$ and $\mathrm{conf}$ are
+left undefined. (Equivalently, restrict the sum to bins with
+$|B_k| > 0$.)
 \end{derivation}
 
 \Cons\ A well-calibrated predictor has
@@ -713,10 +740,9 @@ by $0.20$). Then
 \]
 
 \textbf{System B.} 50 predictions in each bin. In bin~1,
-$\mathrm{conf} = 0.30$, $\mathrm{acc} = 0.50$. In bin~2,
-$\mathrm{conf} = 0.90$, $\mathrm{acc} = 1.10$ is impossible; instead use
-$\mathrm{conf} = 0.70$, $\mathrm{acc} = 0.90$ (\emph{under}confident by
-$0.20$). Then
+$\mathrm{conf} = 0.30$, $\mathrm{acc} = 0.50$ (underconfident by
+$0.20$). In bin~2, $\mathrm{conf} = 0.70$, $\mathrm{acc} = 0.90$
+(also underconfident by $0.20$). Then
 \[
 \widehat{\mathrm{ECE}}_2(B) = \tfrac{50}{100} \cdot 0.20 + \tfrac{50}{100} \cdot 0.20 = 0.20.
 \]
@@ -1004,11 +1030,11 @@ Each entry cites the full derivation already given in the text; no
 new content.
 \begin{itemize}
   \item \textbf{Chain-rule factorisation of sequences.}\
-        $p_\theta(w_{1:T}) = \prod_{t=1}^{T} p_\theta(w_t \mid w_{<t})$
+        $p_\theta(x_{1:T}) = \prod_{t=1}^{T} p_\theta(x_t \mid x_{<t})$
         --- Eq.~\eqref{eq:chain}.
   \item \textbf{MLE $\to$ token-normalised NLL $\to$ cross-entropy.}\
         Five-line derivation Eqs.~\eqref{eq:mle-1}--\eqref{eq:mle};
-        assumption \textbf{(A1.1)} i.i.d.\ sequences applied at line
+        assumption \textbf{(A1.1a)} i.i.d.\ sequences applied at line
         Eq.~\eqref{eq:mle-1}. Final form connects training loss to
         the cross-entropy Eq.~\eqref{eq:nll-ce}.
   \item \textbf{Cross-entropy identity.}\
@@ -1023,7 +1049,7 @@ new content.
         $\mathrm{PPL} = \exp(H)$, Eqs.~\eqref{eq:perplexity}--\eqref{eq:ppl-argmin};
         monotone $\exp$ implies $\arg\min H = \arg\min \mathrm{PPL}$.
   \item \textbf{ECE (finite-bin estimator).}\
-        $\mathrm{ECE} = \sum_{b=1}^{B} (|B_b|/N)\,|\bar a_b - \bar c_b|$
+        $\mathrm{ECE} = \sum_{k=1}^{K} (|B_k|/N)\,|\mathrm{acc}(B_k) - \mathrm{conf}(B_k)|$
         --- Eq.~\eqref{eq:ece}; population form Eq.~\eqref{eq:ece-population}.
         Small-sample caveat carried with the estimator.
   \item \textbf{Brier score.}\
