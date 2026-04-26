@@ -1,0 +1,97 @@
+# When Your Legal AI Is Wrong: A Diagnostic Ladder for Lawyers
+
+*Five questions — structure, meaning, context, groundedness, environment — for the moment when an AI-assisted output looks plausible but is not quite right.*
+
+**Lodewijk Bonebakker**
+
+April 2026
+
+> *Drafting assistance: Claude Opus 4.7 (Anthropic). The author chose the framework, scope, and voice; the model produced prose under direction; the author edited. The author is not a practicing attorney; nothing in this article is legal advice.*
+
+---
+
+A senior associate at your firm has just sent you a memorandum drafted with the help of an AI tool. The memo cites the right statute, paraphrases the right line of cases, and arrives at what looks like the right conclusion. But something feels off, and when you read the draft carefully you cannot quite say what. The cases are real this time. The reasoning is internally consistent. The output is, in some specific way, wrong, and "the AI hallucinated" does not capture what went wrong because the AI, in the narrow sense, did not.
+
+The fabricated-cases scandal in *Mata v. Avianca* [1] taught the profession to fear hallucination. The 2024 Stanford RegLab study by Magesh and colleagues [2] then taught us that even the retrieval-grounded legal research tools sold by the major publishers — Westlaw AI, Lexis+ AI, and others — still hallucinate at meaningful rates, between roughly seventeen and thirty-three percent of queries in their evaluation. These two data points have shaped how the profession thinks about AI errors: hallucination is the headline. But headline failures are also the easy ones to catch. The harder failures, the ones that survive a quick cite-check and arrive on a partner's desk looking respectable, are not hallucinations at all.
+
+## The vocabulary the profession has is too narrow
+
+The everyday vocabulary lawyers use to describe AI errors collapses several distinct phenomena into one word. "It hallucinated." "It was wrong." "It missed the point." Each of these names a real failure but does not point at where in the workflow the failure happened or what would prevent it next time. A lawyer who discovers a fabricated citation does not respond the same way as a lawyer who discovers that the memo missed the actual question the client asked. The profession's existing language treats both as "the AI got it wrong" and offers no obvious next step.
+
+What is needed is a small, structured vocabulary — a diagnostic ladder a lawyer can walk quickly when a draft arrives and something feels off. The ladder this article describes has five rungs: *structure*, *meaning*, *context*, *groundedness*, and *environment*. The rungs run from what the AI is best at to what only the lawyer can supply. Most review workflows attend carefully to the lowest rung and to groundedness; the middle rungs — meaning and context — are checked less consistently, and environment usually not at all. That asymmetry is where the silent damage tends to live.
+
+The examples below draw from the work most law firms now ask AI to help with: legal research, document review, drafting (memos, briefs, contracts, client correspondence), analysis (issue spotting, application of rules to facts), and client communication. The ladder is the same in each.
+
+## Structure: is the output well-formed?
+
+A model's output is structurally correct when it satisfies the formal conventions of the artifact type: a properly Bluebooked citation, a contract whose section numbering is consistent and whose defined terms are capitalized in the right places, a privilege log in the format the court accepts, a filing in the format the e-filing system requires. Structure is mechanical. Modern AI tools do it well most of the time, and what they get wrong is usually catchable by automated checkers — citation linters, contract-comparison tools, court-filing validators.
+
+The diagnostic risk on this rung is not that structural failures are common; it is that they are the easiest to catch, and a reviewer who confirms structure and stops has confirmed the least interesting property of the output. A correctly Bluebooked citation can still cite a case that does not stand for the proposition the memo says it does. A contract with consistent defined terms can still indemnify the wrong party. Structure is necessary, not sufficient.
+
+## Meaning: is the output internally coherent?
+
+A draft can be structurally fine and internally inconsistent. A research memo argues both sides of an issue without resolving them. A contract's recitals describe a transaction whose operative covenants do not match. An opinion letter's conclusion does not follow from the analysis preceding it. A drafted amendment redefines a term in a way the underlying agreement does not anticipate. A redlined clause subtly inverts the original allocation of risk. These failures are detectable by careful reading without recourse to any outside source. They are failures of the document considered as a self-contained artifact.
+
+The mechanism is the same one that produces fluent legal prose in the first place. A language model trained to predict the next token optimizes for the plausibility of each token in isolation. Plausibility is local. A clause can be plausible in isolation and still be inconsistent with one three pages back. The model has no internal mechanism that checks the output as a whole against itself. Coherence is a side effect, not a guarantee.
+
+The remedy is unsexy: read the draft slowly, with the eye of a reviewer who is reading for internal contradiction rather than for factual correctness. Domain expertise unmasks the subtle ones. A junior associate who understands what indemnification typically looks like will catch a clause that flips the allocation; a reviewer who is only checking citations will not.
+
+## Context: is the output appropriate for the situation?
+
+A structurally valid, internally coherent draft can still answer the wrong question. A client memo written in motion-brief register is wrong even if every sentence is true. A research summary covering all federal law is wrong if the matter is in a state court of limited jurisdiction. A demand letter written in aggressive litigation prose is wrong if the client wants to preserve the commercial relationship. A brief written for a generalist trial judge is wrong if it is going to a specialty court that does not need the doctrinal background.
+
+The mechanism is the gap between what the lawyer knows about the situation and what the prompt encodes. The model has access only to the tokens in its context window. Anything the lawyer knows about the audience, the jurisdiction, the tone, the strategic posture, or the desired length that is not written into the prompt does not exist for the model. System prompts and house templates shape defaults but defaults are defaults, not the situation.
+
+Context failures are easy to recognize and harder to remedy. The reviewer can usually point at the answer and name what is wrong with it ("too long," "wrong audience," "misses the actual question," "wrong tone for this client"). The fix is to give the model more of the situation, in writing, before the next draft. The asymmetry between the ease of recognition and the difficulty of fix is the diagnostic signature of a context failure in legal work as elsewhere.
+
+## Groundedness: do the legal claims connect to actual law?
+
+This is the rung the profession has learned to fear, and rightly. Hallucinated cases. Hallucinated holdings. Misquoted statutes. Made-up regulatory thresholds. Mis-summarized procedural rules. The Magesh study [2] showed that even retrieval-augmented legal tools, designed to ground their outputs in real authority, fail at meaningful rates. Retrieval reduces hallucination; it does not eliminate it. The model still has to read the retrieved authority faithfully, defer to it when its own parametric prior conflicts, and reconcile contradictions among sources. Each of those steps is a place where groundedness can fail even when the citation is real.
+
+We use *groundedness* for the property the output either has or does not. *Grounding*, in the broader literature, names the underlying problem: how a system that has only seen text can come to refer reliably to facts and authorities outside the text. The hallucination literature splits the failures further: the output may contradict the world (the cited case does not exist) or contradict a source the model was given (the cited case exists but does not say what the model summarized it as saying). Both are groundedness failures in the sense used here, and both are catchable only from outside the AI's output.
+
+The discipline for legal practice is the one the bar has long preached: verify any cited authority that matters. Use legal research tools that produce checkable citations and check them. Treat any factual or legal claim by the AI as a hypothesis until a human or a citator has confirmed it. The careful firm builds review workflows in which groundedness is catchable by construction — citation auditing, source linking, mandatory KeyCite or Shepard's verification on every cite the AI produces.
+
+## Environment: did the prompt encode what you know?
+
+The fifth rung sits at the human end of the ladder and is the hardest to see because, by construction, it is invisible. An environment failure occurs when the answer is wrong because the prompt did not contain enough of the situation for the question to be answerable. The lawyer knows things — about the client's risk tolerance, the partner's drafting preferences, the local court's standing orders, the opposing counsel's history, the matter's strategic posture, the firm's house style, the events of yesterday afternoon's call — that the model does not. If the lawyer does not write those things into the prompt, the model cannot use them. The output can be fluent, internally consistent, properly grounded, and still wrong because the question itself was underspecified.
+
+The signature is distinctive. The reviewer reads the draft and feels frustrated. The draft is, on its own terms, fine. What is wrong is that it does not address the real situation. The fix is rarely to ask the model again. The fix is to write down, explicitly, the parts of the environment the model needed to see.
+
+This is the rung most legal AI policies underweight. Citation checkers catch some structure and groundedness problems. Tone and audience checks catch some context problems. But environment errors — the demand letter that misreads the client's strategic posture, the research memo that surveys settled law because the prompt did not say which threshold issue had already been decided — escape every automated tool. The lawyer's environment is not on the firm's intranet, in the matter management system, or attached to the email that arrived this morning. It lives in the lawyer's head. Importing it into the prompt is the lawyer's job.
+
+## Walking the ladder
+
+A senior associate sends you a draft summary judgment brief generated with AI assistance. You walk the rungs.
+
+*Structure* passes: the brief is properly formatted, the citations are Bluebooked, the table of authorities is generated. *Meaning* passes: the argument is internally consistent. *Context* fails: the brief is written in the aggressive register the partner reserves for trial-bound matters, but this is a settlement-track case in which the client wants to look reasonable to the bench. You revise the prompt to specify the strategic posture and the desired register. The brief comes back softer.
+
+*Groundedness* fails on cite-check: one of the supporting cases has been distinguished in a more recent appellate decision and another, on closer reading, does not actually stand for the proposition the brief cites it for. You ask for the AI's source links, audit them, and instruct the next draft to use only cases the citator confirms as currently good law for the proposition asserted.
+
+*Environment* fails last. The partner's strategy is to lead with the dispositive jurisdictional argument and reserve the substantive arguments for a later motion if the jurisdictional play fails. The AI did not know that. The brief covers all four issues with equal weight. You add the strategic priority to the prompt — "lead with jurisdictional, hold the substantive arguments in reserve" — and the next draft reflects it.
+
+The walk located each failure at the rung where the remedy lives. Not one of these failures was a hallucination in the headline sense. Each would have escaped a workflow that checked structure and citations and stopped.
+
+## What this means for firms
+
+The ladder suggests three concrete things for firms managing AI in legal practice.
+
+*First*, review workflows should walk all five rungs, not just structure and groundedness. The middle rungs — meaning and context — are the ones most often missed by automated tooling and most often cited by partners as "something feels off about this draft." A structured rubric helps.
+
+*Second*, the rungs map to different parts of the playbook. Structural problems call for better tooling (citation linters, contract validators). Groundedness problems call for better retrieval (verified-citation tools, mandatory citator checks). Context and environment problems call for better prompt-and-brief discipline by the lawyer in front of the tool. A firm that wants to reduce groundedness errors should invest in retrieval and citation auditing. A firm that wants to reduce environment errors should invest in training, templates, and reviewer practice. Knowing which rung you are on tells you which budget line to charge.
+
+*Third*, the lawyer's continuing duty of competence and supervision under the relevant rules of professional conduct — addressed for AI tools in ABA Formal Opinion 512 [3] — is in practice a duty to walk the higher rungs. The AI handles the lower rungs well. Verification of grounding is now table stakes. Context and environment are the rungs at which the lawyer's judgment is most clearly indispensable, and they are the rungs that no current tool can climb on the lawyer's behalf.
+
+The ladder is not a theory of legal AI. It is a procedure for the moment in which a draft arrives, looks plausible, and is not quite right, and someone needs to say — in plain English, before the filing deadline — what kind of wrong it is.
+
+## References
+
+[1] *Mata v. Avianca, Inc.*, No. 22-cv-1461, 2023 WL 4114965 (S.D.N.Y. June 22, 2023) (sanctioning attorneys for filing a brief with fabricated case citations generated by ChatGPT).
+
+[2] V. Magesh, F. Surani, M. Dahl, M. Suzgun, C. D. Manning, and D. E. Ho, "Hallucination-Free? Assessing the Reliability of Leading AI Legal Research Tools," Stanford RegLab / HAI working paper, 2024.
+
+[3] American Bar Association Standing Committee on Ethics and Professional Responsibility, *Formal Opinion 512: Generative Artificial Intelligence Tools*, July 29, 2024.
+
+---
+
+*Lodewijk Bonebakker is the author of* Large Language Models as Engineered Systems, *a forthcoming primer for engineers on the systems, statistical, and human-factors dimensions of modern LLMs. He can be reached at focus2flow@bonebakker.org. The author is not a practicing attorney; this article is intended as a framework for thinking about AI errors in legal work, not as legal advice.*
