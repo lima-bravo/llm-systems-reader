@@ -33,9 +33,11 @@ back-propagation. Paul Werbos, in his 1974 Harvard PhD thesis,
 wrote down a recognisable version of it. Rumelhart, Hinton, and
 Williams brought it to the field's attention in their 1986 paper
 in \emph{Nature}. Without back-propagation a network of more than
-a few layers is computationally inert. With it the depth becomes
-free in a deep mathematical sense: the cost of computing the
-gradient is roughly the cost of computing the forward pass.
+a few layers is computationally inert. With it, the gradient
+computation is no longer a bottleneck against depth: the cost of
+computing the gradient is roughly the cost of computing the forward
+pass, so adding layers raises training cost only linearly in the
+depth.
 
 For thirty years the field then argued about which optimiser was
 best. Momentum, RMSProp, Adagrad, Adadelta. Diederik Kingma and
@@ -43,7 +45,8 @@ Jimmy Ba published Adam in 2014, combining momentum and adaptive
 per-parameter step sizes. AdamW, the variant in current use, came
 from Loshchilov and Hutter in 2017 and fixed a subtle but
 consequential issue with how Adam handled weight decay. By 2020
-the question of \emph{which} optimiser was largely settled. The
+the question of \emph{which} optimiser to use for large-scale
+Transformer pretraining was largely settled at AdamW. The
 question of \emph{how much to spend on what} took its place. Jared
 Kaplan and his coauthors at OpenAI, in 2020, observed that loss
 followed a power law in the three quantities of interest:
@@ -154,14 +157,18 @@ By the end of this week, you should be able to:
 Training an LLM is, mechanically, a large-scale numerical optimization
 problem. The learner does not \emph{reason} about the target; it performs a
 long sequence of gradient updates against an empirical risk. The objective
-from Week~1 is the empirical cross-entropy
+from Week~1, indexed over the $N_{\mathrm{tok}}$ (context, token) pairs in
+the training set, is the empirical cross-entropy
 \begin{equation}
 \label{eq:week2-empirical-loss}
 \mathcal{L}(\theta)
-  \;=\; \frac{1}{N} \sum_{i=1}^{N}
+  \;=\; \frac{1}{N_{\mathrm{tok}}} \sum_{i=1}^{N_{\mathrm{tok}}}
         -\log p_{\theta}\!\left( x^{(i)}_{t_i} \,\middle|\, x^{(i)}_{<t_i} \right),
 \end{equation}
-optimized via variants of stochastic gradient descent:
+where $i$ indexes (context, token) pairs (Week~1, A1.1b) and the
+symbol $N$ is reserved for the model parameter count later in the
+chapter. The objective is optimized via variants of stochastic
+gradient descent:
 \begin{equation}
 \label{eq:week2-sgd}
 \theta_{t+1} \;=\; \theta_t - \eta_t\, g_t,
@@ -177,8 +184,12 @@ textbook setting are:
         $d \sim 10^{9}$--$10^{12}$ for frontier models.
   \item \textbf{Non-convexity}: the loss surface has a combinatorial
         number of saddle points, plateaus, and basins.
-  \item \textbf{Stochasticity}: $g_t$ is an unbiased but noisy estimator
-        of $\nabla \mathcal{L}$, with variance proportional to $1/B$.
+  \item \textbf{Stochasticity}: under uniform random sampling of the
+        minibatch from the training set, $g_t$ is an unbiased estimator
+        of $\nabla \mathcal{L}$, with covariance scaling as $\Sigma/B$
+        provided the per-example gradients have bounded variance and
+        are not heavily correlated within the batch (e.g.\ shuffled
+        sampling rather than block sampling).
   \item \textbf{Distributed execution}: gradients are aggregated across
         thousands of accelerators, making single-step cost high and
         divergence expensive.
@@ -321,7 +332,7 @@ $\sum_{k=1}^{t}\beta_1^{\,t-k} = (1-\beta_1^{\,t})/(1-\beta_1)$ gives
 \E[m_t] \;\approx\; (1-\beta_1^{\,t})\,\mu_t,
 \qquad
 \text{so}\qquad
-\hat m_t \;:=\; \frac{m_t}{1-\beta_1^{\,t}} \;\text{ is unbiased}.
+\hat m_t \;:=\; \frac{m_t}{1-\beta_1^{\,t}} \;\text{ is approximately unbiased}.
 \end{align*}
 The residual drift term $\E[m_t] - (1-\beta_1^{\,t})\mu_t
 = (1-\beta_1)\sum_k \beta_1^{t-k}(\mu_k - \mu_t)$ is
@@ -485,10 +496,10 @@ constant baseline uses only $\eta_{\max}$.
   \centering
   \input{figures/lr_schedule}
   \caption{Learning rate schedules. Linear warmup to $\eta_{\max}$ at
-           step $t_w$, then (teal) cosine decay to a small floor at
-           $T$, or (magenta, dotted) inverse-square-root decay
-           (Noam). The red dashed constant schedule is shown for
-           contrast; it is the naive default that often diverges
+           step $T_w$, then (teal) cosine decay to floor $\eta_{\min}$
+           at $T_{\max}$, or (magenta, dotted) inverse-square-root
+           decay (Noam). The red dashed constant schedule is shown
+           for contrast; it is the naive default that often diverges
            during early training on Transformer workloads.}
   \label{fig:lr_schedule}
 \end{figure}
@@ -653,8 +664,10 @@ $\alpha_D \approx 0.095$, and $\alpha_C \approx 0.05$. Equivalently,
 \log L \;=\; \mathrm{const} - \alpha_N \log N,
 \]
 so on log--log axes loss is a straight line in $N$ over six orders of
-magnitude. This predictability is what makes LLM training an
-engineering discipline rather than a craft.
+magnitude \emph{within the fitted compute regime}. This in-regime
+predictability is what gives LLM pretraining its engineering
+character; extrapolation outside the fitted compute range remains
+a research question, not a guarantee.
 
 \subsubsection{Chinchilla Scaling}
 
@@ -757,7 +770,10 @@ resources under A2.2; they do \emph{not} predict:
 They are compute-planning tools, not capability forecasts. Any
 document that uses Eq.~\eqref{eq:week2-chinchilla-opt} to argue for a
 capability level, rather than a loss level, is conflating these two
-predictive regimes; reject such arguments in design reviews.
+predictive regimes. The minimum bar for using the law as a capability
+predictor is an empirical fit on the specific task being claimed; in
+the absence of such a fit, capability claims drawn from the joint-loss
+law alone should be treated as out-of-scope.
 
 \begin{provedassumed}
 \emph{Proved (within the fit range).}
@@ -956,7 +972,7 @@ Compact index of the chapter's central identities; each cites the full
 derivation already given in the text.
 \begin{itemize}
   \item \textbf{Empirical-risk objective.}\
-        $\mathcal{L}(\theta) = \tfrac{1}{N} \sum_i \ell(\theta; x_i)$
+        $\mathcal{L}(\theta) = \tfrac{1}{N_{\mathrm{tok}}} \sum_i \ell(\theta; x_i)$
         --- Eq.~\eqref{eq:week2-empirical-loss}.
   \item \textbf{Minibatch SGD update.}\
         Eq.~\eqref{eq:week2-sgd}; assumption (unbiased gradient
