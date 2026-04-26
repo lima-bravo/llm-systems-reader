@@ -4,7 +4,13 @@
 \addcontentsline{toc}{subsection}{Setting the Scene}
 
 \paragraph{The problem.}
-A pretrained language model is a beautifully calibrated predictor of
+Imagine sitting in front of a freshly pretrained base model and
+typing into the prompt box: \emph{The best way to commit fraud
+is}\,. The model, eager to do its job, will continue the
+sentence. It will produce coherent prose. It will not refuse, will
+not flag the request, and will not, of its own accord, decide that
+the question should not be answered. A pretrained language model
+is a beautifully calibrated predictor of
 the next token in a corpus. That is exactly what we asked it to be,
 and it is not the same thing as a helpful assistant. A base model
 will gladly continue an essay that begins ``the best way to commit
@@ -398,8 +404,11 @@ computing KL against $\pi_\text{ref}$ (a third model in memory), and
 then the PPO gradient update. Holding the reference, reward, and
 policy models in memory simultaneously makes RLHF typically 3--5x
 more expensive per effective update than supervised training. This
-is the single biggest practical reason DPO has displaced RLHF in
-many deployments.
+is the single biggest practical reason DPO has become the default
+preference-optimisation method for many open-weight model releases
+and smaller teams; large frontier labs frequently still run PPO or
+hybrid pipelines (PPO with DPO warm-start, GRPO variants) where
+the additional reward signal is judged worth the extra compute.
 
 \subsection{Stage 3b: Direct Preference Optimization (DPO)}
 
@@ -479,9 +488,11 @@ has closed-form Eq.~\eqref{eq:dpo-optimum} (derivation via Lagrange
 multipliers on the softmax-constrained objective). The DPO loss
 Eq.~\eqref{eq:dpo} is an exact reparameterization of the
 Bradley-Terry likelihood under $\pi^* = \pi_\theta$; the partition
-function $Z(x)$ cancels identically in score differences. The KL
-penalty is a strict upper bound on the KL divergence between
-policies under PPO's trust-region interpretation.\\
+function $Z(x)$ cancels identically in score differences. Under
+PPO's trust-region interpretation the per-update KL penalty
+controls drift from the reference policy, but the bound is
+approximate (sample-based KL estimate, finite-step optimisation,
+clipping) rather than a strict guarantee.\\
 \textbf{Empirical.} DPO-vs-PPO near-parity
 \citep{rafailov2023direct} at reported $\beta$ ranges on standard
 benchmarks. Reward-model Goodhart drift \citep{gao2023scaling} is
