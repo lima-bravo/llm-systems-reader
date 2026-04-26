@@ -312,10 +312,21 @@ pattern (\S\,Expert Parallelism below).
 
 \subsubsection{Composing the Axes}
 
-A real 512-GPU Llama-3 training might decompose as $\mathrm{DP}=32$,
-$\mathrm{TP}=4$, $\mathrm{PP}=4$, with $\mathrm{SP}=4$ inside TP for
-long-context runs. The scheduling is typically expressed as a 3D
-mesh and optimized by the framework (Megatron, DeepSpeed). The
+When the parallelism axes compose, the world size satisfies
+\begin{equation*}
+W \;=\; \mathrm{DP} \cdot \mathrm{TP} \cdot \mathrm{PP} \cdot
+        \mathrm{SP} \cdot \mathrm{EP},
+\end{equation*}
+with $\mathrm{SP} = 1$ when sequence/ring parallelism is not
+enabled and $\mathrm{EP} = 1$ for dense (non-MoE) layers; in
+practice SP usually nests inside TP groups (sharing the same
+device subset) rather than multiplying, in which case the SP factor
+drops out of the world-size product. A real 512-GPU Llama-3
+training might decompose as $\mathrm{DP}=32, \mathrm{TP}=4,
+\mathrm{PP}=4$, with $\mathrm{SP}=4$ \emph{inside} the TP group for
+long-context runs (so $W = 32 \cdot 4 \cdot 4 = 512$, not
+$\cdot 4$ again for SP). The scheduling is typically expressed as
+a 3D mesh and optimized by the framework (Megatron, DeepSpeed). The
 engineering artifact that matters is the \emph{configuration file}
 listing this decomposition, because it determines throughput, the
 bubble size, and the blast radius of a single-GPU failure.
@@ -475,11 +486,15 @@ $\phi \gets \phi - \eta \nabla_\phi \mathcal{L}_{\mathrm{aux}}$
 therefore \emph{decreases} $P_i$ in proportion to $f_i$ --- experts
 that already receive many tokens see their router mass pushed down
 the fastest. Since $\sum_i P_i = 1$ (softmax), this mass
-redistributes to under-utilized experts. The fixed point is uniform
-$P_i = 1/N_e$, and the quadratic-looking form
-$\sum_i f_i P_i$ is minimized (at fixed $\sum_i f_i = 1$,
-$\sum_i P_i = 1$) exactly when both are uniform --- by rearrangement
-of Chebyshev's sum inequality.
+redistributes to under-utilized experts. The uniform allocation
+$P_i = f_i = 1/N_e$ is a stationary point of the constrained loss
+(at $\sum f_i = \sum P_i = 1$), and is the minimiser by Chebyshev's
+sum inequality. Whether training \emph{reaches} this stationary
+point is a separate empirical question --- expert collapse is a
+common failure mode in practice, addressed in
+\S Expert Collapse below; the derivation establishes the direction
+of the gradient and the unique constrained minimiser, not
+convergence under SGD.
 \end{derivation}
 
 \subsubsection{\texorpdfstring{Router $z$-Loss}{Router z-Loss}}
@@ -528,25 +543,27 @@ experts fire) but \emph{all experts must remain resident in GPU
 memory} because the router can select any subset per token.
 
 \Ident\ The following table makes the dense--MoE asymmetry concrete
-at a fixed active parameter count $N_{\mathrm{active}}$, using the
-mixed-precision-AdamW coefficients from
-Eq.~\eqref{eq:week2-mem-budget} ($16 N$ bytes for weights + grads +
-optimizer, ignoring activations).
+at a fixed active parameter count $N_{\mathrm{active}}$. The
+training-memory column uses the mixed-precision-AdamW coefficient
+from Eq.~\eqref{eq:week2-mem-budget} ($16 N$ bytes for weights +
+grads + optimizer, ignoring activations); the serving-memory column
+uses $2 N$ bytes (fp16/bf16 weights only, no optimizer state, no
+gradients).
 \begin{center}
-\begin{tabular}{|l|r|r|r|r|}
+\begin{tabular}{|l|r|r|r|r|r|}
 \hline
-Model (training) & $N_{\mathrm{active}}$ & $N_{\mathrm{total}}$ & Train FLOPs/tok & Train memory \\
+Model & $N_{\mathrm{active}}$ & $N_{\mathrm{total}}$ & FLOPs/tok & Train mem ($16N_{\mathrm{total}}$) & Serve mem ($2N_{\mathrm{total}}$) \\
 \hline
-Dense 30B           & 30\,B  & 30\,B   & $\approx 6 \cdot 30$\,B  & $16 \cdot 30$\,B $\approx 480$\,GB \\
-MoE 8$\times$30B, $k{=}2$ & 30\,B  & 240\,B  & $\approx 6 \cdot 30$\,B  & $16 \cdot 240$\,B $\approx 3.8$\,TB \\
+Dense 30B           & 30\,B  & 30\,B   & $\approx 6 \cdot 30$\,B  & $\approx 480$\,GB & $\approx 60$\,GB \\
+MoE 8$\times$30B, $k{=}2$ & 30\,B  & 240\,B  & $\approx 6 \cdot 30$\,B  & $\approx 3.8$\,TB & $\approx 480$\,GB \\
 \hline
 \end{tabular}
 \end{center}
-Same per-token compute, $8\times$ the memory. Serving-time
-arithmetic is similar: FLOPs/token tracks $N_{\mathrm{active}}$ while
-resident memory (weights only, no optimizer state) tracks
-$N_{\mathrm{total}}$. This single asymmetry is what forces every
-systems choice in this chapter.
+Same per-token compute, $8\times$ the memory in both regimes.
+FLOPs/token tracks $N_{\mathrm{active}}$ while resident memory tracks
+$N_{\mathrm{total}}$, with the per-parameter coefficient differing
+between training (16) and serving (2). This single asymmetry is what
+forces every systems choice in this chapter.
 
 Consequences:
 \begin{itemize}
