@@ -46,9 +46,12 @@ in 2024 and entering force in stages, classified AI systems by risk
 tier and imposed specific obligations on the high-risk and
 general-purpose tiers. ISO/IEC 42001, the first management-systems
 standard for AI, gave organizations an audit-ready frame analogous
-to ISO 9001 for quality or ISO 27001 for information security. The
-combination of these frameworks is now the de facto floor for
-serious AI deployment in most jurisdictions.
+to ISO 9001 for quality or ISO 27001 for information security. In
+the EU and in regulated sectors (healthcare, financial services,
+defence), the combination of these frameworks is the operating
+floor for serious AI deployment; in less-regulated jurisdictions
+they remain best practice rather than a hard requirement, but the
+direction of travel is convergent.
 
 \paragraph{Where we stand.}
 A modern governance stack treats an AI system as a socio-technical
@@ -66,7 +69,8 @@ datasheets, impact assessments, change logs, incident reports ---
 that lets a third party reconstruct what was built and why. And
 there is monitoring, because no static assessment survives contact
 with the production traffic that follows it. The whole edifice is
-slow to assemble and not optional.
+slow to assemble; for high-risk systems and regulated sectors it
+is also no longer optional.
 
 \paragraph{What goes wrong.}
 The first failure of governance is to treat it as paperwork. A model
@@ -81,10 +85,12 @@ it has changed even if the weights have not --- new jailbreak
 techniques have been published, new tool integrations have been
 added, new user populations have started using the system. The
 fourth, and the one this chapter takes most seriously, is the
-\emph{honest limit} of the current paradigm. There are problems that
-no amount of alignment training and no quantity of evaluation will
-solve: the model has no intrinsic understanding of truth, the
-training data contains biases that the loss function will never see,
+\emph{honest limit} of the current paradigm. There are residual
+risk classes that alignment training and evaluation alone do not
+fully eliminate, and that consequently must be controlled by
+system-level mechanisms: the model has no intrinsic verifier of
+truth, the training data contains biases that the loss function
+does not natively penalise,
 the deployment environment will produce inputs the evaluation suite
 did not anticipate. An engineer who pretends otherwise is not being
 useful; an engineer who acknowledges the limits and designs the
@@ -136,32 +142,47 @@ register $\mathcal{H}$. Each $h$ is scored on two axes:
 (1 = rare, 5 = almost certain). Both axes are ordinal policy
 scales, not probabilities.
 
-\textit{Inherent and residual risk.} Using the standard
-risk-matrix convention \citep{iso31000_2018}, the
-\emph{inherent risk} is
+\textit{Inherent and residual risk.} Using the standard risk-matrix
+convention \citep{iso31000_2018}, the \emph{inherent risk index} is
 \begin{equation}
   R(h) \;=\; S(h) \cdot L(h) \;\in\; \{1, \dots, 25\},
   \label{eq:wk10-risk}
 \end{equation}
-i.e. the un-mitigated score before controls act. A set of
-controls $\mathcal{C}(h) = \{c_1, \dots, c_{K_h}\}$ is applied to $h$;
-each $c_i$ has an \emph{efficacy}
-$\eta_i = \eta(c_i, h) \in [0, 1]$ estimating the fraction of
-hazard likelihood it removes when it operates correctly, and an
-\emph{independence} property asserting that failures of distinct
-$c_i$ are uncorrelated. The \emph{residual risk} under
-independence is then
+i.e.\ the un-mitigated score before controls act. The product is
+operationally a \emph{policy index} on the $5 \times 5$ matrix
+rather than a true ratio quantity: $S$ and $L$ are ordinal scales,
+so multiplication, ordering, and ranking are conventions of the
+ISO~31000 risk-matrix tradition rather than results of a
+measure-theoretic argument. Treat $R(h)$ as a triage label, not as
+a number admitting arbitrary arithmetic.
+
+A set of controls $\mathcal{C}(h) = \{c_1, \dots, c_{K_h}\}$ is
+applied to $h$; each $c_i$ has an \emph{efficacy}
+$\eta_i = \eta(c_i, h) \in [0, 1]$, interpreted as the fraction of
+hazard likelihood it removes when it operates as intended. The
+\emph{residual risk index} under independence assumptions
+(see below) is then
 \begin{equation}
   R_\mathrm{res}(h)
   \;=\; S(h) \cdot L(h) \cdot \prod_{i=1}^{K_h} (1 - \eta_i),
   \label{eq:wk10-risk-residual}
 \end{equation}
 collapsing to $R(h)$ when no control is in place and to $0$ only
-when at least one $\eta_i = 1$. Eq.~\eqref{eq:wk10-risk-residual}
-makes the defence-in-depth argument quantitative: adding
-independent controls multiplies $(1 - \eta_i)$ terms, so the
-\emph{number} of independent layers, not the efficacy of any
-single one, drives $R_\mathrm{res}$ toward zero.
+when at least one $\eta_i = 1$. The product term encodes two
+distinct independence assumptions that should be checked separately:
+\emph{failure independence} (the events ``control $c_i$ fails to
+operate'' are mutually independent across $i$), and
+\emph{efficacy independence} (the conditional removal rate of
+$c_j$ does not depend on whether $c_i$ has already operated).
+Correlated failures (a shared dependency such as the same upstream
+data feed, the same on-call rotation, or the same authentication
+service) inflate residual risk above
+Eq.~\eqref{eq:wk10-risk-residual} and must be modelled separately.
+Subject to those caveats, Eq.~\eqref{eq:wk10-risk-residual} makes
+the defence-in-depth argument quantitative: adding independent
+controls multiplies $(1 - \eta_i)$ terms, so the \emph{number} of
+genuinely independent layers, not the efficacy of any single one,
+drives $R_\mathrm{res}$ toward zero.
 
 \textit{Assurance-case terms.} An assurance case is a tuple
 $\mathcal{A} = (G, \mathcal{E}, \mathcal{X}, \mathcal{U})$ where $G$ is the top-level goal
@@ -291,8 +312,11 @@ assumptions are where surprises live.
 An assurance case is not a one-time gate. As the model changes,
 as usage changes, as new hazards are discovered, the case is
 updated. Operational experience feeds back into the assurance
-argument. A deployment with a six-month-old, never-updated
-assurance case is not assured.
+argument. An assurance case that has not been refreshed since a
+material change to the model, the data, the threat model, or the
+operating context can no longer be treated as live; the cadence of
+refresh is set by the change rate of those inputs, not by a
+calendar.
 
 \citet{leslie2021understanding} provides the most
 accessible AI-specific treatment of assurance thinking; the
@@ -1155,5 +1179,6 @@ defence in depth across pre-model, model, system, detective,
 corrective, and post-deployment layers; documents its claims
 and evidence in an assurance case; complies with the applicable
 regulation; and submits to independent evaluation. The model is
-the easy part.
+typically the smaller share of the work that lands a system in
+production responsibly.
 \end{quote}
