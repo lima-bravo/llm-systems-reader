@@ -4,14 +4,19 @@
 \addcontentsline{toc}{subsection}{Setting the Scene}
 
 \paragraph{The problem.}
-A pretrained base model is, in some sense, an artifact of staggering
-generality. It can write Python, summarize French literature, draft
-a polite refusal to a request for medical advice, and produce a
-plausible recipe for cassoulet. It cannot, however, reliably speak
-in your company's tone of voice, follow your organization's
-terminology conventions, or honour your jurisdiction's regulatory
-constraints. Almost no organization will train a base model. Almost
-every organization will need to adapt one. The problem of this
+Picture a small product team that has just pulled down an
+open-weight 70-billion-parameter base model. The model writes
+Python, summarises French literature, drafts polite refusals to
+requests for medical advice, and produces plausible recipes for
+cassoulet. What it cannot do is reliably speak in the company's
+tone of voice, follow its terminology conventions, or honour the
+regulatory constraints of the jurisdiction it will be deployed in.
+The team has neither the GPUs nor the budget to retrain the model
+from scratch. They have a handful of A100s and a directory of
+labelled examples. The chapter that follows is about the methods
+that turn that handful of A100s into a deployable adaptation.
+Almost no organization trains a base model. Almost every
+organization adapts one. The problem of this
 chapter is what to do when you have a base model that is almost what
 you want and a budget that does not stretch to retraining the whole
 thing. The naive answer --- continue training all of the parameters
@@ -463,13 +468,16 @@ for the low-rank matmul.
 
 \paragraph{QLoRA} \citep{dettmers2023qlora} is the most important
 variant. The base is quantized to 4-bit NF4 (see \S\ref{subsec:nf4}
-below), and the LoRA adapters are trained in bfloat16 on top. The
-effect is dramatic: a 65B model that ordinarily requires $\approx
-780$~GB of VRAM for full fine-tuning fits on a single 48~GB GPU for
-adaptation, with \Emp\ near-parity evaluation scores on the
-instruction-following suites reported in the original paper (A7.3:
-benchmark-contingent). QLoRA is now the default recipe at many
-production shops.
+below), and the LoRA adapters are trained in bfloat16 on top. With
+the configuration reported by \citet{dettmers2023qlora} ---
+gradient-checkpointed forward pass, paged optimizer states, batch
+size and sequence length tuned to fit in memory --- a 65B model
+that ordinarily requires $\approx 780$~GB of VRAM for full
+fine-tuning fits on a single 48~GB GPU for adaptation. \Emp\ The
+authors report parity-within-a-few-points on the
+instruction-following benchmarks they evaluate (A7.3:
+benchmark-contingent); other workloads, longer contexts, and
+larger batch sizes may not fit the same hardware envelope.
 
 \paragraph{DoRA} \citep{liu2024dora} decomposes the weight update into
 magnitude and direction components separately. The claim is that this
@@ -672,9 +680,14 @@ quantization rollout should always re-run the adapted-model
 evaluation suite, not just the base's.
 
 \paragraph{Rare-token amplification.}
-Quantization error is roughly uniform, but the ``cost'' of an error
-is not: misquantizing a weight that touches a rare but important
-token (a medical term, a code identifier, a proper name) can
+Quantization error is not uniform across layers or channels ---
+attention output projections and embedding-adjacent layers are
+typically more sensitive than mid-stack FFN matrices, and a small
+number of high-magnitude outlier channels carry disproportionate
+error (the empirical observation behind SmoothQuant). The
+``cost'' of an error is also not uniform: misquantizing a weight
+that touches a rare but important token (a medical term, a code
+identifier, a proper name) can
 disproportionately degrade specialized tasks. Calibration sets
 should include representative rare-token data.
 
@@ -808,14 +821,19 @@ home-grown S3-plus-metadata scheme) with strict schemas. Without
 this, organizations lose track of which adapters are safe and end up
 deploying untested combinations.
 
-\paragraph{Composition.} Adapters compose linearly: if $\Delta_1$
-and $\Delta_2$ are both LoRA deltas on the same base, then
-$W_0 + \Delta_1 + \Delta_2$ is a valid merged model. In practice,
-this works when the adapters target complementary behaviours (e.g.,
-domain + style) and fails when they conflict (e.g., two competing
-style adapters). A careful engineering discipline here is to train
-each adapter against the \emph{same} base and to benchmark the
-composed model separately.
+\paragraph{Composition.} The weight-update arithmetic is linear:
+if $\Delta_1$ and $\Delta_2$ are both LoRA deltas on the same base,
+then $W_0 + \Delta_1 + \Delta_2$ is a well-defined matrix. The
+\emph{behaviour} of the composed model is not a linear combination
+of the two adapters' behaviours, however --- the deltas change the
+nonlinear forward pass through every downstream layer, so adapters
+that target overlapping circuits can interfere or cancel. The
+practical pattern is: linearity is on the parameters, not on the
+output distribution; composition works when the adapters target
+complementary behaviours (e.g., domain + style) and degrades when
+they conflict (e.g., two competing style adapters). A careful
+engineering discipline here is to train each adapter against the
+\emph{same} base and to benchmark the composed model separately.
 
 \paragraph{Multi-tenant serving.} Inference stacks like vLLM
 \citep{kwon2023vllm} now support LoRA dispatch: the base lives once
