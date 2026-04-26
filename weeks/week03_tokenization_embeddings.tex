@@ -11,8 +11,12 @@ an unbounded number of words, and even an unbounded number of
 \emph{ways} to write any given word. Before any model can predict
 the next token, somebody has to decide what counts as a token. The
 decision sounds technical and turns out to be deeply
-consequential. Tokenization is the model's alphabet. Whatever the
-model cannot see at the alphabet level, it cannot see at all.
+consequential. Tokenization fixes the input alphabet of the model:
+the only distinctions the model can make natively in its first
+layer are distinctions that the tokenizer has already represented
+as different token IDs. Anything finer than the tokenizer's
+boundaries has to be recovered, if at all, by composition through
+later layers.
 
 \paragraph{How we got here.} The earliest computational
 linguistics treated the word as the unit of analysis. This was
@@ -56,14 +60,18 @@ By 2020 every modern language model was using one of these three
 algorithms or a small variant. By 2024 the variants had
 converged: byte-level BPE for English-heavy and code-heavy
 models, SentencePiece-Unigram for multilingual ones. The
-tokenizer is now a frozen artefact, trained once before
-pretraining begins and never modified, because changing it
-invalidates every token-ID the model has ever seen.
+tokenizer is, for any given model checkpoint, a frozen artefact:
+trained once before pretraining begins and never modified for the
+lifetime of that checkpoint, because changing it would invalidate
+every token-ID the model has ever seen. (A new model family or
+major version trains a new tokenizer.)
 
 \paragraph{Where we stand.} A modern tokenizer is small,
-deterministic, lossless, and finite. Given a string, it produces
-a sequence of integers. Given that sequence, it reconstructs the
-string. It does this without consulting a dictionary, which means
+deterministic, finite, and---for byte-level configurations with a
+pinned Unicode normalization step---lossless on the raw byte
+input. Given a string, it produces a sequence of integers. Given
+that sequence, and the same normalization rule, it reconstructs
+the string. It does this without consulting a dictionary, which means
 it works for words it has never seen, including invented words,
 typos, and code identifiers. The mathematics in the rest of this
 chapter unpacks why the WordPiece score is the unigram
@@ -120,8 +128,9 @@ By the end of this week, you should be able to:
         and trace how a concrete string becomes a token sequence.
   \item Contrast BPE, WordPiece, and Unigram-LM tokenizers on
         objective, determinism, reversibility, and failure modes.
-  \item Explain why byte-level BPE defeats the Unicode-normalization
-        problems that plague word- and character-level models.
+  \item Explain how byte-level BPE bounds the Unicode-normalization
+        problems that plague word- and character-level models, and
+        which residual issues it does not eliminate.
   \item Derive the embedding layer mathematically as a one-hot lookup
         and justify tied input/output embeddings on a memory and
         regularization basis.
@@ -480,12 +489,14 @@ Encoding uses the Viterbi algorithm to find the highest-likelihood
 segmentation of the input given the pruned vocabulary.
 
 \emph{SentencePiece}~\citep{kudo2018sentencepiece} is an open-source
-implementation that supports both BPE and Unigram-LM and, importantly,
-treats the entire input (including whitespace) as raw byte data by
-default; whitespace is replaced with a sentinel (U+2581, ``\_'') so
-that detokenization is guaranteed reversible. This reversibility is
-not guaranteed by the original BPE formulation, which requires
-language-specific detokenization rules.
+implementation that supports both BPE and Unigram-LM. Its default
+mode operates over Unicode code points (with optional byte
+fallback) and replaces whitespace with a sentinel character (U+2581,
+``\_'') so that whitespace is part of the token stream and
+detokenization is reversible without language-specific rules. The
+optional \texttt{byte\_fallback} setting drops down to bytes for any
+characters outside the trained vocabulary. Both modes give
+reversibility guarantees that the original BPE formulation does not.
 
 \subsection{Comparison of Subword Tokenizers}
 
@@ -600,12 +611,15 @@ into a stable number of tokens.
 
 Given a vocabulary of size $V$ and embedding dimension $d$, the
 embedding layer is parameterized by a matrix $E \in \mathbb{R}^{V \times d}$.
-For a token ID $i$, the input embedding is the $i$-th row:
+For a token ID $\iota \in \{0,\dots,V-1\}$, the input embedding is
+the $\iota$-th row:
 \begin{equation}
 \label{eq:week3-embed}
-\mathbf{e}_i \;=\; E^{\top} \mathbf{1}_i,
+\mathbf{e}_\iota \;=\; E^{\top} \mathbf{1}_\iota,
 \end{equation}
-where $\mathbf{1}_i \in \{0,1\}^{V}$ is the one-hot indicator vector.
+where $\mathbf{1}_\iota \in \{0,1\}^{V}$ is the one-hot indicator vector.
+We reserve $i$ for sequence position and $\iota$ for vocabulary
+index throughout this chapter (cf.\ notation block above).
 Mathematically, this is nothing other than a linear projection from
 the $V$-dimensional one-hot simplex into $\mathbb{R}^{d}$; the
 ``lookup'' is an efficient implementation that skips the $V \times d$
@@ -932,17 +946,19 @@ Compact index of the chapter's central identities.
         Bytes $\to$ pre-tokens $\to$ subword sequence
         --- Eq.~\eqref{eq:week3-pipeline}; deterministic under
         \textbf{(A3.1)}.
-  \item \textbf{WordPiece score = PMI.}\
-        $\mathrm{score}(a,b) = \log\frac{P(ab)}{P(a)P(b)}$
-        --- Eq.~\eqref{eq:week3-wordpiece}; the score is the
-        per-merge unigram log-likelihood gain.
+  \item \textbf{WordPiece score (ratio form).}\
+        $\mathrm{score}(a,b) = \mathrm{count}(ab)/(\mathrm{count}(a)\,\mathrm{count}(b))$
+        --- Eq.~\eqref{eq:week3-wordpiece}. The per-merge unigram
+        log-likelihood gain is $\mathrm{count}(ab)\cdot
+        \log[N\cdot\mathrm{score}(a,b)]$, so maximising the score
+        and maximising the log-likelihood gain pick the same merge.
   \item \textbf{Unigram-LM EM-prune.}\
         E-step: posterior over segmentations;
         M-step: $p(s) \leftarrow \mathbb{E}[\#s] / \sum_{s'} \mathbb{E}[\#s']$;
         prune $s^* = \arg\min_s (\ell_V - \ell_{V \setminus \{s\}})$
         --- Eq.~\eqref{eq:week3-unigram}.
   \item \textbf{Embedding lookup.}\
-        $e_i = E_{\iota(w_i),:}$ --- Eq.~\eqref{eq:week3-embed}.
+        $\mathbf{e}_\iota = E^\top \mathbf{1}_\iota$ --- Eq.~\eqref{eq:week3-embed}.
   \item \textbf{Unembedding (weight tying).}\
         Logit $z_v = e^\top E_v$ --- Eq.~\eqref{eq:week3-unembed}.
 \end{itemize}
