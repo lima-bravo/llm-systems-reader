@@ -549,9 +549,13 @@ systems choice in this chapter.
 
 Consequences:
 \begin{itemize}
-  \item \textbf{Mixtral-8x7B} has 47B active parameters per token but
-        a resident footprint of $\sim\!93$\,B parameters; it needs a
-        cluster-memory profile similar to a 70B dense model.
+  \item \textbf{Mixtral-8x7B} \citep{jiang2024mixtral} has
+        $\sim\!13$\,B active parameters per token (top-2 of 8 experts
+        fire in each layer's FFN) but a resident footprint of
+        $\sim\!47$\,B parameters (shared attention, embeddings, and
+        the eight FFN expert blocks at every layer); the active
+        count drives FLOPs per token while the resident count drives
+        cluster-memory requirements.
   \item \textbf{Batch efficiency}: MoE benefits enormously from large
         batches because load-balancing statistics become tight; at
         batch size 1 the same expert can be loaded and unloaded from

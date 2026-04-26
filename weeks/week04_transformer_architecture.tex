@@ -67,8 +67,8 @@ score, the scores are normalized into weights, and each token's new
 representation is the weighted sum of the values. The whole
 operation is a content-addressable lookup, scaled by
 $1/\sqrt{d_k}$ to keep the dot products from saturating the softmax,
-and masked so that future tokens cannot attend to the past during
-training. The second thing each block does is run the result through
+and masked so that each token can attend only to earlier positions
+and to itself --- never to future tokens --- during training. The second thing each block does is run the result through
 a position-wise feed-forward network --- a small two-layer MLP
 applied independently to each token. Around both operations,
 modern designs put a normalization layer (LayerNorm or its cheaper

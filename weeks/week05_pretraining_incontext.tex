@@ -408,8 +408,10 @@ $a \approx b \approx 0.5$, recovering the
 Under the compute budget $C = 6 N D$, the minimizing allocation is
 therefore $N^\star \propto C^{1/2}, D^\star \propto C^{1/2}$, i.e.,
 \emph{roughly 20 training tokens per parameter} at current fitted
-constants. For a $10^{25}$ FLOPs budget this yields $N \sim 70$\,B,
-$D \sim 1.4$\,T tokens -- the Chinchilla recipe.
+constants. For the Chinchilla recipe's compute budget of
+$C \approx 5.9 \times 10^{23}$ FLOPs (i.e.\ $6 \times 70\text{B}
+\times 1.4\text{T}$), this yields $N \sim 70$\,B and $D \sim 1.4$\,T
+tokens.
 
 \Heur\ \emph{Why this matters operationally}: the cost of an LLM is
 dominated by \emph{training} compute for frontier labs and by

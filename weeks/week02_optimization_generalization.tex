@@ -167,7 +167,7 @@ optimized via variants of stochastic gradient descent:
 \theta_{t+1} \;=\; \theta_t - \eta_t\, g_t,
 \qquad
 g_t \;=\; \frac{1}{B}\sum_{i \in \mathcal{B}_t}
-          \nabla_\theta \bigl[-\log p_{\theta}(x^{(i)} \mid x^{(i)}_{<})\bigr],
+          \nabla_\theta \bigl[-\log p_{\theta}(x^{(i)}_{t_i} \mid x^{(i)}_{<t_i})\bigr],
 \end{equation}
 where $\eta_t$ is the learning rate and $\mathcal{B}_t$ is a minibatch of
 size $B$. The key features that distinguish LLM optimization from the
