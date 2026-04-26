@@ -166,19 +166,21 @@ $\mu^{-1}$ for mean service time (so $\mu = 1/\mathbb{E}[L]$ from
 Eq.~\eqref{eq:wk11-latency}).
 
 \textit{Cost variables.} Let $p_\mathrm{in}, p_\mathrm{out},
-p_\mathrm{cache}$ denote per-token prices (dollars per $10^6$
-tokens) for uncached input, output, and cache hits respectively,
+p_\mathrm{cache}$ denote list prices in dollars per $10^6$ tokens
+for uncached input, output, and cache hits respectively,
 with $p_\mathrm{cache} < p_\mathrm{in}$ by construction. A single
 request's base cost is
 \begin{equation}
   C_\mathrm{req}(N_\mathrm{in}, N_\mathrm{out}, N_\mathrm{cache})
-  \;=\; p_\mathrm{cache}\,N_\mathrm{cache}
-  \;+\; p_\mathrm{in}\,(N_\mathrm{in} - N_\mathrm{cache})
-  \;+\; p_\mathrm{out}\,N_\mathrm{out},
+  \;=\; \frac{1}{10^{6}}\Bigl[
+        p_\mathrm{cache}\,N_\mathrm{cache}
+        + p_\mathrm{in}\,(N_\mathrm{in} - N_\mathrm{cache})
+        + p_\mathrm{out}\,N_\mathrm{out}\Bigr],
   \label{eq:wk11-cost}
 \end{equation}
 where $N_\mathrm{cache} \le N_\mathrm{in}$ is the number of input
-tokens served from prefix cache.
+tokens served from prefix cache. The $1/10^{6}$ factor reconciles
+the per-million list-price units with the per-token counts.
 
 \textit{Agent-loop variables.} An agent executes for up to
 $T_\mathrm{step}$ iterations under a token budget
@@ -565,9 +567,9 @@ are still billed.
 
 \Cons\ Production clients must implement:
 \begin{itemize}
-  \item exponential backoff with jitter (to break correlated
-        retries that otherwise violate A11.1 and cause synchronized
-        retry storms);
+  \item exponential backoff with jitter (the independence
+        assumption A11.1 fails when many clients share a single
+        upstream incident; jitter desynchronises retry storms);
   \item per-model, per-key accounting so one hot job does not
         starve an unrelated workload;
   \item circuit breakers --- if a provider returns 5xx for more
@@ -1020,11 +1022,13 @@ Key design patterns in this class:
         execution. Essential for destructive operations.
 \end{itemize}
 
-The engineering lesson: a coding agent is not an autocomplete
-with extra steps; it is a small distributed system in which the
-model is one service among many, and the failure modes (broken
-tests ignored, commits without context, silent regressions) are
-system-level.
+The engineering lesson: a coding agent operates a multi-step loop
+over a shell, file system, and version control, and its failure
+modes are correspondingly system-level (broken tests ignored,
+commits without surrounding context, silent regressions across
+files), not the per-token suggestion failures that an autocomplete
+plug-in produces. Treat the coding agent as a small distributed
+system in which the model is one service among many.
 
 \subsection{The Model Context Protocol}
 
@@ -1440,8 +1444,9 @@ agent layer.
         $\mathrm{Latency}_{\rm e2e} = \mathrm{TTFT} + (T_{\rm out} - 1)\, \mathrm{TPOT}$
         --- Eq.~\eqref{eq:wk11-latency}.
   \item \textbf{Linear cost model.}\
-        $\mathrm{Cost} = c_{\rm in} T_{\rm in} + c_{\rm out} T_{\rm out} + c_{\rm cache} T_{\rm cache}$
-        --- Eq.~\eqref{eq:wk11-cost}.
+        $\mathrm{Cost} = \tfrac{1}{10^{6}}\bigl[c_{\rm in} T_{\rm in} + c_{\rm out} T_{\rm out} + c_{\rm cache} T_{\rm cache}\bigr]$
+        --- Eq.~\eqref{eq:wk11-cost}; per-million prices reconciled
+        with per-token counts.
   \item \textbf{M/M/1 queueing model.}\
         $W = 1 / (\mu - \lambda)$ for arrival rate $\lambda$ under
         service rate $\mu$ --- Eq.~\eqref{eq:wk11-mm1};
@@ -1449,9 +1454,10 @@ agent layer.
         $\mu_{\rm eff} = \min(\mathrm{RPM} / 60, \mathrm{TPM} / (60\, T_{\rm out}))$
         --- Eq.~\eqref{eq:wk11-mueff}.
   \item \textbf{Expected retries.}\
-        Geometric expectation
-        $\E[N_{\rm tries}] = 1 / (1 - p_{\rm retry})$
-        --- Eq.~\eqref{eq:wk11-retry-count}.
+        Truncated-geometric expectation over at most $R+1$
+        attempts, $\E[\text{attempts}] = \sum_{k=0}^{R}(1-p)p^k(k+1) + p^{R+1}(R+1)$
+        --- Eq.~\eqref{eq:wk11-retry-count}; the infinite-$R$ limit
+        recovers the textbook $1/(1-p)$ form.
   \item \textbf{Cost with retries.}\
         Rescales the linear cost by $\E[N_{\rm tries}]$
         --- Eq.~\eqref{eq:wk11-cost-retry}.
@@ -1460,7 +1466,7 @@ agent layer.
         --- Eq.~\eqref{eq:wk11-trust-union}; rederives the
         invariant of CH9 Eq.~\eqref{eq:trust-invariant}
         in agent-loop notation.
-  \item \textbf{Agent-loop termination invariants.}\
+  \item \textbf{Agent-loop termination conditions.}\
         Sentinel Eq.~\eqref{eq:wk11-term-sentinel};
         step budget Eq.~\eqref{eq:wk11-term-step};
         token budget Eq.~\eqref{eq:wk11-term-token};
