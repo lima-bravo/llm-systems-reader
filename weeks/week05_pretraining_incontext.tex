@@ -5,9 +5,11 @@
 \addcontentsline{toc}{subsection}{Setting the Scene}
 
 \paragraph{The problem.}
-Suppose you have a Transformer and a great deal of text. The
-question is what to do with the text in order to obtain a model that
-is, in some useful sense, fluent. The classical answer was to pick a
+Picture an engineer in 2018, holding a fresh Transformer
+implementation and a hard drive of crawled web text. The model
+runs. The text is there. The question staring back at the
+engineer is what to do with the text in order to obtain a model
+that is, in some useful sense, fluent. The classical answer was to pick a
 narrow task --- translation, summarization, sentiment classification
 --- and supervise the model on labelled examples of that task. The
 trouble with this answer was that labelled examples are expensive,
@@ -365,8 +367,10 @@ continued pretraining at extended $T$. A common schedule:
         of tokens, often with an adjusted RoPE base frequency
         (``NTK-aware scaling'').
 \end{itemize}
-This strategy bought Llama-2's 32k context at a fraction of the
-compute a full-length pretrain would cost.
+This staged strategy underlies the long-context variants of the
+Llama and Code Llama families and several other open-weight models
+released through 2024, achieving extended context at a fraction of
+the compute a uniform full-length pretrain would cost.
 
 \subsection{Scaling Laws Revisited: Compute-Optimal Training}
 
@@ -756,17 +760,23 @@ memorization rate as a function of:
 (ii)~data duplication (repeated strings memorize more), and
 (iii)~prompt length (longer prompts extract more).
 
-\Emp\ Empirically — under A5.3 — memorization of a string of length
-$\ell$ scales roughly as the parametric fit
+\Emp\ Empirically — under A5.3 — and \emph{within the
+low-extraction regime probed by} \citet{carlini2023quantifying},
+memorization of a string of length $\ell$ scales roughly as the
+parametric fit
 \begin{equation}
 \label{eq:week5-memorization}
 \Pr[\text{verbatim recall}]
-  \;\approx\; \left(\frac{N}{N_0}\right)^{a}\!\cdot
-              \left(\frac{k}{k_0}\right)^{b}\!\cdot
-              \left(\frac{\ell}{\ell_0}\right)^{c},
+  \;\approx\; \min\!\left(1,\;
+              \left(\frac{N}{N_0}\right)^{a}
+              \left(\frac{k}{k_0}\right)^{b}
+              \left(\frac{\ell}{\ell_0}\right)^{c}\right),
 \end{equation}
 with parameter count $N$, duplication count $k$, and length $\ell$,
-and fitted exponents $a, b, c > 0$.
+and fitted exponents $a, b, c > 0$. The product form is a
+local-fit description of the low-probability regime and saturates
+trivially at $1$; for high-probability regimes a logit-link or odds
+form is the safer extrapolation.
 
 \Assum\ Eq.~\eqref{eq:week5-memorization} is a regression to
 extraction-probe data; the exponents $(a, b, c)$ depend on model
