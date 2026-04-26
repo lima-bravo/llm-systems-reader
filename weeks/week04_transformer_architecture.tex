@@ -51,8 +51,9 @@ collaborators at Google in a paper titled \emph{Attention Is All You
 Need}, took the next step. They asked, in effect: if attention is
 the part that works, what happens if we throw away the recurrence
 entirely? The answer was that you got a model that could be trained
-in parallel across an entire sequence, that suffered no
-gradient-decay over distance, and that scaled, when given more data
+in parallel across an entire sequence, whose gradients did not
+attenuate exponentially with sequence distance the way recurrent
+state transitions had, and that scaled, when given more data
 and more parameters, in ways the recurrent models had never
 managed. Every Large Language Model in production today is a
 descendant of that paper.
@@ -212,8 +213,12 @@ The Transformer \citep{vaswani2017attention} eliminates recurrence
 entirely. Each token attends directly to every other token in the
 context window via a content-addressable lookup. The resulting
 architecture is fully parallel across the sequence axis, has
-constant-depth signal paths, and has an ``effective memory'' equal to
-the full context length $T$.
+constant-depth signal paths, and is in principle \emph{addressable}
+across the full context length $T$. Whether information at position
+$j$ is reliably \emph{recalled} when needed at position $i$ is an
+empirical question --- the lost-in-the-middle phenomenon
+(\citealt{liu2024lost}, Week~9) shows that addressability and
+reliable recall come apart in practice.
 
 \subsection{Scaled Dot-Product Self-Attention}
 
@@ -260,7 +265,12 @@ for $j \le i$ and $M_{ij} = -\infty$ for $j > i$. Figure
 \begin{derivation}[Variance-preserving score scaling]
 \Assum\ (A4.1): $Q_{im}, K_{jm}$ are random variables with
 $\E[Q_{im}] = \E[K_{jm}] = 0$, $\Var[Q_{im}] = \Var[K_{jm}] = 1$,
-and $Q_{im} \perp K_{jm'}$ for all $m,m'$.
+and $Q_{im} \perp K_{jm'}$ for all $m,m'$. We additionally assume
+that, within each of $Q$ and $K$, the head-dimension entries are
+uncorrelated across $m$ (i.e.\ $\mathrm{Cov}(Q_{im},Q_{im'}) = 0$ for
+$m\neq m'$ and similarly for $K$), so that the products
+$Q_{im}K_{jm}$ are uncorrelated across $m$ and $\Var$ is additive
+in the sum below.
 \label{eq:week4-qk-var-assumption}
 
 Each score entry is a sum over the head dimension:
@@ -271,7 +281,8 @@ Each score entry is a sum over the head dimension:
 By independence and zero mean, each summand satisfies
 $\E[Q_{im}K_{jm}] = \E[Q_{im}]\E[K_{jm}] = 0$ and
 $\Var[Q_{im}K_{jm}] = \E[Q_{im}^2]\E[K_{jm}^2] - 0 = 1$. Summing $d_k$
-such independent zero-mean unit-variance random variables gives
+such uncorrelated zero-mean unit-variance random variables, and
+using $\Var[\sum X_m] = \sum \Var[X_m]$ under uncorrelatedness, gives
 \begin{equation}
 \Var\!\left[(QK^{\top})_{ij}\right] \;=\; \sum_{m=1}^{d_k} 1 \;=\; d_k,
 \qquad
@@ -307,12 +318,14 @@ against a key-value store of size $T$.
 
 \subsubsection{Compute and Memory}
 
-For a single attention head the forward pass costs:
+For a single attention head the forward pass costs (counting one
+multiply--add as $2$ FLOPs, the convention used throughout this
+chapter):
 \begin{itemize}
-  \item $Q, K, V$ projections: $3 T d\, d_k$ FLOPs.
-  \item $Q K^{\top}$: $T^2 d_k$ FLOPs.
-  \item Softmax: $O(T^2)$ FLOPs.
-  \item $A V$: $T^2 d_v$ FLOPs.
+  \item $Q, K, V$ projections: $3 \cdot 2 T d\, d_k = 6 T d\, d_k$ FLOPs.
+  \item $Q K^{\top}$: $2 T^2 d_k$ FLOPs.
+  \item Softmax: $O(T^2)$ FLOPs (independent of the MAC convention).
+  \item $A V$: $2 T^2 d_v$ FLOPs.
 \end{itemize}
 Total: $O(T d\, d_k + T^2 d_k)$. The quadratic $T^2$ term dominates
 for long contexts; the $T d d_k$ term dominates for short contexts.
@@ -429,9 +442,13 @@ architectural mitigations:
         the quality of MHA while keeping KV cache size at $G$-per-token.
         $G \in \{4, 8\}$ is common in modern LLMs (Llama~2/3, Mistral).
 \end{itemize}
-GQA is essentially always the better engineering default for
-inference-optimized models: the quality cost is small and the
-memory win on long contexts is substantial.
+For inference-optimized workloads with long contexts and large
+batch sizes --- the typical serving regime --- GQA is generally
+the better engineering default: the quality cost is small in
+benchmarks reported by Llama-2/3 and Mistral, and the memory win
+on the KV cache is substantial. Workloads dominated by short
+prompts and small batches see a smaller GQA win and may prefer
+full MHA.
 
 \begin{provedassumed}[Attention block: what is established vs assumed]
 \textbf{Proved.} Permutation-equivariance of raw attention (no
@@ -505,9 +522,13 @@ inside the residual branch:
 \label{eq:week4-prenorm}
 x_{\ell+1} \;=\; x_\ell + \mathrm{Sublayer}\bigl(\mathrm{LN}(x_\ell)\bigr).
 \end{equation}
-\citet{xiong2020onlayer} showed that pre-norm yields stable training
-without the warmup phase that post-norm requires, because the residual
-path remains an identity map at initialization. Pre-norm is the
+\citet{xiong2020onlayer} showed that, under standard initialization
+and the warmup-style training recipes of that era, pre-norm yields
+stable training without the warmup phase that post-norm requires,
+because the residual path remains an identity map at initialization.
+The stability advantage is recipe-conditional: post-norm with
+sufficient warmup and careful initialization can also train
+successfully (and was the original Transformer's choice). Pre-norm is the
 configuration used by GPT-2 onwards, Llama, PaLM, and essentially all
 modern LLMs. Figure \ref{fig:week4-block} shows a pre-norm block.
 
@@ -654,8 +675,8 @@ Scheme & Relative? & Extrapolates? & Parameters? \\
 Sinusoidal abs. & weakly & weakly  & no \\
 Learned abs.    & no     & no      & $T_{\max}\,d$ \\
 Relative (Shaw) & yes    & limited & small \\
-ALiBi           & yes    & yes     & $H$ slopes \\
-RoPE            & yes    & yes (with scaling) & no \\
+ALiBi           & yes    & yes (within tested ranges) & $H$ slopes \\
+RoPE            & yes    & only with NTK/YaRN scaling & no \\
 \hline
 \end{tabular}
 \end{center}
@@ -755,11 +776,16 @@ materializing $A$:
   \item Write only the final $O \in \mathbb{R}^{T \times d_v}$ back
         to HBM.
 \end{itemize}
-The result is I/O-optimal up to a constant; it is also
-\emph{exact} (not an approximation). FlashAttention provides
-$2\text{--}4\times$ speedups on long contexts and more importantly
-reduces activation memory from $O(T^2)$ to $O(T)$, unlocking
-longer-context training. It is an object lesson in systems
+The result is I/O-optimal up to a constant on the GPU memory
+hierarchy assumed by the original analysis (HBM-bound attention
+on contemporary NVIDIA accelerators); it is also \emph{exact} (not
+an approximation). FlashAttention provides $2\text{--}4\times$
+speedups on long contexts and, more importantly, reduces the
+\emph{attention-intermediate} activation memory (the $T \times T$
+score and probability tensors) from $O(T^2)$ to $O(T)$. Other
+activations in the block (residual stream, FFN intermediates) are
+unaffected; the savings unlock longer-context training but do not
+remove all $T$-dependent activation memory. It is an object lesson in systems
 engineering: no change to the mathematical model, a large change in
 performance, achieved by matching computation to the memory
 hierarchy.
@@ -967,8 +993,9 @@ Compact index of the chapter's central identities.
         $Q = X W_Q$, $K = X W_K$, $V = X W_V$
         --- Eq.~\eqref{eq:week4-qkv}.
   \item \textbf{Scaled dot-product attention.}\
-        $\mathrm{Attn}(Q,K,V) = \mathrm{softmax}(QK^\top/\sqrt{d_k})V$
-        --- Eq.~\eqref{eq:week4-attn};
+        $\mathrm{Attn}(Q,K,V) = \mathrm{softmax}(QK^\top/\sqrt{d_k} + M)V$,
+        with $M$ the causal (and, where needed, padding/packing)
+        mask --- Eq.~\eqref{eq:week4-attn};
         $\sqrt{d_k}$ scaling justified by Eq.~\eqref{eq:week4-qk-sum}
         under independence/unit-variance assumption
         Eq.~\eqref{eq:week4-qk-var-assumption}.
