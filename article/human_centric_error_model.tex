@@ -83,11 +83,15 @@ Koller's 2020 paper \emph{Climbing towards NLU} [2] sharpened the
 question: a system trained only on linguistic form cannot, by that
 training alone, learn meaning, because meaning is a relation
 between form and the world that the form alone does not contain.
-The grounding problem is not a quirk of LLMs; it is the structural
-fact that the cross-entropy objective they are trained on cares
-about the plausibility of the next token, not its truth. The
-practitioner literature on hallucination [3] is, in the end, a
-practitioner-readable restatement of the same problem.
+The grounding problem is older and more general than any
+particular training objective. It manifests in current systems
+through the cross-entropy loss they are trained on: the loss
+rewards the plausibility of the next token, not its truth. The
+practitioner literature on hallucination [3] traces several
+distinct causes --- data noise, decoding stochasticity,
+mis-calibration, and exposure bias as well as the underlying
+form-meaning gap --- and the part of that taxonomy this article
+concerns itself with is the form-meaning gap.
 
 The five-axis model proposed here is an attempt to operationalize
 the grounding distinction in a way practitioners can use. It places
@@ -190,35 +194,44 @@ have drifted into plausible-sounding fabrication. We use
 \emph{groundedness} for the property the output either has or does
 not. \emph{Grounding}, in the philosophical literature, is the
 name of the underlying problem: how symbols inside a system can
-come to refer to things outside it at all. The practitioner term
-for failures of groundedness is hallucination: the model produces
-a fluent, confident, well-formed claim that does not correspond
-to any fact in the world.
+come to refer to things outside it at all. The practitioner term in the
+neighbourhood is \emph{hallucination}, which the surveys [3] split
+into \emph{factuality} (the output contradicts the world) and
+\emph{faithfulness} (the output contradicts a source the model was
+given). Both are groundedness failures in the sense used here.
 
-Groundedness failures are uniquely dangerous because no internal
-reading of the output reveals them. A hallucinated citation has
-the same structural form as a real one. A hallucinated statistic
-has the same surface plausibility as a true one. The check must
-come from outside the text. The model has produced the most
-probable continuation of its prompt; the most probable continuation
-is sometimes true, sometimes false, and the model cannot, on its
-own, tell the two apart.
+Groundedness failures are especially hard to catch because no
+internal reading of the output reveals them. A hallucinated
+citation has the same structural form as a real one. A
+hallucinated statistic has the same surface plausibility as a true
+one. The check must come from outside the text. The model has
+produced a high-probability continuation of its prompt; that
+continuation is sometimes true, sometimes false, and the model has
+no reliable mechanism to tell the two apart on its own.
+Calibration research has shown the internal signal is non-zero ---
+models do produce confidence estimates that correlate with truth
+--- but the signal is not strong enough to substitute for external
+verification.
 
 This is the place where the symbol-grounding literature is most
 directly useful. Harnad's question --- how can symbols mean
 anything? --- remains unresolved for text-only next-token models in
 isolation. In practice, system design addresses this limitation by
-linking models to external evidence and tools. The remedy at the
-system level is
-retrieval. Replace the question ``what is the most probable thing
-to say'' with ``what is the most probable thing to say given these
-specific sources.'' The grounding problem is no longer the model's
-to solve alone; it is the retriever's problem and the prompt's
-problem. Tool use
-extends the same idea to verification: a model that can call a
-calculator delegates arithmetic; a model that can query a database
-delegates fact lookup. The pattern is to take the work that demands
-grounding and move it outside the language model entirely.
+linking models to external evidence and tools. The dominant remedy
+at the system level is retrieval: replace the question ``what is
+the most probable thing to say'' with ``what is the most probable
+thing to say given these specific sources.'' Most of the
+grounding burden then shifts outside the model, to the retriever
+and to the prompt --- though residual model-side work remains:
+the model still has to read the retrieved evidence faithfully,
+defer to it when its parametric prior conflicts, and reconcile
+contradictory sources. The RAG-faithfulness literature catalogues
+the failures that arise when it does not. Tool use extends the
+same idea to verification: a model that can call a calculator
+delegates arithmetic; a model that can query a database delegates
+fact lookup. The pattern is to take as much of the work that
+demands grounding as possible and move it outside the language
+model.
 
 The diagnostic discipline is to treat any factual claim by the
 model as a hypothesis. If the claim matters, verify it. If it
@@ -249,8 +262,12 @@ the most reasonable answer to the question it was actually asked,
 which differs from the question the user thought they were asking.
 The gap between the two is the user's environment.
 
-The mechanism is fundamental and not fixable by training. A
-language model has access to its weights and its context window.
+The asymmetry is fundamental; the failure mode it produces is
+only partially fixable by training. Training can teach the model
+to ask clarifying questions or abstain when prompts look
+underspecified, but it cannot conjure information the user never
+wrote down. A language model has access to its weights and its
+context window.
 It does not have access to the user's calendar, the user's team,
 the user's organization's coding conventions, the user's medical
 history, the user's project's constraints, or any of the several
@@ -377,9 +394,11 @@ about where to spend their effort. Lower axes call for model-side
 and decoder-side fixes. Higher axes call for system-side fixes
 --- retrieval, tool use, prompt-construction discipline,
 agent-context accumulation. A team that wants to improve groundedness
-will work on retrieval, not on the language model. A team that
-wants to improve environment will work on its prompt-construction
-discipline, not on retrieval. Knowing which axis you are on tells
+will primarily work on retrieval, with model-side levers ---
+factuality fine-tuning, calibrated abstention, citation-required
+generation --- as a smaller second front. A team that wants to
+improve environment will primarily work on its prompt-construction
+discipline rather than on retrieval. Knowing which axis you are on tells
 you which part of the playbook to consult.
 
 This is what the ladder is for. It is not a theory of language.
