@@ -267,8 +267,10 @@ layer. Prefix tuning \citep{li2021prefix}, prompt tuning
 \citep{lester2021prompt}, and P-tuning v2 \citep{liu2022ptuningv2} are
 representative. These are cheap and compose well with
 retrieval-augmentation (Week~9), but they are sensitive to scale:
-prompt tuning beats full fine-tuning only at tens of billions of
-parameters \citep{lester2021prompt}.
+in the SuperGLUE evaluation reported by \citet{lester2021prompt},
+prompt tuning matches full fine-tuning only as model size
+approaches the multi-billion-parameter regime. Below that scale
+prompt tuning underperforms; above it the gap closes.
 
 \paragraph{Selective and additive methods} train a small
 hand-selected subset of parameters (BitFit

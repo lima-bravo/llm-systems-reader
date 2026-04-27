@@ -304,7 +304,7 @@ maximizing the log-likelihood of observed preferences:
 \begin{equation}
   \mathcal{L}_\text{RM}(\phi)
   \;=\;
-  -\mathbb{E}_{(x, y^+, y^-) \sim D}
+  -\mathbb{E}_{(x, y^+, y^-) \sim \mathcal{D}}
   \Big[
     \log \sigma\big(r_\phi(x, y^+) - r_\phi(x, y^-)\big)
   \Big].
@@ -383,7 +383,7 @@ reference policy $\pi_\text{ref}$ (usually the SFT policy):
 \begin{equation}
   J_\text{RLHF}(\theta)
   \;=\;
-  \mathbb{E}_{x \sim D,\, y \sim \pi_\theta}
+  \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta}
   \Big[
     r_\phi(x, y) - \beta\, \mathrm{KL}\!\left(\pi_\theta(\cdot \mid x)\,\|\, \pi_\text{ref}(\cdot \mid x)\right)
   \Big].
@@ -417,11 +417,16 @@ closed-form relationship to the preference data, and that one can
 therefore optimize the policy directly on the preference triples,
 skipping the reward model and the RL loop entirely.
 
-The derivation is short. \Assum\ (A8.2): $\pi_{\mathrm{ref}}(y\mid x)
-> 0$ wherever the KL is evaluated, so the policy stays in the
-reference's support and $\log(\pi_\theta/\pi_{\mathrm{ref}})$
-is finite. The KL-regularized RL objective (Equation~\ref{eq:rlhf})
-has an analytical optimum:
+The derivation is short. Throughout this subsection $r(x,y)$
+denotes an abstract scalar reward function in the RL objective, not
+the parametric reward model $r_\phi$ of Eq.~\eqref{eq:rm-loss};
+the cancellation argument below relies only on the structural form
+of the optimum, not on how $r$ is fit. \Assum\ (A8.2):
+$\pi_{\mathrm{ref}}(y\mid x) > 0$ wherever the KL is evaluated, so
+the policy stays in the reference's support and
+$\log(\pi_\theta/\pi_{\mathrm{ref}})$ is finite. The
+KL-regularized RL objective (Equation~\ref{eq:rlhf}) has an
+analytical optimum:
 \begin{equation}
   \pi^*(y \mid x)
   \;=\;
@@ -447,7 +452,7 @@ and setting $\pi^* = \pi_\theta$ yields the \emph{DPO loss}:
 \begin{equation}
   \mathcal{L}_\text{DPO}(\theta)
   \;=\;
-  -\mathbb{E}_{(x, y^+, y^-) \sim D}
+  -\mathbb{E}_{(x, y^+, y^-) \sim \mathcal{D}}
   \Big[
     \log \sigma\Big(\beta \log \tfrac{\pi_\theta(y^+ \mid x)}{\pi_\text{ref}(y^+ \mid x)}
                  - \beta \log \tfrac{\pi_\theta(y^- \mid x)}{\pi_\text{ref}(y^- \mid x)}\Big)

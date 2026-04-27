@@ -182,9 +182,12 @@ P_\theta)$ whose induced conditional distribution over answers is
   \label{eq:rag-conditional}
 \end{equation}
 where $x(q)$ is a prompt-construction function that renders the
-retrieved chunk set $R_{k_R}(q) = \{c_{(1)}, \dots, c_{(k_R)}\}$
-and the user query $q$ into a single token sequence, and
-$P_\theta$ is the frozen generator from Week~4. The design space is
+retrieved chunk \emph{tuple} $R_{k_R}(q) = (c_{(1)}, \dots, c_{(k_R)})$
+(an ordered list, since the generator is sensitive to position
+--- see lost-in-the-middle, Eq.~\eqref{eq:litm}) and the user
+query $q$ into a single token sequence, and $P_\theta$ is the
+frozen generator from Week~4. We use tuple notation rather than
+set notation throughout to keep the order dependence explicit. The design space is
 larger than Eq.~\eqref{eq:rag-conditional} suggests: $R$, $k_R$, the
 chunking policy producing $\mathcal{C}$, and the prompt-construction
 function $x(\cdot)$ are all independent design choices.

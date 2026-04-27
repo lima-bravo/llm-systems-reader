@@ -460,7 +460,7 @@ Transformer introduces
 \begin{equation}
 \label{eq:week6-load-balance}
 \mathcal{L}_{\mathrm{aux}}
-   \;=\; \alpha \cdot N \sum_{i=1}^{N} f_i \cdot P_i,
+   \;=\; \alpha \cdot N_e \sum_{i=1}^{N_e} f_i \cdot P_i,
 \end{equation}
 where $f_i$ is the fraction of tokens dispatched to expert $i$ (a
 discrete, non-differentiable measurement) and $P_i = \E[s_i(x)]$ is
@@ -892,9 +892,9 @@ Compact index of the chapter's central identities.
         --- Eq.~\eqref{eq:week6-capacity}; tokens beyond capacity
         drop or reroute.
   \item \textbf{Load-balancing loss.}\
-        $\mathcal{L}_{\rm aux} = E \sum_{e} f_e \cdot P_e$
+        $\mathcal{L}_{\rm aux} = \alpha\,N_e \sum_{i=1}^{N_e} f_i \cdot P_i$
         --- Eq.~\eqref{eq:week6-load-balance}; gradient flows
-        through $P_e$ (mean router probability) into router logits,
+        through $P_i$ (mean router probability) into router logits,
         even though token assignment is non-differentiable.
   \item \textbf{Router $z$-loss.}\
         Penalises router-logit norm to stabilise training
