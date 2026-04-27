@@ -246,9 +246,16 @@ $s(q, c)$. Three families cover almost all production deployments.
 Each specifies $s$ differently.
 
 \Ident\ \emph{BM25 scoring rule.}
-For a query $q$ with terms $t$ and a chunk $c$ of length $|c|$
-tokens drawn from an index with average chunk length $\bar{L}$, the
-BM25 score \citep{robertson2009bm25} is
+BM25 sits at the end of a long classical-IR lineage: term-frequency
+weighting from the 1950s, IDF from Sp\"arck Jones (1972), and the
+saturation-and-length-normalisation formulation that Robertson and
+Walker arrived at in the 1990s. It remains a strong baseline four
+decades later because the inductive biases it encodes --- rare
+terms matter more, repeated terms saturate, longer documents need
+length-correction --- are the right ones for short-query, long-document
+retrieval. For a query $q$ with terms $t$ and a chunk $c$ of length
+$|c|$ tokens drawn from an index with average chunk length
+$\bar{L}$, the BM25 score \citep{robertson2009bm25} is
 \begin{equation}
   s_{\mathrm{BM25}}(q, c)
   \;=\;

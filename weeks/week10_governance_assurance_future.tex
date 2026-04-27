@@ -134,9 +134,16 @@ By the end of this week, you should be able to:
 \begin{notationbox}
 Governance has a formal vocabulary; we fix it here.
 
-\textit{Hazards, severity, likelihood.} A \emph{hazard} is a
-specific adverse event or condition $h$ drawn from a hazard
-register $\mathcal{H}$. Each $h$ is scored on two axes:
+\textit{Hazards, severity, likelihood.} The vocabulary in this
+section descends from safety engineering: hazard analysis as
+formalised by Nancy Leveson's STPA (System-Theoretic Process
+Analysis) and earlier traditions like FMEA in aerospace and ISO
+12100 in machinery, all of which start from an enumerated set of
+adverse outcomes scored on two ordinal axes and reduced by layered
+controls. The translation to AI governance preserves the structure
+and updates the failure modes. A \emph{hazard} is a specific
+adverse event or condition $h$ drawn from a hazard register
+$\mathcal{H}$. Each $h$ is scored on two axes:
 \emph{severity} $S(h) \in \{1, \dots, 5\}$ (1 = negligible,
 5 = catastrophic) and \emph{likelihood} $L(h) \in \{1, \dots, 5\}$
 (1 = rare, 5 = almost certain). Both axes are ordinal policy

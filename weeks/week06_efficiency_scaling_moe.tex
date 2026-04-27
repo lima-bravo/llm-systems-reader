@@ -166,7 +166,17 @@ Bandwidth & bytes / s   & HBM-to-SRAM and inter-GPU interconnect;
 Training a dense Transformer activates \emph{all} weights for every
 token -- cost scales linearly with parameter count on the FLOPs axis
 \emph{and} the memory axis \emph{and} the bandwidth axis.
-Mixture-of-Experts (MoE) breaks this coupling:
+The Mixture-of-Experts response to this dilemma is older than the
+Transformer: gated mixtures of neural experts (Jacobs, Jordan,
+Nowlan, and Hinton, 1991) introduced the idea that different
+sub-networks could specialise on different inputs, with a gating
+network deciding which expert to activate. The broader idea of
+\emph{conditional computation} --- spending compute only where the
+input demands it --- runs back at least to that period. The modern
+LLM-scale instantiation \citep{shazeer2017outrageously,
+fedus2021switch} keeps the gated-mixture structure and adds the
+system-level machinery that lets it scale to thousands of experts. Mixture-of-Experts (MoE) breaks the dense
+coupling:
 \begin{quote}
 MoE decouples \textbf{model capacity} (parameters that \emph{exist})
 from \textbf{per-token compute} (parameters that \emph{activate}).

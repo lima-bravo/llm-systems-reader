@@ -290,9 +290,16 @@ RLHF pipeline? It comes from a statistical model that fits these
 preference triples.
 
 The standard choice is the Bradley-Terry model
-\citep{bradley1952rank}. If $r_\phi(x, y)$ is a learned reward
-function parameterized by $\phi$, then the probability that
-$y^+$ is preferred to $y^-$ under the model is
+\citep{bradley1952rank}, which sits in a long paired-comparison
+tradition (Thurstone's law of comparative judgment, 1927; the
+Elo rating system used in chess and elsewhere) that turns
+``$A$ beats $B$'' observations into a latent scalar score per
+item. RLHF inherits this machinery essentially intact: the
+``items'' are model outputs $y$, the latent score is $r_\phi(x,y)$,
+and the binary outcome is the labeller's preference. If
+$r_\phi(x, y)$ is a learned reward function parameterized by
+$\phi$, then the probability that $y^+$ is preferred to $y^-$
+under the model is
 \begin{equation}
   P(y^+ \succ y^- \mid x)
   \;=\;

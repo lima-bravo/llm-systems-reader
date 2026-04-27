@@ -508,12 +508,18 @@ $\mathrm{RPM}$ requests per minute and $\mathrm{TPM}$ tokens per
 minute. Both can trigger a 429, usually with a \texttt{Retry-After}
 header.
 
-\Ident\ \emph{An $M/M/1$ latency bound under RPM.} Treat the
-provider endpoint as a single-server queue with Poisson arrivals
-at rate $\lambda$ (requests/sec) and exponential service with rate
+\Ident\ \emph{An $M/M/1$ latency bound under RPM.} The right
+mental model here comes from a literature that long predates LLM
+APIs: Erlang's 1909 paper on telephone-exchange congestion,
+Kendall's notation that gives us ``$M/M/1$'' (memoryless arrivals,
+memoryless service, one server), and the textbook treatment in
+\citet{kleinrock1975queueing}. The same equations that explained
+why a switchboard saturates at high call volume explain why an
+LLM endpoint queues up at high RPM. Treat the provider endpoint
+as a single-server queue with Poisson arrivals at rate $\lambda$
+(requests/sec) and exponential service with rate
 $\mu = 1/\mathbb{E}[L]$ (Eq.~\eqref{eq:wk11-latency}). Standard
-queueing theory \citep{kleinrock1975queueing} gives the expected
-sojourn time
+queueing theory gives the expected sojourn time
 \begin{equation}
   \mathbb{E}[W]
   \;=\; \frac{1}{\mu - \lambda}
