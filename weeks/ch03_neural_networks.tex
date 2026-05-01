@@ -265,6 +265,127 @@ chain rule'' explicitly.
 \end{notationbox}
 
 % --- END Scaffolding ---
-% Body sections (§1 The Neural Network as a Function Class
-% through §7 The MLP Block as a Transformer Primitive),
-% Worked Examples A and B, and end matter follow in Tasks 6-11.
+
+\subsection{The Neural Network as a Function Class}
+\label{sec:nn-function-class}
+
+\subsubsection{The Perceptron}
+
+The earliest trainable neural unit is the \emph{perceptron},
+introduced by \citet{rosenblatt1958perceptron}. A perceptron with
+input dimension $d$ takes a real vector $x \in \R^d$, applies a
+weighted sum and a threshold, and emits a binary output:
+\begin{equation}
+  y \;=\; \mathbb{1}\!\left[ w^\top x + b > 0 \right],
+  \qquad w \in \R^d,\; b \in \R.
+  \label{eq:nn-perceptron}
+\end{equation}
+The decision boundary is the hyperplane $w^\top x + b = 0$, which
+in two dimensions is a line, in three dimensions a plane, and in
+general a $(d-1)$-dimensional affine subspace separating $\R^d$
+into two halves. Rosenblatt's contribution was a learning rule:
+given a labelled example $(x^{(i)}, y^{(i)})$ with $y^{(i)} \in
+\{0, 1\}$, update $w \leftarrow w + \eta (y^{(i)} - \hat{y}^{(i)})
+x^{(i)}$ where $\hat{y}^{(i)}$ is the perceptron's prediction. If
+the data are linearly separable, this rule is guaranteed to find a
+separating hyperplane in finitely many updates. The perceptron
+established that adjusting weights in proportion to errors was a
+viable mechanism for learning.
+
+\subsubsection{The Minsky--Papert Observation}
+
+The perceptron's strength is also its limit. \citet{minsky1969perceptrons}
+proved that a single perceptron cannot represent the
+exclusive-or function: the four points
+$\{(0,0), (0,1), (1,0), (1,1)\}$ with XOR labels $\{0, 1, 1, 0\}$
+cannot be separated by any single line in the plane. The argument
+is geometric: any line $w_1 x_1 + w_2 x_2 + b = 0$ partitions
+$\R^2$ into two half-planes; one of those half-planes must
+contain at least three of the four points; but the XOR labels
+require that the two ``1''-labelled points and the two
+``0''-labelled points sit on opposite sides of the boundary, in a
+configuration where any straight line separating them would also
+require the same straight line to be on its other side. There is
+no such line. The result is sharp: it identifies a function so
+simple that we can describe it in one word, and yet the
+single-layer perceptron cannot compute it. Worked Example~B
+later in this chapter walks the geometry explicitly.
+
+The 1969 result was correct, narrow, and consequential. It was
+correct because XOR really cannot be linearly separated. It was
+narrow because the same argument does not apply to networks with
+more than one trainable layer. It was consequential because the
+field, in the climate of the time, treated the result as a verdict
+on neural networks generally rather than as the specific
+limitation of a specific architecture, and funding contracted
+accordingly. The decade that followed is sometimes called the AI
+winter; the multilayer response that ended it is the subject of
+the next subsection.
+
+\subsubsection{The Multilayer Response}
+
+Adding a layer of nonlinear units \emph{between} the input and the
+output produces a function class that can represent XOR (and much
+else besides). Concretely: a multilayer perceptron (MLP) with $L$
+layers, hidden widths $d_1, \dots, d_{L-1}$, and an elementwise
+activation $\varphi$ is the composition
+\begin{align}
+  h^{(0)} &\;=\; x, \nonumber \\
+  z^{(\ell)} &\;=\; W^{(\ell)} h^{(\ell-1)} + b^{(\ell)},
+    \quad \ell = 1, \dots, L, \nonumber \\
+  h^{(\ell)} &\;=\; \varphi\!\bigl(z^{(\ell)}\bigr),
+    \quad \ell = 1, \dots, L-1, \nonumber \\
+  f_\theta(x) &\;=\; h^{(L)} \;=\; z^{(L)},
+  \label{eq:nn-mlp}
+\end{align}
+with parameters $\theta = (W^{(\ell)}, b^{(\ell)})_{\ell=1}^{L}$.
+The final layer typically omits the activation when the output is
+a real-valued vector (regression) or applies a softmax when the
+output is a categorical distribution (classification, including
+language modelling per Chapter~1). The intermediate layers
+\emph{must} apply a nonlinearity: a composition of affine
+transformations alone is itself affine, so depth without
+nonlinearity buys nothing. We will see in §3 that the choice of
+$\varphi$ matters; for now it suffices to know that any
+non-polynomial $\varphi$ that is nonlinear gives the function
+class real expressive reach.
+
+\subsubsection{Universal Approximation, in One Paragraph}
+
+The classical existence theorems make the expressive reach
+precise. \citet{cybenko1989approximation} proved that an MLP with
+one hidden layer and a sigmoidal activation can approximate any
+continuous function on a compact subset of $\R^d$ to arbitrary
+accuracy, given sufficient hidden width.
+\citet{hornik1991approximation} extended the result: any
+non-polynomial elementwise activation suffices. These are
+existence theorems about \emph{representability}; they tell us
+what an MLP \emph{can} compute. They tell us nothing about the
+hidden width required (which can be exponentially large in the
+input dimension), nothing about the number of training examples
+needed, and nothing about whether stochastic gradient descent
+will actually \emph{find} a good approximation in a reasonable
+amount of time. For the engineering question of whether SGD
+trains a usable model, universal approximation is necessary but
+profoundly insufficient. The remainder of this chapter is about
+the operational machinery that turns the existence theorem into a
+trainable network.
+
+\subsubsection{What This Chapter Will and Will Not Derive}
+
+The function class of \eqref{eq:nn-mlp} is the object of study.
+The chapter's job is to give the reader the operational machinery
+that makes this class trainable in practice: an algorithm to
+compute gradients (\S\ref{sec:nn-backprop}, backpropagation), a
+choice of activation that does not stall those gradients
+(\S\ref{sec:nn-activations}), an initialisation that does not
+make the network start in a degenerate regime
+(\S\ref{sec:nn-init}), a normalisation that keeps the activation
+distribution from drifting during training
+(\S\ref{sec:nn-norm}), and a residual connection that lets depth
+be added without compounding the optimisation problem
+(\S\ref{sec:nn-residual}). Existence theorems are
+acknowledged. Trainability is the working subject.
+
+% --- END §1 ---
+% Next: §2 Backpropagation (Task 7).
