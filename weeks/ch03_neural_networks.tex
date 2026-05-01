@@ -1,0 +1,143 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 3 -- NEURAL NETWORKS
+%% Working draft. Not yet included in main.tex; will be
+%% integrated, with renumbering of existing CH3-CH12 to
+%% CH4-CH13, in Task 12 of the Wave 11 task list.
+%%
+%% Currently contains: Setting the Scene prologue (Task 4).
+%% Body sections, scaffolding, worked examples, and end matter
+%% will be appended in Tasks 5-11.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Neural Networks}
+\label{sec:neural-networks}
+
+\subsection*{Setting the Scene}
+\addcontentsline{toc}{subsection}{Setting the Scene}
+
+\paragraph{The problem.}
+You have, by this point, two of the three things you need to train
+a Large Language Model. From Chapter~1 you have the loss --- the
+cross-entropy that asks, of any probability distribution over next
+tokens, how surprised it was by the token that actually came next.
+From Chapter~2 you have the optimiser --- stochastic gradient
+descent, with its learning-rate schedules and its bias-corrected
+moments and its Chinchilla-shaped compute budgets. What you do not
+yet have is the \emph{function class} that the optimiser is
+updating. That is the subject of this chapter. Before we can
+compose the Transformer in Chapter~4, we need to introduce, one at
+a time, the pieces it composes: a layer, a stack of layers, a way
+to compute gradients through that stack, a choice of activation, a
+method for initialising the weights, a normalisation, and a trick
+for keeping deep stacks trainable. This chapter is the place where
+each of those pieces enters the book.
+
+\paragraph{How we got here.}
+The idea that a network of simple units could learn a function from
+examples is older than the computer that could run it. Frank
+Rosenblatt, at Cornell in 1958, built the perceptron --- a single
+linear threshold unit that could be trained to classify inputs by
+adjusting its weights in proportion to its errors. The perceptron
+was, briefly, a sensation. It was also limited: in 1969 Marvin
+Minsky and Seymour Papert proved that no single linear threshold
+unit could represent the exclusive-or of two inputs, and in the
+backlash that followed the field receded for a decade.
+
+The decisive response was depth. Paul Werbos, in his 1974 Harvard
+PhD thesis, wrote down a recognisable derivation of what we now
+call backpropagation --- the algorithm by which the chain rule of
+calculus computes gradients through a multi-layer composition.
+Backpropagation sat largely unread until 1986, when David
+Rumelhart, Geoffrey Hinton, and Ronald Williams published a paper
+in \emph{Nature} that brought it to the attention of an audience
+ready to use it. Yann LeCun, at AT\&T, showed in 1989 that the
+same algorithm could train a network to read handwritten zip
+codes; the field had its first large-scale demonstration that
+depth on real problems was tractable. Sepp Hochreiter and J\"urgen
+Schmidhuber, in 1997, diagnosed the vanishing-gradient problem in
+deep recurrent networks and proposed the gated cell that solved
+it.
+
+The next move was to make plain feed-forward depth work without
+elaborate pre-training. Geoffrey Hinton, Simon Osindero, and
+Yee-Whye Teh proposed a layer-wise pre-training recipe in 2006
+that briefly closed the gap. Xavier Glorot and Yoshua Bengio in
+2010 introduced the variance-preserving initialisation that made
+the recipe unnecessary; the same year, Vinod Nair and Geoffrey
+Hinton showed that the rectified linear unit --- a function so
+simple it had been overlooked --- removed one of the main
+bottlenecks in the gradient signal. The 2012 AlexNet paper, by
+Alex Krizhevsky, Ilya Sutskever, and Geoffrey Hinton, took these
+pieces to ImageNet at scale and won by a margin that ended the
+debate about whether deep networks worked.
+
+The remaining pieces converged in the years that followed. Sergey
+Ioffe and Christian Szegedy added batch normalisation in 2015.
+Kaiming He and his coauthors gave us, in two papers that same year,
+both the ReLU-tuned variant of the Glorot init and the residual
+connection that made networks of more than a hundred layers
+trainable. Jimmy Ba, Jamie Ryan Kiros, and Geoffrey Hinton in 2016
+introduced layer normalisation, the variant that survived into
+the Transformer. Dan Hendrycks and Kevin Gimpel, also in 2016,
+replaced the rectifier with a smoothed version called GeLU. Biao
+Zhang and Rico Sennrich, in 2019, simplified layer normalisation
+into RMSNorm. And Noam Shazeer, in 2020, identified the gated
+activation variants (SwiGLU among them) that now sit inside almost
+every Transformer's feed-forward block. Six decades of named
+contributions, and the modern neural network is what you get when
+you compose them.
+
+\paragraph{Where we stand.}
+A modern neural network used inside a Large Language Model is a
+stack of differentiable transformations. Each transformation is a
+linear layer (multiply by a weight matrix, add a bias vector)
+followed by an elementwise nonlinearity. The whole network is
+trained by gradient descent, with the gradients computed by
+backpropagation. The depths that turned out to be useful --- tens
+to hundreds of layers --- are made trainable by three engineering
+moves: weight initialisation that preserves the variance of
+activations across layers, a normalisation applied at each layer
+to re-establish that variance after training has perturbed it, and
+a residual connection that lets the optimiser learn small
+corrections to an identity mapping rather than the full
+transformation outright. Each of these moves was a response to a
+specific failure of the design that came before; none was
+inevitable. The Transformer of Chapter~4 is what you get when you
+take this neural-network template and add the attention mechanism
+on top.
+
+\paragraph{What goes wrong.}
+The failure modes of neural networks are the engineering
+vocabulary of the field, and they recur often enough that you
+should learn to recognise them. The first is \emph{vanishing
+gradients}: in a deep network with the wrong initialisation or
+the wrong activation, the gradient signal shrinks exponentially
+with depth, and the early layers cease to learn. The second is
+\emph{exploding gradients}: the same mechanism in reverse, with
+activations and gradients growing past the range of floating-point
+arithmetic until the network produces NaNs and the run dies. The
+third is the \emph{dead-neuron problem}: a unit whose
+pre-activation is permanently negative under a ReLU receives zero
+gradient forever, becoming an ineffective contributor. The fourth
+is the \emph{expressive-versus-trainable} gap: a network
+architecture that \emph{can} represent the function we want is
+not necessarily a network that the optimiser \emph{will find}
+such a representation in. Each of these failures has a concrete
+remedy --- careful initialisation, the right activation,
+normalisation, residual paths --- and each remedy is one of the
+moves this chapter unpacks.
+
+Before that unpacking begins, a note on prerequisites. If you
+have taken a course in deep learning and can write down
+backpropagation on a whiteboard, you can skim or skip this
+chapter; the material that follows is the foundational floor the
+rest of the book stands on, and it will not surprise you. If you
+have not, this is the chapter where the rest of the book becomes
+legible. Either way, the goal is the same: to arrive at Chapter~4
+with the function class in hand, ready to meet the architecture
+that has, for now, eaten the field.
+
+% --- END Setting the Scene ---
+% Subsequent sections (Learning Objectives, Components Covered,
+% Notation, §1-§7, Worked Examples, end matter) follow in
+% Tasks 5-11.
