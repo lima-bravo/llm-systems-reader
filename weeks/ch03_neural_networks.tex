@@ -138,6 +138,133 @@ with the function class in hand, ready to meet the architecture
 that has, for now, eaten the field.
 
 % --- END Setting the Scene ---
-% Subsequent sections (Learning Objectives, Components Covered,
-% Notation, §1-§7, Worked Examples, end matter) follow in
-% Tasks 5-11.
+
+\subsection{Learning Objectives}
+
+By the end of this chapter, you should be able to:
+\begin{itemize}
+  \item Define a multilayer perceptron as a composition of affine
+        layers and elementwise nonlinearities, and state the
+        universal-approximation result and its limits.
+  \item Derive backpropagation by applying the calculus chain rule
+        to a multi-layer composition; state the forward / backward
+        FLOP equivalence that Chapters~2 and~4 use without proof.
+  \item Pick an activation function (sigmoid, tanh, ReLU, GeLU,
+        SwiGLU) given a task, a depth, and the resulting
+        gradient-flow constraints.
+  \item Initialise the weights of a feed-forward network using
+        Xavier or He, justify the variance-preservation argument
+        underneath both, and connect that argument to the
+        $1/\sqrt{d_k}$ scaling Chapter~4 derives for attention.
+  \item Distinguish BatchNorm, LayerNorm, and RMSNorm, and explain
+        why Transformers use the latter two and not the first.
+  \item Explain residual connections as identity-path stability,
+        and state why depth becomes trainable when they are
+        present and stalls when they are not.
+  \item Identify the MLP block as the foundational primitive that
+        Chapter~4 composes, alongside attention, into the
+        Transformer's feed-forward sublayer.
+\end{itemize}
+
+\subsection{LLM Components Covered}
+
+\textbf{Foundational primitives}
+\begin{itemize}
+  \item Affine (linear) layers and the multilayer perceptron (MLP).
+  \item Backpropagation as the calculus-chain-rule implementation
+        of the gradient through a layered composition.
+  \item Activation functions: sigmoid, tanh, ReLU, GeLU, GLU and
+        SwiGLU.
+  \item Weight initialisation: Xavier/Glorot for tanh-style
+        activations, He/Kaiming for ReLU-family activations.
+  \item Normalisation layers: BatchNorm (overview only), LayerNorm,
+        and RMSNorm.
+  \item Residual / skip connections and the identity-path argument.
+\end{itemize}
+
+\textbf{Forward references}
+\begin{itemize}
+  \item Chapter~4 composes the primitives above into the
+        Transformer's feed-forward block, derives the pre-norm
+        placement, and gives the full residual-stream
+        interpretation.
+  \item Chapter~7 inserts low-rank deltas (LoRA) into the linear
+        layers introduced here and uses He initialisation in the
+        process.
+  \item Chapter~8 reuses the logistic sigmoid as the link function
+        in the Bradley--Terry preference model; the activation
+        and the link function happen to be the same scalar
+        transform.
+\end{itemize}
+
+\subsection{Notation and Standing Assumptions}
+\label{sec:nn-notation}
+
+\begin{notationbox}
+A neural network in this chapter is a function
+$f_\theta : \R^{d_{\mathrm{in}}} \to \R^{d_{\mathrm{out}}}$
+with parameter vector $\theta$. The network has $L$ layers, indexed
+$\ell \in \{1, \dots, L\}$. We write $h^{(\ell)} \in \R^{d_\ell}$
+for the activations at layer $\ell$, with $h^{(0)} = x$ the input
+and $h^{(L)} = f_\theta(x)$ the output. Each layer's parameters are
+the weight matrix $W^{(\ell)} \in \R^{d_\ell \times d_{\ell-1}}$
+and the bias vector $b^{(\ell)} \in \R^{d_\ell}$. The
+\emph{pre-activation} at layer $\ell$ is
+$z^{(\ell)} = W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}$; the
+\emph{post-activation} is
+$h^{(\ell)} = \varphi(z^{(\ell)})$ where $\varphi : \R \to \R$ is
+the elementwise nonlinearity (applied componentwise). The scalar
+loss being minimised is $\mathcal{L}(\theta)$; from Chapter~1, this
+is typically the cross-entropy under the empirical distribution.
+
+\textbf{On the symbol $\varphi$ versus $\sigma$.}
+We deliberately use $\varphi$ for the generic activation function,
+not $\sigma$. The reason is that the symbol $\sigma$ is overloaded
+in the rest of the book. Chapter~4 uses $\sigma$ both for the
+activation inside the FFN equation and, in the LayerNorm
+expression, for the per-token standard deviation. Chapter~8 uses
+$\sigma(\cdot)$ for the logistic sigmoid as the link function in
+the Bradley--Terry log-likelihood. To avoid confusion, this
+chapter reserves $\sigma$ for the specific logistic sigmoid
+$\sigma(z) = (1 + e^{-z})^{-1}$ and uses $\varphi$ when we mean
+``some elementwise activation function, ReLU or GeLU or whatever
+the design choice happens to be.''
+
+\textbf{On the phrase ``chain rule''.}
+Chapter~1 used the phrase ``chain rule'' to refer to the
+\emph{probability} chain rule that factorises a joint distribution
+over a sequence into a product of conditionals,
+$P(x_1, \dots, x_T) = \prod_t P(x_t \mid x_{<t})$. This chapter
+uses ``chain rule'' to refer to the \emph{calculus} chain rule
+that propagates gradients through a composition of differentiable
+functions, $(f \circ g)'(x) = f'(g(x)) \cdot g'(x)$. The two are
+different theorems with the same name. Where ambiguity is
+possible, we will say ``probability chain rule'' or ``calculus
+chain rule'' explicitly.
+
+\textbf{Standing assumptions.}
+\begin{itemize}
+  \item[A3.1] Each layer is differentiable almost everywhere.
+        ReLU's non-differentiability at $z = 0$ is handled by
+        convention: we take $\varphi'(0) := 0$, so that the
+        backward pass is well-defined at every input.
+  \item[A3.2] Inputs and parameters are real-valued and finite.
+        Implementations evaluate the network in IEEE-754
+        floating-point (typically fp32 master weights with bf16
+        compute, per Chapter~2's mixed-precision recipe); we
+        ignore the resulting rounding error in derivations and
+        flag it explicitly when it matters operationally.
+  \item[A3.3] The loss $\mathcal{L}$ is the empirical
+        cross-entropy from Chapter~1, averaged over a minibatch
+        of (context, token) pairs. Worked examples in this
+        chapter occasionally use the squared-error loss for
+        regression-style illustrations; this is a pedagogical
+        choice and does not contradict A3.3, which describes the
+        loss for the LLM training the rest of the book is about.
+\end{itemize}
+\end{notationbox}
+
+% --- END Scaffolding ---
+% Body sections (§1 The Neural Network as a Function Class
+% through §7 The MLP Block as a Transformer Primitive),
+% Worked Examples A and B, and end matter follow in Tasks 6-11.
