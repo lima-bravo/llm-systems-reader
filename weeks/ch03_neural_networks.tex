@@ -1133,4 +1133,98 @@ The residual connection introduced here is the substrate that
 makes that view possible.
 
 % --- END §6 ---
-% Next: §7 The MLP Block as a Transformer Primitive (Task 12).
+
+\subsection{The MLP Block as a Transformer Primitive}
+\label{sec:nn-mlp-block}
+
+The pieces this chapter has assembled --- linear layers, an
+activation choice, a variance-preserving initialiser, a
+normaliser, and a residual connection --- compose into the
+\emph{feed-forward block} that sits at the heart of every
+Transformer layer. We will not derive the composition here;
+that is Chapter~4's job. We will name it, so the reader knows
+what is coming.
+
+\subsubsection{The FFN}
+
+Inside a Transformer block, between two attention sublayers, each
+token is processed independently by a small two-layer MLP. The
+canonical form is
+\begin{equation}
+  \mathrm{FFN}(x) \;=\; W_2 \, \varphi\!\bigl(W_1 x + b_1\bigr) + b_2,
+  \qquad
+  W_1 \in \R^{d_f \times d},
+  \quad
+  W_2 \in \R^{d \times d_f},
+  \label{eq:nn-ffn}
+\end{equation}
+where $d$ is the token's embedding dimension and $d_f$ is the
+hidden width of the feed-forward block, typically $d_f = 4d$ for
+classical activations or $d_f = \tfrac{8}{3} d$ for SwiGLU
+variants (so total parameters stay roughly fixed when the third
+projection of SwiGLU is added; \S\ref{sec:nn-activations}). The
+``position-wise'' qualifier means \eqref{eq:nn-ffn} is applied to
+every token's representation independently, with the same
+$(W_1, W_2, b_1, b_2)$ shared across positions. The block is
+just a two-layer MLP of \eqref{eq:nn-mlp}, instantiated at every
+position with shared weights.
+
+\subsubsection{Why the FFN Dominates the Parameter Count}
+
+A rough accounting tells the story. The attention sublayer has
+four projection matrices $W_Q, W_K, W_V, W_O$, each of shape
+$d \times d$, contributing $4 d^2$ parameters per layer. The
+feed-forward block has two matrices of shape $d_f \times d = 4d
+\times d$, contributing $2 \cdot 4 d^2 = 8 d^2$ parameters per
+layer. Twelve total at $4d^2$ per matrix unit, eight of which
+sit in the FFN: roughly two-thirds of a Transformer block's
+parameters. The exact ratio depends on the architectural choices
+(GQA reduces attention parameters; SwiGLU adds a third FFN
+projection), but the headline does not change. \emph{The FFN is
+where the Transformer's parameter budget lives.} Chapter~4 walks
+the FLOP and parameter accounting in full; this section flags the
+result so that adaptation discussions later in the book (LoRA in
+Chapter~7, MoE in Chapter~6) make sense in advance.
+
+\subsubsection{The Handoff to Chapter 4}
+
+By the end of this chapter you have:
+
+\begin{itemize}
+  \item Linear layers and the multilayer perceptron
+        (\S\ref{sec:nn-function-class}, Eq.~\ref{eq:nn-mlp});
+  \item Backpropagation, the $\delta$-recursion, and the
+        forward/backward FLOP equivalence underwriting
+        Chapter~2's $6ND$ rule
+        (\S\ref{sec:nn-backprop},
+        Eqs.~\ref{eq:nn-delta-recursion}--\ref{eq:nn-param-grads});
+  \item The progression of activations from sigmoid to SwiGLU,
+        and the design rules for picking among them
+        (\S\ref{sec:nn-activations}, Eqs.~\ref{eq:nn-relu},
+        \ref{eq:nn-gelu}, \ref{eq:nn-glu});
+  \item Variance-preserving initialisation (Xavier and He) and
+        the bridge to attention's $1/\sqrt{d_k}$ scaling
+        (\S\ref{sec:nn-init}, Eqs.~\ref{eq:nn-xavier},
+        \ref{eq:nn-he-init});
+  \item LayerNorm and RMSNorm, and the rationale for using them
+        instead of BatchNorm
+        (\S\ref{sec:nn-norm}, Eqs.~\ref{eq:nn-layernorm},
+        \ref{eq:nn-rmsnorm});
+  \item Residual connections and the gradient-flow and
+        optimisation-floor arguments that explain why deep
+        residual stacks train where deep plain stacks did not
+        (\S\ref{sec:nn-residual}, Eq.~\ref{eq:nn-residual}).
+\end{itemize}
+
+Chapter~4 will compose these pieces, add the attention
+mechanism, derive the $1/\sqrt{d_k}$ scaling using the
+variance-preservation argument from \S\ref{sec:nn-init},
+combine attention and FFN into a single Transformer block via
+two residual sublayers, choose between LayerNorm and RMSNorm and
+between pre-norm and post-norm placement, and walk the FLOP and
+KV-cache accounting that follows. The Transformer of Chapter~4
+is the arrangement of pieces this chapter has just laid on the
+bench.
+
+% --- END §7 ---
+% Next: Worked Examples A and B (Task 13).
