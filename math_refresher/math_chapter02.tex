@@ -1,11 +1,11 @@
-\section{Week 2 Refresher: Optimization and Scaling}
+\section{Chapter 2 Refresher: Optimization, Generalization, and Scaling Intuition --- Optimization and Scaling}
 
 \subsection*{Setting the Scene}
-Week 2 uses optimization theory as an engineering discipline. The loss from Week 1 tells us \emph{what} to optimize; this week studies \emph{how} optimization behaves under stochastic gradients, finite precision arithmetic, and finite compute budgets.
+Chapter 2 uses optimization theory as an engineering discipline. The loss from Chapter 1 tells us \emph{what} to optimize; this refresher chapter studies \emph{how} optimization behaves under stochastic gradients, finite precision arithmetic, and finite compute budgets.
 
 Historically, deterministic gradient methods gave the first general template. Momentum methods then addressed oscillatory or noisy updates. Adaptive optimizers (RMSProp/Adam line) improved practical stability under heterogeneous gradient scales. Large-scale training then forced two additional layers of reasoning: numerical precision management and empirical scaling laws for planning model/data/compute tradeoffs.
 
-The critical insight along this path is that optimization rules are not interchangeable implementation details. They encode assumptions about noise, curvature, and numerical regime. This chapter's mathematics is the language for checking when those assumptions are plausible.
+The critical insight along this path is that optimization rules are not interchangeable implementation details. They encode assumptions about noise, curvature, and numerical regime. That chapter's mathematics is the language for checking when those assumptions are plausible.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -91,7 +91,7 @@ Suppose a run exhibits:
   \item mixed-precision overflow warnings.
 \end{itemize}
 
-Use the week's reasoning chain:
+Use the refresher's reasoning chain:
 \begin{enumerate}[leftmargin=1.5em]
   \item \textbf{Diagnose instability source.} Early oscillation plus spikes suggests oversized effective step on high-curvature/noisy minibatches.
   \item \textbf{Apply clipping policy.} With threshold $\tau=20$, a spike at norm 140 is rescaled by factor $20/140\approx0.143$.
@@ -117,8 +117,8 @@ m_1=0.1\cdot2=0.2,\quad m_2=0.9(0.2)+0.1(2)=0.38,\quad m_3=0.542.
 
 \subsection*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
-  \item Loss and KL notation: see Week 1 refresher.
-  \item Matrix and norm geometry used by clipping and curvature intuition: see Week 3 refresher.
+  \item Loss and KL notation: see Chapter 1 refresher.
+  \item Matrix and norm geometry used by clipping and curvature intuition: see Chapter 4 refresher.
 \end{itemize}
 
 \subsection*{References and What To Use Them For}

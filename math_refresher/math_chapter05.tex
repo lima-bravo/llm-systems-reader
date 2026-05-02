@@ -1,7 +1,7 @@
-\section{Week 4 Refresher: Attention, Shapes, and Complexity}
+\section{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
 
 \subsection*{Setting the Scene}
-Week 4 is where linear algebra becomes computational architecture. The historical move from recurrence/convolution to attention was motivated by path length and parallelism: make long-range interactions explicit as matrix operations.
+Chapter 5 is where linear algebra becomes computational architecture. The historical move from recurrence/convolution to attention was motivated by path length and parallelism: make long-range interactions explicit as matrix operations.
 
 The critical insight is that attention is not mysterious. It is a chain of shape-constrained multiplications plus a normalization. If the shape bookkeeping is clear, the reasoning remains clear.
 
@@ -68,8 +68,8 @@ Interpretation: causality is enforced at score level, not corrected later at out
 
 \subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
-  \item Shape and vector geometry reminders: see Week 3 refresher.
-  \item Softmax stability reminders: see Week 1 refresher.
+  \item Shape and vector geometry reminders: see Chapter 4 refresher.
+  \item Softmax stability reminders: see Chapter 1 refresher.
   \item \textbf{Vaswani et al. (2017)} --- architectural equations and design rationale.
   \item \textbf{Annotated Transformer} --- equation-by-equation implementation mapping.
 \end{itemize}

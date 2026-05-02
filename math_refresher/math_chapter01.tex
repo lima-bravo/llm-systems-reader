@@ -1,7 +1,7 @@
-\section{Week 1 Refresher: Probability, Likelihood, and Calibration}
+\section{Chapter 1 Refresher: Statistical Learning Foundations for Large Language Models --- Probability, Likelihood, and Calibration}
 
 \subsection*{Setting the Scene}
-This chapter uses a specific branch of probability theory: the branch that turns uncertain events into measurable predictive statements. In practice, the reader will use four ingredients repeatedly: conditional probability, the chain rule, expectation, and logarithmic scoring.
+Chapter~1 of the reader uses a specific branch of probability theory: the branch that turns uncertain events into measurable predictive statements. In practice, the reader will use four ingredients repeatedly: conditional probability, the chain rule, expectation, and logarithmic scoring.
 
 The path to this toolkit was gradual and each step added a new capability:
 \begin{itemize}[leftmargin=1.5em]
@@ -13,7 +13,7 @@ The path to this toolkit was gradual and each step added a new capability:
 \end{itemize}
 This sequence is exactly the reasoning path used in modern language modeling.
 
-The critical insight for this week is that language modeling does not require a new probability theory. It requires careful use of known results in a specific sequence. We use conditional probability to represent next-token prediction, chain rule to represent whole sequences, logarithms to make optimization stable and additive, and information-theoretic quantities to interpret what loss values mean.
+The critical insight for Chapter~1 is that language modeling does not require a new probability theory. It requires careful use of known results in a specific sequence. We use conditional probability to represent next-token prediction, chain rule to represent whole sequences, logarithms to make optimization stable and additive, and information-theoretic quantities to interpret what loss values mean.
 
 The purpose of this refresher is to rebuild that sequence gently. The target is not symbolic performance. The target is that each mathematical move has a clear intent in the reasoning chain.
 
@@ -114,7 +114,7 @@ Assume a validation slice with $N=1000$ predicted tokens. We observe:
   \item Mean confidence of top-1 predictions $=0.78$.
   \item Actual top-1 accuracy $=0.64$.
 \end{itemize}
-Now reason in the chain used in this chapter:
+Now reason in the chain used in Chapter~1:
 
 \textbf{Step 1: Loss to perplexity.}
 \[
@@ -130,9 +130,9 @@ Despite moderate loss, confidence-accuracy gap is
 The model is overconfident by 14 percentage points on average.
 
 \textbf{Step 3: Why this matters for downstream chapters.}  
-Week 8 (alignment) can reduce harmful outputs while still leaving calibration issues.  
-Week 9 (RAG/evaluation) can improve factual grounding while confidence remains miscalibrated.  
-Therefore this week's distinction between fit quality and confidence quality is operational, not philosophical.
+Chapter 9 (alignment) can reduce harmful outputs while still leaving calibration issues.  
+Chapter 10 (RAG/evaluation) can improve factual grounding while confidence remains miscalibrated.  
+Therefore the distinction between fit quality and confidence quality is operational, not philosophical.
 
 \textbf{Step 4: Practical intervention path.}
 \begin{enumerate}[leftmargin=1.5em]

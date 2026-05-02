@@ -1,7 +1,7 @@
-\section{Week 5 Refresher: Pretraining Objective and Decoding Controls}
+\section{Chapter 6 Refresher: Pretraining, GPT-Style Models, and In-Context Learning --- Pretraining Objective and Decoding Controls}
 
 \subsection*{Setting the Scene}
-Week 5 connects statistical learning and generation behavior. Historically, this is where language modeling moved from ``fit data well'' to ``control generation behavior under constraints.'' The critical insight is that decoding is distribution shaping, not retraining.
+Chapter 6 connects statistical learning and generation behavior. Historically, this is where language modeling moved from ``fit data well'' to ``control generation behavior under constraints.'' The critical insight is that decoding is distribution shaping, not retraining.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -15,7 +15,7 @@ Week 5 connects statistical learning and generation behavior. Historically, this
 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Autoregressive NLL objective:} same probability chain as Week 1, now at pretraining scale.
+  \item \textbf{Autoregressive NLL objective:} same probability chain as Chapter 1, now at pretraining scale.
   \item \textbf{Temperature transform:}
   \[
     p_i(\tau)=\frac{\exp(z_i/\tau)}{\sum_j \exp(z_j/\tau)}.
@@ -27,9 +27,9 @@ Week 5 connects statistical learning and generation behavior. Historically, this
 
 \subsection*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
-  \item CE/KL/perplexity: see Week 1 refresher.
-  \item Optimizer and scaling-law mechanics: see Week 2 refresher.
-  \item Attention architecture assumptions: see Week 4 refresher.
+  \item CE/KL/perplexity: see Chapter 1 refresher.
+  \item Optimizer and scaling-law mechanics: see Chapter 2 refresher.
+  \item Attention architecture assumptions: see Chapter 5 refresher.
 \end{itemize}
 
 \subsection*{How These Results Build on Each Other}

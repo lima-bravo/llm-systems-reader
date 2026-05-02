@@ -1,7 +1,7 @@
-\section{Week 7 Refresher: Low-Rank Adaptation and Quantization}
+\section{Chapter 8 Refresher: Model Adaptation, LoRA, Quantization, and Deployment Reality --- Low-Rank Adaptation and Quantization}
 
 \subsection*{Setting the Scene}
-Week 7 studies approximation as a design tool. The evolution from full fine-tuning to parameter-efficient adaptation and quantized deployment was driven by memory/cost constraints. The key insight is to treat each approximation as a hypothesis with measurable error, not a free performance gain.
+Chapter 8 studies approximation as a design tool. The evolution from full fine-tuning to parameter-efficient adaptation and quantized deployment was driven by memory/cost constraints. The key insight is to treat each approximation as a hypothesis with measurable error, not a free performance gain.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -73,9 +73,9 @@ Decision: reject current quantization profile or introduce subgroup-aware gate.
 
 \subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
-  \item Rank and linear-algebra background: see Week 3 refresher.
-  \item Optimizer/memory arithmetic: see Week 2 refresher.
-  \item Systems bottlenecks and throughput: see Week 6 refresher.
+  \item Rank and linear-algebra background: see Chapter 4 refresher.
+  \item Optimizer/memory arithmetic: see Chapter 2 refresher.
+  \item Systems bottlenecks and throughput: see Chapter 7 refresher.
   \item \textbf{LoRA (Hu et al.)} --- low-rank adaptation mechanics.
   \item \textbf{QLoRA (Dettmers et al.)} --- quantization plus adapter training.
 \end{itemize}

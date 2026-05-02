@@ -24,11 +24,11 @@ The goal is memory rekindling and intuition building, not proving theorems from 
 - Introduce symbols before use and define notation explicitly.
 - Avoid high-level claims without the chain of insights that makes them meaningful.
 
-## Required Chapter Structure (per `math_weekXX.tex`)
+## Required Chapter Structure (per `math_chapterNN.tex`)
 
 1. `Setting the Scene`
-   - Explain what math is used in this week.
-   - Explain why that math is needed for this chapter.
+   - Explain what math is used in this reader chapter.
+   - Explain why that math is needed for that chapter.
    - Include concise historical development:
      - key contributors/body of work,
      - critical insights,
@@ -66,8 +66,8 @@ The goal is memory rekindling and intuition building, not proving theorems from 
 ## Cross-Chapter Rules
 
 - If later chapters reuse earlier math, include pointers instead of full duplication.
-- Keep symbol semantics consistent across weeks (same symbol, same meaning unless explicitly redefined).
-- When reusing a construct from prior weeks, briefly remind intent before using it.
+- Keep symbol semantics consistent across refresher chapters (same symbol, same meaning unless explicitly redefined).
+- When reusing a construct from prior refresher chapters, briefly remind intent before using it.
 
 ## Tone and Voice
 

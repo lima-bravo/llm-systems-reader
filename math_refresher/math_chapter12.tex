@@ -1,7 +1,7 @@
-\section{Week 11 Refresher: Latency, Queues, and Reliability Budgets}
+\section{Chapter 12 Refresher: Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol --- Latency, Queues, and Reliability Budgets}
 
 \subsection*{Setting the Scene}
-Week 11 brings probability back into systems operations. Queueing theory, retry arithmetic, and budget constraints determine whether an otherwise capable model can be deployed reliably. The key insight is compounding: small per-request probabilities become large system effects at scale.
+Chapter 12 brings probability back into systems operations. Queueing theory, retry arithmetic, and budget constraints determine whether an otherwise capable model can be deployed reliably. The key insight is compounding: small per-request probabilities become large system effects at scale.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -70,9 +70,9 @@ Interpretation: retry policy can push system into tail-latency regime even when 
 
 \subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
-  \item Systems scaling and bottlenecks: see Week 6 refresher.
-  \item Evaluation and trust boundaries: see Week 9 refresher.
-  \item Risk thresholding and controls: see Week 10 refresher.
+  \item Systems scaling and bottlenecks: see Chapter 7 refresher.
+  \item Evaluation and trust boundaries: see Chapter 10 refresher.
+  \item Risk thresholding and controls: see Chapter 11 refresher.
   \item \textbf{Harchol-Balter} --- queueing and latency scaling.
   \item \textbf{SRE workbooks} --- retries/backoff/overload control design.
 \end{itemize}

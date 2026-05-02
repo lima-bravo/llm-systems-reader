@@ -1,4 +1,4 @@
-\section{Week 6 Refresher: Systems Arithmetic and Sparse Routing}
+\section{Chapter 7 Refresher: Efficiency, Scaling, and Mixture-of-Experts --- Systems Arithmetic and Sparse Routing}
 
 \subsection*{Setting the Scene}
 The core mathematics here is systems constraint reasoning. The historical shift to large-scale LLMs forced training/inference analysis to include network and memory constraints, not only FLOPs. The key insight is that bottlenecks migrate.
@@ -61,9 +61,9 @@ Interpretation: sparse compute improved one axis but exposed another, so optimiz
 
 \subsection*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
-  \item Optimization and memory accounting: see Week 2 refresher.
-  \item Attention complexity and KV behavior: see Week 4 refresher.
-  \item Decoding/token-rate implications: see Week 5 refresher.
+  \item Optimization and memory accounting: see Chapter 2 refresher.
+  \item Attention complexity and KV behavior: see Chapter 5 refresher.
+  \item Decoding/token-rate implications: see Chapter 6 refresher.
   \item \textbf{Shazeer et al. / Switch Transformer papers} --- sparse routing mechanics and load balancing.
   \item \textbf{Harchol-Balter performance modeling} --- bottleneck and throughput reasoning.
 \end{itemize}
