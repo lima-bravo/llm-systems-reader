@@ -756,4 +756,126 @@ result of that arc converging on a small handful of robust
 defaults.
 
 % --- END §3 ---
-% Next: §4 Weight Initialization (Task 9).
+
+\subsection{Weight Initialization}
+\label{sec:nn-init}
+
+\subsubsection{Why Initialisation Matters}
+
+A neural network with the wrong initial weights does not train.
+Two failure modes show up at depth, and they are mirror images of
+each other.
+
+\textbf{Variance collapse.} If the weights start too small, the
+activations shrink toward zero as they propagate forward through
+the layers, and so do the gradients as they propagate backward
+through them. By the time the loss reaches the output layer the
+activations are uniform; by the time the gradient reaches the
+input layer it is rounding noise. The early layers do not
+receive a useful gradient and never learn.
+
+\textbf{Variance explosion.} If the weights start too large, the
+activations grow exponentially in depth, the pre-activations
+saturate any bounded nonlinearity (sigmoid, tanh) or push past
+the range of floating-point arithmetic, and gradients spike to
+NaN. The training run fails on the first few steps.
+
+The middle ground --- weights chosen so that the
+activation variance is preserved layer-to-layer at initialisation
+--- is what \citet{glorot2010understanding} and
+\citet{he2015delving} formalised. Their derivations are short and
+worth working through.
+
+\subsubsection{The Variance-Preservation Argument}
+
+We want, at initialisation, $\Var(h^{(\ell)}) \approx
+\Var(h^{(\ell-1)})$ across all layers. Consider a single linear
+layer $z = W h$ with $W \in \R^{d_{\mathrm{out}} \times
+d_{\mathrm{in}}}$. \Assum\ The weights $W_{ij}$ are drawn i.i.d.\
+with $\E[W_{ij}] = 0$ and $\Var(W_{ij}) = \tau^2$, the input
+components $h_j$ are i.i.d.\ with $\E[h_j] = 0$ and
+$\Var(h_j) = \nu^2$, and $W$ and $h$ are independent of each
+other. Then for the $i$-th output component
+\[
+  z_i \;=\; \sum_{j=1}^{d_{\mathrm{in}}} W_{ij}\, h_j,
+  \qquad
+  \E[z_i] \;=\; 0,
+  \qquad
+  \Var(z_i)
+  \;=\; \sum_{j=1}^{d_{\mathrm{in}}} \Var(W_{ij}\, h_j)
+  \;=\; d_{\mathrm{in}}\, \tau^2\, \nu^2,
+\]
+where we used $\Var(W_{ij} h_j) = \E[W_{ij}^2]\E[h_j^2] = \tau^2
+\nu^2$ under independence and zero mean. Variance preservation
+$\Var(z_i) = \Var(h_j)$ then requires
+\begin{equation}
+  \tau^2 \;=\; \frac{1}{d_{\mathrm{in}}}.
+  \label{eq:nn-var-preserve}
+\end{equation}
+This is the headline. The variance of the linear output is the
+input variance times $d_{\mathrm{in}}$ times the weight variance,
+so to keep variance constant across the layer we set the weight
+variance to $1/d_{\mathrm{in}}$.
+
+\subsubsection{Xavier / Glorot Initialisation}
+
+\citet{glorot2010understanding} observed that
+\eqref{eq:nn-var-preserve} preserves variance on the
+\emph{forward} pass, but the backward pass also needs to preserve
+the gradient variance, and the relevant fan-in for the gradient
+is the layer's $d_{\mathrm{out}}$ rather than $d_{\mathrm{in}}$.
+Balancing the two goals gives the Xavier / Glorot initialiser
+\begin{equation}
+  \Var(W_{ij}) \;=\; \frac{2}{d_{\mathrm{in}} + d_{\mathrm{out}}},
+  \label{eq:nn-xavier}
+\end{equation}
+typically realised by drawing $W_{ij}$ from $\mathcal{N}(0,
+\Var(W))$ or from a uniform distribution with the same variance.
+The argument assumes the activation $\varphi$ is symmetric around
+zero with derivative roughly $1$ near the origin --- which is
+true for tanh and roughly true for the logistic sigmoid scaled
+appropriately. Glorot init was the first variance-preserving
+initialiser to make plain feed-forward depth (without
+pre-training) work reliably; it ended the layer-wise pre-training
+era documented in §\ref{sec:nn-function-class}.
+
+\subsubsection{He / Kaiming Initialisation}
+
+The Glorot derivation breaks for ReLU activations. ReLU zeros
+half of the input distribution in expectation, which halves the
+output variance:
+\[
+  \Var(\mathrm{ReLU}(z)) \;=\; \tfrac{1}{2}\, \Var(z),
+\]
+under the assumption that $z$ is symmetric around zero (a
+reasonable approximation at initialisation). To compensate,
+\citet{he2015delving} doubled the weight variance:
+\begin{equation}
+  \Var(W_{ij}) \;=\; \frac{2}{d_{\mathrm{in}}},
+  \label{eq:nn-he-init}
+\end{equation}
+which is variance-preserving across the linear-then-ReLU
+combination. He init is the modern default for ReLU-family
+networks and is the initialiser cited (typically by name) in the
+LoRA setup of Chapter~7. The factor of two is the only
+difference from a naive $1/d_{\mathrm{in}}$; the larger lesson is
+that the right init depends on the activation, not just the
+linear layer.
+
+\subsubsection{Bridge to Chapter 4: the $1/\sqrt{d_k}$ Attention Scale}
+
+The variance-preservation argument used here will reappear in
+Chapter~4 in the context of attention. The dot product $q^\top k$
+of a query and a key vector, both with $d_k$ components and
+independent zero-mean unit-variance entries, has variance $d_k$
+and standard deviation $\sqrt{d_k}$. Dividing by $\sqrt{d_k}$
+restores unit variance, exactly the same logic that gave us
+$\tau^2 = 1/d_{\mathrm{in}}$ above (square-root rather than full
+inverse because we are scaling the standard deviation rather
+than the variance). Chapter~4 derives this for the specific case
+of attention scores; this chapter has given the general form. If
+you find the $1/\sqrt{d_k}$ unmotivated when you reach
+Chapter~4, return here.
+
+% --- END §4 ---
+% Next: §5 Normalization (Task 10).
