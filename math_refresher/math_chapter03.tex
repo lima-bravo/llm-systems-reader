@@ -1,2 +1,142 @@
 \section{Chapter 3 Refresher: Neural Networks}
 \label{sec:math-refresher-neural-networks}
+
+\subsection*{Setting the Scene}
+Chapter~3 of the reader introduces the \emph{function class} \(f_\theta\) that sits between the cross-entropy objective (Chapter~1) and the optimisation machinery (Chapter~2): affine layers, elementwise nonlinearities, composition, backpropagation, activations, initialisation, normalisation, and residual paths. The mathematics is mostly multivariate calculus and linear algebra told as \emph{structured composition}: each layer is a simple map, but depth stacks many copies of the same structural pattern.
+
+Historically, Rosenblatt's perceptron showed that adjusting weights from errors could learn a separating hyperplane when one exists; Minsky and Papert's XOR observation showed that a single linear boundary is not enough for seemingly trivial logic. Depth plus nonlinearity restored expressive power. Werbos and Rumelhart--Hinton--Williams turned the calculus chain rule into an \(O(P)\)-time gradient algorithm for \(P\) parameters, making depth computationally tractable. Glorot/Bengio and He initialisation, ReLU-style activations, batch/layer normalisation, and residual connections each addressed a concrete failure mode (vanishing or exploding signals, dead units, trainability at depth). The modern LLM block is built from those responses.
+
+This refresher rebuilds the prerequisites so the reader chapter's derivations read as bookkeeping rather than magic: affine maps and dimensions, composition versus affine-only stacks, the two different ``chain rules,'' Jacobians only at the level needed to read backprop, elementwise nonlinearities and the Hadamard product, one variance identity behind Xavier/He-style scaling, XOR geometry, and the softmax cross-entropy gradient at the output layer.
+
+\subsection*{Notation Introduced in This Chapter}
+\begin{itemize}[leftmargin=1.5em]
+  \item \(x,h,z\): vectors (column vectors by default); \(h^{(\ell)}\) activations at layer \(\ell\).
+  \item \(W^{(\ell)}\): weight matrix for layer \(\ell\); \(b^{(\ell)}\): bias vector.
+  \item \(\varphi\): generic scalar activation applied \emph{elementwise}; \(\varphi'\) its derivative.
+  \item \(\sigma(\cdot)\): \emph{only} the logistic sigmoid \(\sigma(z)=1/(1+e^{-z})\) (overload avoided elsewhere in the reader).
+  \item \(\odot\): Hadamard (elementwise) product of two vectors of the same shape.
+  \item \(f \circ g\): composition, \((f \circ g)(x)=f(g(x))\).
+  \item \(J\) or \(\partial u/\partial v\): Jacobian matrix of partial derivatives (shape dictated by numerator layout below).
+  \item \(\mathcal{L}\): scalar loss; \(\theta\): flattened parameters (as in Chapter~2 refresher).
+\end{itemize}
+
+\subsection*{What You Need To Recall Precisely}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Affine layer.}
+  \[
+    z = W h_{\mathrm{in}} + b,\qquad W\in\mathbb{R}^{d_{\mathrm{out}}\times d_{\mathrm{in}}},\;
+    h_{\mathrm{in}}\in\mathbb{R}^{d_{\mathrm{in}}},\; b,z\in\mathbb{R}^{d_{\mathrm{out}}}.
+  \]
+  Without an elementwise nonlinearity, any composition of affine maps is still a single affine map; \emph{depth buys nothing}.
+
+  \item \textbf{MLP skeleton.}
+  With pre-activations \(z^{(\ell)}\), post-activations \(h^{(\ell)}=\varphi(z^{(\ell)})\) for hidden layers, and \(h^{(0)}=x\),
+  \[
+    z^{(\ell)} = W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}.
+  \]
+  The language-modelling head typically applies softmax to logits \(z^{(L)}\) (Chapter~1 refresher).
+
+  \item \textbf{Two ``chain rules'' (disambiguation).}
+  \begin{itemize}[leftmargin=1.5em]
+    \item \emph{Probability chain rule} (Chapter~1): factorises a joint as a product of conditionals, e.g.\ \(p(x_{1:T})=\prod_t p(x_t\mid x_{<t})\).
+    \item \emph{Calculus chain rule}: propagates derivatives through composed differentiable maps. Same phrase, different theorem.
+  \end{itemize}
+
+  \item \textbf{Scalar calculus chain rule.}
+  If \(y=g(u)\) and \(u=h(x)\) are differentiable scalars, \(\displaystyle\frac{dy}{dx}=\frac{dy}{du}\frac{du}{dx}\). For nested \(y=f^{(L)}\!\circ\cdots\circ f^{(1)}(x)\), multiply local derivatives along the graph from output backward.
+
+  \item \textbf{Jacobian view for vectors (reading backprop).}
+  Take scalar \(\mathcal{L}(z)\) with \(z\in\mathbb{R}^m\) depending on \(\theta\in\mathbb{R}^r\). With \emph{column} gradients \(g_z=\nabla_z \mathcal{L}\in\mathbb{R}^m\) and \(g_\theta=\nabla_\theta\mathcal{L}\in\mathbb{R}^r\),
+  \[
+    g_\theta = \Bigl(\frac{\partial z}{\partial \theta}\Bigr)^{\!\top} g_z,
+  \]
+  where \(\partial z/\partial \theta\) has shape \(m\times r\) (row \(i\): \(\partial z_i/\partial \theta\)). Each layer implements one structured Jacobian--vector product; backprop is the reverse topological walk applying those products without forming full Jacobians explicitly.
+
+  \item \textbf{Elementwise \(\varphi\) and Hadamard.}
+  If \(h=\varphi(z)\) elementwise and upstream column gradient is \(g_h=\nabla_h \mathcal{L}\), then
+  \[
+    g_z = g_h \odot \varphi'(z),
+  \]
+  with \(\varphi'(z)\) applied elementwise (convention at nondifferentiable points, e.g.\ ReLU at \(0\), fixed for implementations).
+
+  \item \textbf{Affine backward pattern (conceptual).}
+  For \(z = W h + b\), sensitivities satisfy \(g_h = W^{\top} g_z\) and \(g_W = g_z\, h^{\top}\) (up to batch averaging conventions). You do not need to memorise full layouts if you remember: \emph{multiply by \(W\) forward, by \(W^{\top}\) backward on activations}.
+
+  \item \textbf{Softmax plus cross-entropy gradient.}
+  Let logits \(z\in\mathbb{R}^{|V|}\), probabilities \(p=\mathrm{softmax}(z)\), and one-hot target \(e_k\) for class/token \(k\). With \(\mathcal{L}_{\mathrm{CE}}=-\log p_k\),
+  \[
+    \nabla_z \mathcal{L}_{\mathrm{CE}} = p - e_k.
+  \]
+  This is the bridge between Chapter~1's probabilistic head and Chapter~3's layered map producing logits.
+
+  \item \textbf{Hyperplane and XOR.}
+  A linear classifier uses \(\mathrm{sign}(w^{\top}x+b)\); the decision boundary is \(\{x:w^{\top}x+b=0\}\), an affine hyperplane. XOR labels on \(\{(0,0),(0,1),(1,0),(1,1)\}\) are not linearly separable in \(\mathbb{R}^2\): no single line separates the two label classes. A hidden layer folds space so a second boundary can finish the job.
+
+  \item \textbf{Variance sketch for initialisation (one layer).}
+  If \(z=\sum_{j=1}^{n} w_j x_j\) with \(w_j\) independent, zero mean, common variance \(\mathrm{Var}(w)\), and fixed \(x\),
+  \[
+    \mathrm{Var}(z)=\mathrm{Var}(w)\sum_{j=1}^{n} x_j^2.
+  \]
+  Feeding forward through many layers without controlling \(\mathrm{Var}(z)\) leads to exponential growth or shrinkage of activation scale (exploding / vanishing signals). Xavier/He scaling chooses \(\mathrm{Var}(w)\) proportional to \(1/n_{\mathrm{in}}\) or \(2/n_{\mathrm{in}}\) depending on \(\varphi\) so typical squared norms stay stable layer-to-layer---the reader chapter makes this operational.
+
+  \item \textbf{Universal approximation (one sentence).}
+  Wide shallow nets can approximate continuous functions on compact sets under mild conditions on \(\varphi\); this is about \emph{existence of representation}, not whether SGD finds it quickly or with reasonable width---trainability is separate.
+\end{itemize}
+
+\subsection*{How These Results Build on Each Other}
+\begin{enumerate}[leftmargin=1.5em]
+  \item Chapter~1 fixes the probabilistic head (softmax, CE); gradients at logits land on \(p-e_k\).
+  \item Chapter~2 consumes \(\nabla_\theta \mathcal{L}\) as an abstract vector; Chapter~3 explains how software obtains it through layered Jacobians.
+  \item Affine maps propagate signals forward (\(W,b\)) and sensitivities backward (\(W^{\top}\)).
+  \item Elementwise \(\varphi\) applies nonlinearity forward and gates gradients backward via \(\odot \varphi'(z)\).
+  \item Composing many layers iterates these two patterns (calculus chain rule), yielding backpropagation when implemented reversibly.
+  \item Initialisation and normalisation keep forward magnitudes and backward factors in a trainable range; residuals add an identity path so optimisation can make small corrections around a stable baseline.
+\end{enumerate}
+
+\subsection*{Reminder Glossary (Term by Term)}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Pre-activation \(z\):} input to \(\varphi\) before nonlinearity.
+  \item \textbf{Post-activation \(h\):} output \(\varphi(z)\).
+  \item \textbf{Hadamard product \(\odot\):} multiply matching coordinates of two vectors.
+  \item \textbf{Vanishing gradients:} backward factors shrink exponentially with depth so early layers barely move.
+  \item \textbf{Exploding gradients:} backward factors grow until norms overflow numerically.
+  \item \textbf{Dead ReLU:} unit stuck with \(z\le 0\) forever receives zero \(\varphi'(z)\) and stops learning.
+  \item \textbf{BatchNorm / LayerNorm / RMSNorm:} re-centre/rescale activations (reader compares where statistics are taken); purpose includes stabilising scale through depth.
+  \item \textbf{Residual / skip connection:} add input of a block to its output so layers learn deltas around identity.
+\end{itemize}
+
+\subsection*{Worked Example (XOR Geometry + One Composition Chain)}
+\textbf{Part A (geometry).} XOR truth table on corners of the unit square: $(0,0)$ and $(1,1)$ label $0$; $(0,1)$ and $(1,0)$ label $1$. Any line $w_1 x_1 + w_2 x_2 + b = 0$ leaves at least three corners in one closed half-plane by convexity of half-planes; checking cases shows those three cannot all share one XOR label pattern compatible with separating $0$ vs $1$. Conclusion: no single linear classifier fits XOR.
+
+\textbf{Part B (scalar depth intuition).} Let \(f(x)=\varphi(w_2\,\varphi(w_1 x)+b_1)+b_2\) with scalar \(x\) and smooth \(\varphi\). Then
+\[
+\frac{df}{dx}= \varphi'(u_2)\, w_2\, \varphi'(u_1)\, w_1,\quad u_1=w_1 x+b_1,\ u_2=w_2 \varphi(u_1)+b_2.
+\]
+Each layer contributes a factor \(\varphi'(u)\, w\); depth multiplies many such factors---either shrink toward \(0\) or grow past \(1\) unless \(\varphi'\), weights, and stabilisers are chosen carefully. This scalar picture is the skeleton of vanishing/exploding gradients in vector nets.
+
+\textbf{Practical reading implication:} when Chapter~3 of the reader walks backpropagation, read each layer as supplying one Jacobian--vector product like the factors above; when it discusses Xavier/He, read \(\mathrm{Var}(z)\) reasoning like Part B scaled to fan-in \(n\).
+
+\subsection*{Intuition Checkpoints}
+\begin{itemize}[leftmargin=1.5em]
+  \item Say ``probability chain rule'' or ``calculus chain rule'' explicitly when both appear in one sitting.
+  \item Depth without elementwise \(\varphi\) is equivalent to one affine map.
+  \item \(\nabla_\theta \mathcal{L}\) from Chapter~2 is the same object software computes by reverse-mode differentiation through the graph defined here.
+  \item \(\odot\) with \(\varphi'(z)\) is where ReLU sparsity (zeros) creates dead-unit risk.
+  \item Representation theorems do not guarantee cheap optimisation; judge pipelines by trainability evidence, not approximation slogans alone.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Probability, softmax, cross-entropy, logits: see Chapter 1 refresher.
+  \item Gradients as vectors, SGD/Adam, clipping, scaling budgets: see Chapter 2 refresher.
+  \item Embedding geometry and dot products reused inside attention: see Chapter 4 refresher.
+\end{itemize}
+
+\subsection*{References and What To Use Them For}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Goodfellow--Bengio--Courville, \emph{Deep Learning}} --- backpropagation as computational graphs, activations, initialisation practice.
+  \item \textbf{Strang, \emph{Linear Algebra}} --- matrix multiplication, transpose, norms.
+  \item \textbf{Cristianini \& Shawe-Taylor (or similar ML math notes)} --- Jacobian and gradient layout conventions if confusion persists.
+  \item \textbf{Rumelhart--Hinton--Williams (1986)} --- historical chain-rule-through-networks narrative.
+  \item \textbf{Glorot \& Bengio (2010); He et al.\ (2015)} --- variance-preserving initialisation motivations (original papers optional; reader Chapter~3 operationalises scaling with \(\varphi\)).
+\end{itemize}
