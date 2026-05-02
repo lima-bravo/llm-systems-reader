@@ -388,4 +388,197 @@ be added without compounding the optimisation problem
 acknowledged. Trainability is the working subject.
 
 % --- END §1 ---
-% Next: §2 Backpropagation (Task 7).
+
+\subsection{Backpropagation}
+\label{sec:nn-backprop}
+
+\subsubsection{The Problem}
+
+Chapter~2 told us how to update parameters once we have a
+gradient: stochastic gradient descent and its momentum-and-Adam
+descendants take a noisy estimate of $\nabla_\theta \mathcal{L}$
+and step against it. Chapter~2 did not tell us how to compute
+that gradient. The model in question has, on the small side, a
+hundred million parameters; on the large side, a trillion. A
+direct numerical estimate --- perturb each parameter, re-evaluate
+the loss, take the difference --- would cost $P$ forward passes
+per gradient, each forward pass itself costing $O(P)$ work, for a
+total of $O(P^2)$ FLOPs per training step. At $P = 10^{11}$ this
+is $10^{22}$ FLOPs to compute one gradient. The training run
+would never finish.
+
+\emph{Backpropagation} is the algorithm that brings this cost down
+to $O(P)$ --- the same order as a single forward pass --- by
+storing the intermediate activations from the forward pass and
+walking the chain rule of calculus backwards through the
+computation graph. \citet{werbos1974beyond} wrote down a
+recognisable version of the method in his Harvard PhD thesis;
+\citet{rumelhart1986learning} brought it to the field's attention
+with a Nature paper that triggered the modern revival of neural
+networks. The mechanics have not changed since.
+
+\subsubsection{The Calculus Chain Rule, Briefly}
+
+The calculus chain rule states that if a real-valued scalar
+$\mathcal{L}$ is a function of an intermediate vector $z$ which
+in turn depends on a parameter $\theta$, the derivative of
+$\mathcal{L}$ with respect to $\theta$ is the inner product of the
+upstream gradient and the local Jacobian:
+\begin{equation}
+  \frac{\partial \mathcal{L}}{\partial \theta}
+  \;=\;
+  \frac{\partial \mathcal{L}}{\partial z}
+  \cdot
+  \frac{\partial z}{\partial \theta}.
+  \label{eq:nn-chain-rule}
+\end{equation}
+If $z$ is itself produced by a longer chain, the rule iterates:
+each link in the chain multiplies the upstream gradient by the
+local Jacobian of that link's output with respect to its input.
+This is the calculus chain rule, distinct from (though sharing a
+name with) the probability chain rule of Chapter~1, as flagged in
+the notation block above.
+
+\subsubsection{A Two-Layer Derivation, by Hand}
+
+Concrete first; general second. Take a two-layer MLP with scalar
+input $x \in \R^{d_0}$, hidden width $d_1$, scalar output, and
+loss $\mathcal{L}$ that depends only on the output:
+\begin{align*}
+  z^{(1)} &\;=\; W^{(1)} x + b^{(1)}, \\
+  h^{(1)} &\;=\; \varphi\!\bigl(z^{(1)}\bigr), \\
+  z^{(2)} &\;=\; W^{(2)} h^{(1)} + b^{(2)}, \\
+  \mathcal{L} &\;=\; \mathcal{L}(z^{(2)}; y).
+\end{align*}
+We want $\partial \mathcal{L} / \partial W^{(\ell)}$ and
+$\partial \mathcal{L} / \partial b^{(\ell)}$ for $\ell \in
+\{1, 2\}$. Walk the chain rule outward from $\mathcal{L}$ through
+the output layer first.
+
+\textbf{Output layer.} Let
+$\delta^{(2)} := \partial \mathcal{L} / \partial z^{(2)}$ ---
+the gradient of the loss with respect to the output
+\emph{pre-activation}. For a regression loss
+$\mathcal{L} = \tfrac{1}{2}\,(z^{(2)} - y)^2$ this is just
+$\delta^{(2)} = z^{(2)} - y$; for a softmax-cross-entropy head it
+is $\delta^{(2)} = \mathrm{softmax}(z^{(2)}) - \mathrm{onehot}(y)$;
+the specific form depends on the loss. Once we have $\delta^{(2)}$,
+the parameter gradients of the output layer follow from the chain
+rule applied to $z^{(2)} = W^{(2)} h^{(1)} + b^{(2)}$:
+\[
+  \frac{\partial \mathcal{L}}{\partial W^{(2)}}
+  \;=\; \delta^{(2)} \, h^{(1)\top},
+  \qquad
+  \frac{\partial \mathcal{L}}{\partial b^{(2)}}
+  \;=\; \delta^{(2)}.
+\]
+
+\textbf{Hidden layer.} Now propagate the gradient back to the
+hidden pre-activation $z^{(1)}$. By the chain rule,
+\[
+  \delta^{(1)}
+  \;:=\; \frac{\partial \mathcal{L}}{\partial z^{(1)}}
+  \;=\; \frac{\partial \mathcal{L}}{\partial h^{(1)}}
+        \odot \varphi'\!\bigl(z^{(1)}\bigr)
+  \;=\; \bigl(W^{(2)\top} \delta^{(2)}\bigr)
+        \odot \varphi'\!\bigl(z^{(1)}\bigr),
+\]
+where the first equality applies the chain rule through the
+elementwise activation (so the local Jacobian of $\varphi$ is the
+diagonal matrix $\mathrm{diag}(\varphi'(z^{(1)}))$, and matrix
+multiplication by a diagonal becomes elementwise multiplication
+$\odot$), and the second equality applies the chain rule through
+the linear map $z^{(2)} = W^{(2)} h^{(1)} + b^{(2)}$ to express
+$\partial \mathcal{L} / \partial h^{(1)}$ as $W^{(2)\top}
+\delta^{(2)}$. With $\delta^{(1)}$ in hand, the hidden-layer
+parameter gradients have the same shape as the output-layer ones:
+\[
+  \frac{\partial \mathcal{L}}{\partial W^{(1)}}
+  \;=\; \delta^{(1)} \, x^\top,
+  \qquad
+  \frac{\partial \mathcal{L}}{\partial b^{(1)}}
+  \;=\; \delta^{(1)}.
+\]
+
+The structural lesson is worth flagging. The gradient of
+$\mathcal{L}$ with respect to the parameters of layer $\ell$
+depends on two things: the upstream gradient $\delta^{(\ell)}$
+(arriving from the layer above) and the post-activation of the
+layer below ($h^{(\ell-1)}$, with $h^{(0)} = x$). The same
+$\delta^{(\ell)}$ is what the next-deeper layer needs to compute
+its own $\delta^{(\ell-1)}$. The forward pass produces and stores
+all the $h^{(\ell)}$ and $z^{(\ell)}$; the backward pass walks
+from $\delta^{(L)}$ down to $\delta^{(1)}$, computing parameter
+gradients as it goes.
+
+\subsubsection{The General Multi-Layer Pattern}
+
+The two-layer derivation generalises directly. For an $L$-layer
+MLP with the composition of \eqref{eq:nn-mlp}, fix the loss
+$\mathcal{L}$ and define $\delta^{(\ell)} := \partial \mathcal{L}
+/ \partial z^{(\ell)}$ as the gradient of the loss with respect
+to the layer-$\ell$ pre-activation. The recursion is
+\begin{equation}
+  \delta^{(L)}
+  \;=\; \frac{\partial \mathcal{L}}{\partial z^{(L)}},
+  \qquad
+  \delta^{(\ell-1)}
+  \;=\; \bigl(W^{(\ell)\top} \delta^{(\ell)}\bigr)
+        \odot \varphi'\!\bigl(z^{(\ell-1)}\bigr),
+  \quad \ell = L, L-1, \dots, 2,
+  \label{eq:nn-delta-recursion}
+\end{equation}
+and the parameter gradients at every layer are
+\begin{equation}
+  \frac{\partial \mathcal{L}}{\partial W^{(\ell)}}
+  \;=\; \delta^{(\ell)} \, h^{(\ell-1)\top},
+  \qquad
+  \frac{\partial \mathcal{L}}{\partial b^{(\ell)}}
+  \;=\; \delta^{(\ell)}.
+  \label{eq:nn-param-grads}
+\end{equation}
+The final-layer term $\delta^{(L)} = \partial \mathcal{L} /
+\partial z^{(L)}$ is whatever the loss says: the regression and
+softmax cross-entropy forms above are the two cases this book
+will use repeatedly.
+
+Read as an algorithm, this is two passes. The forward pass
+computes and stores $z^{(\ell)}$ and $h^{(\ell)}$ for every
+$\ell$. The backward pass starts at $\delta^{(L)}$, computes the
+output-layer parameter gradients via \eqref{eq:nn-param-grads},
+recurses down to $\delta^{(L-1)}$ via \eqref{eq:nn-delta-recursion},
+computes the layer-$L{-}1$ parameter gradients, and so on until
+all layers have been visited. Each parameter is touched exactly
+once on the backward pass, mirroring the forward pass.
+
+\subsubsection{Forward / Backward FLOP Equivalence}
+
+Counting FLOPs makes the cost structure explicit. Each layer's
+forward pass is dominated by the matrix multiply $W^{(\ell)}
+h^{(\ell-1)}$, costing $2 d_\ell d_{\ell-1}$ FLOPs (one MAC per
+weight-input pair, two FLOPs per MAC). Summed across layers, the
+forward pass costs roughly $2 P$ FLOPs per training token, where
+$P$ is the parameter count.
+
+The backward pass does two matrix multiplies per layer. The
+first, $W^{(\ell)\top} \delta^{(\ell)}$, propagates the gradient
+to the layer below; this costs another $2 d_\ell d_{\ell-1}$
+FLOPs per layer, or $2 P$ FLOPs in total. The second,
+$\delta^{(\ell)} h^{(\ell-1)\top}$, computes the parameter
+gradient at this layer; this costs another $2 P$ FLOPs in total.
+The backward pass therefore costs roughly $4 P$ FLOPs per
+training token, twice the forward pass.
+
+A full training step --- one forward pass to compute activations
+and loss, plus one backward pass to compute gradients --- costs
+roughly $2 P + 4 P = 6 P$ FLOPs per training token. With $D$
+tokens of training data and one pass over them, the total
+training compute is $\approx 6 P D$ FLOPs. \emph{This is the
+``$6 N D$'' rule that Chapter~2 used without justification when
+deriving the Chinchilla compute-optimal point}: the factor of six
+is exactly the three MACs per parameter per token (one forward,
+two backward) times two FLOPs per MAC. Backpropagation is what
+makes the rule cheap enough to be worth applying.
+
+% --- END §2 ---
+% Next: §3 Activations (Task 8).
