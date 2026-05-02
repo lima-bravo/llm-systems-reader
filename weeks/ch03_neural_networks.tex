@@ -878,4 +878,136 @@ you find the $1/\sqrt{d_k}$ unmotivated when you reach
 Chapter~4, return here.
 
 % --- END §4 ---
-% Next: §5 Normalization (Task 10).
+
+\subsection{Normalization}
+\label{sec:nn-norm}
+
+\subsubsection{Why Normalize at All}
+
+A network with sensible initialisation (\S\ref{sec:nn-init})
+starts with activations whose variance is roughly preserved
+across layers. Training does not preserve that property. Each SGD
+step changes every weight in the network, and the activation
+distribution at every layer drifts in response. By the time the
+optimiser has taken a few thousand steps, the distribution that
+each layer was implicitly tuned for has shifted underneath it.
+The original framing called this \emph{internal covariate shift}
+\citep{ioffe2015batchnorm}; the modern view treats the
+mechanistic claim with caution but keeps the operational
+observation. The activations drift, and the drift is what
+normalisation layers are designed to undo.
+
+A normalisation layer re-establishes a target activation
+distribution at every layer of the network, on every forward
+pass, regardless of how training has perturbed the weights so
+far. Three benefits follow. The variance of activations stays
+near unit at every depth, recovering the property that
+initialisation gave us at step zero. Layer-wise effective
+learning rates decouple from each other, because the input scale
+to every layer is now standardised. Downstream layers see a
+stationary distribution from upstream, even when upstream weights
+are still moving fast. The result, in practice, is that deeper
+networks are trainable with larger learning rates and less
+hyperparameter babysitting.
+
+\subsubsection{BatchNorm, Briefly}
+
+The first widely-adopted normalisation layer was \emph{batch
+normalisation} \citep{ioffe2015batchnorm}. It normalises each
+feature \emph{across the batch}: for a feature index $j$ and a
+batch of $B$ examples with pre-activations $\{z^{(1)}_j, \dots,
+z^{(B)}_j\}$, BatchNorm computes the batch mean
+$\mu_j = \tfrac{1}{B}\sum_b z^{(b)}_j$ and batch variance
+$\sigma_j^2 = \tfrac{1}{B}\sum_b (z^{(b)}_j - \mu_j)^2$, then
+emits $\gamma_j (z^{(b)}_j - \mu_j) / \sqrt{\sigma_j^2 +
+\epsilon} + \beta_j$ for each example. Trainable scale $\gamma_j$
+and shift $\beta_j$ recover whatever distribution downstream
+layers prefer. At inference time, the batch statistics are
+replaced by running averages collected during training.
+
+BatchNorm is the right tool for vision (large mini-batches,
+fixed-shape inputs, no ragged sequences). It is the wrong tool
+for the autoregressive Transformers of this book. Three reasons.
+First, language models pack variable-length sequences into a
+fixed batch shape; the batch-statistic dependency interacts
+poorly with that packing. Second, per-token effective batch
+sizes inside a Transformer are large in tokens but small in
+\emph{independent} examples (all tokens within a sequence share
+correlated structure), and BatchNorm's variance estimate is
+biased under correlation. Third, the train/eval discrepancy
+between mini-batch statistics and running averages is fragile at
+the scale and decoding regimes used in production. The field
+moved away from BatchNorm in language modelling and has not
+returned.
+
+\subsubsection{LayerNorm}
+
+\citet{ba2016layernorm} replaced the batch dimension with the
+feature dimension. \emph{Layer normalisation} normalises each
+\emph{individual} activation vector across its own features.
+For a vector $x \in \R^d$,
+\begin{equation}
+  \mathrm{LN}(x) \;=\; \gamma \odot \frac{x - \mu(x)}{\sigma(x) + \epsilon} + \beta,
+  \qquad
+  \mu(x) = \tfrac{1}{d}\sum_j x_j,
+  \quad
+  \sigma(x)^2 = \tfrac{1}{d}\sum_j \bigl(x_j - \mu(x)\bigr)^2,
+  \label{eq:nn-layernorm}
+\end{equation}
+with trainable per-feature scale $\gamma \in \R^d$ and shift
+$\beta \in \R^d$. The mean and variance are computed over the
+features of the single vector $x$; nothing about the batch enters
+the computation. The same operation runs at training time and at
+inference time without modification, removing the train/eval
+discrepancy that BatchNorm has to manage with running averages.
+LayerNorm has no batch dependency, no sequence-length sensitivity,
+and no packing-friendliness penalty. It became the default in
+sequence models and has been the workhorse normaliser of the
+Transformer era.
+
+\subsubsection{RMSNorm}
+
+\citet{zhang2019rmsnorm} observed that the mean-centering term in
+\eqref{eq:nn-layernorm} contributes little empirically: removing
+it produces a layer that trains as well as LayerNorm does at
+roughly seven percent lower compute per call. \emph{Root mean
+square normalisation} drops the mean entirely:
+\begin{equation}
+  \mathrm{RMSNorm}(x) \;=\; \gamma \odot \frac{x}{\mathrm{RMS}(x) + \epsilon},
+  \qquad
+  \mathrm{RMS}(x) \;=\; \sqrt{\tfrac{1}{d}\sum_j x_j^2}.
+  \label{eq:nn-rmsnorm}
+\end{equation}
+RMSNorm has a single trainable per-feature scale $\gamma$ and no
+shift $\beta$, halving the parameter count of the layer compared
+to LayerNorm. The operation rescales the vector to unit
+root-mean-square magnitude in expectation, leaving the angular
+direction unchanged. Llama, Mistral, and most open-weight models
+released since 2023 use RMSNorm in place of LayerNorm. The two
+are interchangeable from the perspective of the rest of this
+book: the chapters that follow refer to ``the normaliser'' when
+either choice is acceptable, and to LayerNorm or RMSNorm
+specifically when the distinction matters.
+
+\subsubsection{Bridge to Chapter 4}
+
+This section has established the normalisers themselves.
+Chapter~4 takes them up in two further directions. First,
+\emph{placement}: should the normalisation be applied
+\emph{before} or \emph{after} the residual sum at each
+Transformer block (the \emph{pre-norm} versus \emph{post-norm}
+distinction)? Chapter~4's argument is that pre-norm keeps the
+residual path an identity at initialisation, which makes deep
+stacks trainable without elaborate warmup; this is the
+configuration used by GPT-2 onwards and almost every modern
+LLM. Second, \emph{interpretation}: in a pre-norm Transformer the
+residual connection carries a $d$-dimensional ``stream'' that
+attention and feed-forward sublayers \emph{read from} (via the
+normaliser) and \emph{write back into} (via the residual sum).
+The normaliser, in that view, is what gives each sublayer a
+clean, standardised view of the residual stream's current
+state. Chapter~4 develops both points; the apparatus this
+section has provided is what they sit on.
+
+% --- END §5 ---
+% Next: §6 Residual Connections (Task 11).
