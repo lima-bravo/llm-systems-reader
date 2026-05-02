@@ -1010,4 +1010,127 @@ state. Chapter~4 develops both points; the apparatus this
 section has provided is what they sit on.
 
 % --- END §5 ---
-% Next: §6 Residual Connections (Task 11).
+
+\subsection{Residual Connections}
+\label{sec:nn-residual}
+
+\subsubsection{The Depth Problem}
+
+A plain MLP, even with the right activation
+(\S\ref{sec:nn-activations}) and the right initialisation
+(\S\ref{sec:nn-init}) and the right normalisation
+(\S\ref{sec:nn-norm}), still refuses to train above some depth.
+The empirical record of the period before 2015 was that as
+network depth increased past a few dozen layers, training loss
+\emph{stopped going down}. \citet{he2016resnet} called this the
+\emph{degradation problem} and were careful to distinguish it
+from overfitting: the deeper network's training loss was higher
+than the shallower one's, so the failure was not memorisation
+without generalisation, it was a failure to optimise. A
+forty-layer network was unable to find a parameter setting that
+matched the twenty-layer network on data the deeper network
+should have been strictly more expressive on. The optimiser was
+losing the gradient signal somewhere in the intervening layers,
+and no amount of init or normalisation tweaking entirely
+recovered it.
+
+\subsubsection{The Residual Response}
+
+The fix \citet{he2016resnet} proposed has a minimal-shock-to-the-system
+character. Replace each layer's transformation
+$h^{(\ell)} = F^{(\ell)}(h^{(\ell-1)})$ with
+\begin{equation}
+  h^{(\ell)} \;=\; h^{(\ell-1)} \;+\; F^{(\ell)}\!\bigl(h^{(\ell-1)}\bigr),
+  \label{eq:nn-residual}
+\end{equation}
+where $F^{(\ell)}$ is whatever sublayer the architecture would
+otherwise have used (typically a small MLP, or an attention block
+in the Transformer case). The layer no longer computes a fresh
+output; it computes a \emph{residual} that is added to the layer
+below. At initialisation, when the parameters of $F^{(\ell)}$
+draw weights small enough that the layer's output is near zero,
+\eqref{eq:nn-residual} becomes $h^{(\ell)} \approx h^{(\ell-1)}$:
+the layer is the identity map, and the network behaves at depth
+$L$ as if it had only the depth at which the residual blocks
+have already learned something useful. The optimiser is free to
+learn \emph{small perturbations} on top of the identity rather
+than learning the full transformation outright.
+
+\subsubsection{Why This Makes Depth Trainable}
+
+Two arguments, one about the gradient and one about the
+optimisation landscape, explain why the change was decisive.
+
+\textbf{Gradient flow.} Differentiating \eqref{eq:nn-residual}
+with respect to the layer below,
+\[
+  \frac{\partial h^{(\ell)}}{\partial h^{(\ell-1)}}
+  \;=\; I \;+\; \frac{\partial F^{(\ell)}}{\partial h^{(\ell-1)}}.
+\]
+The gradient signal flowing backwards from layer $\ell$ to layer
+$\ell-1$ has an identity term --- it does not have to pass
+through $F^{(\ell)}$ to survive. In a plain stack the same
+derivative is just $\partial F^{(\ell)} / \partial h^{(\ell-1)}$,
+which can have norm well below one and which compounds
+multiplicatively across layers; the residual form keeps the
+identity term in play at every layer, so the gradient at depth
+$1$ is bounded below regardless of what the intermediate $F$
+blocks do. Vanishing gradients (\S\ref{sec:nn-activations}) lose
+their bite when the gradient has a guaranteed straight-shot path
+back through the identity.
+
+\textbf{Optimisation floor.} A residual network initialised with
+near-zero $F$ blocks computes the same function as a shallower
+network at the start of training. The optimiser cannot do
+\emph{worse} than the shallow network, because finding $F = 0$
+is always available. The empirical contribution of
+\citet{he2016resnet} was that this floor turns into a ceiling
+that grows monotonically with depth: networks with hundreds of
+residual layers trained to lower loss than networks with tens of
+plain ones. The architectural move solved the optimisation
+problem, not the expressive-power problem; the existence
+theorems of §\ref{sec:nn-function-class} had always said the
+deep networks \emph{could} compute these functions, but plain
+stacks were unable to find the parameters in practice.
+
+\subsubsection{The Continuous-Depth View, in One Paragraph}
+
+There is a clean limit to take. Treat the depth index $\ell$ as a
+continuous variable $t$ and let the per-layer transformation
+shrink as the depth grows. The residual recursion
+\eqref{eq:nn-residual} becomes the Euler-discretisation of an
+ordinary differential equation $dh/dt = F_t(h)$, with the
+network's forward pass running an integrator from $t = 0$ to
+$t = 1$ and the network's parameters parameterising the vector
+field $F_t$. Neural ODEs \citep{chen2018neuralode} make this
+limit explicit; they replace the discrete stack with an adaptive
+integrator and learn the vector field directly. The view is
+intellectually clean and operationally rare: most LLMs, and all
+the Transformers in the rest of this book, use the discrete
+residual form of \eqref{eq:nn-residual} rather than the
+continuous-depth limit. We mention the connection here because
+it explains why residual networks behave well at depth ---
+solving an ODE numerically is well-conditioned in a way that
+composing arbitrary layers is not --- not because the next ten
+chapters require it.
+
+\subsubsection{Bridge to Chapter 4: the Residual Stream}
+
+The Transformer of Chapter~4 is built around residual connections
+of the form \eqref{eq:nn-residual}. A Transformer block is two
+residual sublayers stacked: an attention block and a feed-forward
+block, each wrapped in a normaliser (\S\ref{sec:nn-norm}) and a
+residual sum. The accumulation of all these residual additions
+across the stack is what Chapter~4 calls the \emph{residual
+stream}: a $d$-dimensional vector that propagates from the
+embedding layer to the unembedding, with attention and feed-forward
+sublayers reading from it (via the normaliser) and writing back
+into it (via the residual add). The interpretability framing of
+\citet{elhage2021mathematical}, which Chapter~4 develops, treats
+this stream as the model's working memory and individual heads
+as components that read specific subspaces and write into others.
+The residual connection introduced here is the substrate that
+makes that view possible.
+
+% --- END §6 ---
+% Next: §7 The MLP Block as a Transformer Primitive (Task 12).
