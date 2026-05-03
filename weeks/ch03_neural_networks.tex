@@ -1227,4 +1227,240 @@ is the arrangement of pieces this chapter has just laid on the
 bench.
 
 % --- END §7 ---
-% Next: Worked Examples A and B (Task 13).
+
+\subsection{Worked Examples}
+\label{sec:nn-worked-examples}
+
+The chapter's two worked examples are paired. The first
+demonstrates the machinery on the simplest possible problem ---
+how a forward pass produces activations, how the backward pass
+produces gradients, how SGD moves weights. The second
+demonstrates why that machinery is necessary: the same forward /
+backward step on the canonical Minsky--Papert problem, where the
+two-layer network can represent what a one-layer network cannot.
+
+\subsubsection{Worked Example A: 1-D Regression (Mechanics)}
+
+\begin{workedexample}[A: One forward pass, one backward pass, one SGD step]
+
+\textbf{Setup.} Fit $y = \sin(2x)$ on $x \in [-\pi, \pi]$ with a
+one-hidden-layer MLP of width $d_1 = 2$, GeLU activation, scalar
+output, and squared-error loss
+$\mathcal{L} = \tfrac{1}{2}(\hat y - y)^2$ on a single point.
+The width is chosen for tractability: every number in this
+example can be checked by hand. In practice you would use width
+$8$ or more for this problem, but the mechanics are unchanged.
+
+\textbf{Initialisation.} Pick a fixed seed and obtain the
+following weights (rounded to two decimals):
+\[
+  W^{(1)} = \begin{bmatrix} 0.30 \\ -0.20 \end{bmatrix}, \;
+  b^{(1)} = \begin{bmatrix} 0 \\ 0 \end{bmatrix}, \;
+  W^{(2)} = \begin{bmatrix} 0.50 & 0.40 \end{bmatrix}, \;
+  b^{(2)} = 0.
+\]
+Pick the training point $x = 0.5$, target $y = \sin(1) \approx 0.841$.
+
+\textbf{Forward pass.} Apply \eqref{eq:nn-mlp} once.
+\[
+  z^{(1)} = W^{(1)} x + b^{(1)}
+  = \begin{bmatrix} 0.30 \cdot 0.5 \\ -0.20 \cdot 0.5 \end{bmatrix}
+  = \begin{bmatrix} 0.15 \\ -0.10 \end{bmatrix}.
+\]
+GeLU on each component:
+$\mathrm{GeLU}(0.15) = 0.15 \cdot \Phi(0.15) \approx 0.15 \cdot 0.560 \approx 0.084$,
+$\mathrm{GeLU}(-0.10) = -0.10 \cdot \Phi(-0.10) \approx -0.10 \cdot 0.460 \approx -0.046$.
+So
+\[
+  h^{(1)}
+  = \begin{bmatrix} 0.084 \\ -0.046 \end{bmatrix}.
+\]
+Then
+\[
+  \hat y \;=\; z^{(2)}
+  \;=\; W^{(2)} h^{(1)} + b^{(2)}
+  \;=\; 0.50 \cdot 0.084 + 0.40 \cdot (-0.046) + 0
+  \;\approx\; 0.024.
+\]
+Loss: $\mathcal{L} = \tfrac{1}{2}(0.024 - 0.841)^2 \approx 0.334$.
+
+\textbf{Backward pass.} Following \eqref{eq:nn-delta-recursion}.
+The output-layer delta is the loss derivative w.r.t.\ $z^{(2)}$,
+which for squared error is $\hat y - y$:
+$\delta^{(2)} = 0.024 - 0.841 = -0.817$.
+Output-layer parameter gradients (\eqref{eq:nn-param-grads}):
+\[
+  \frac{\partial \mathcal{L}}{\partial W^{(2)}}
+  \;=\; \delta^{(2)}\, h^{(1)\top}
+  \;=\; -0.817 \cdot \begin{bmatrix} 0.084 & -0.046 \end{bmatrix}
+  \;\approx\; \begin{bmatrix} -0.069 & 0.038 \end{bmatrix},
+  \qquad
+  \frac{\partial \mathcal{L}}{\partial b^{(2)}}
+  \;=\; -0.817.
+\]
+Propagate $\delta$ to the hidden layer.
+$W^{(2)\top} \delta^{(2)} = [0.50; 0.40] \cdot (-0.817) = [-0.409; -0.327]$.
+The GeLU derivative at each pre-activation is approximately
+$\Phi(z) + z \phi(z)$ with $\phi$ the standard normal pdf:
+$\mathrm{GeLU}'(0.15) \approx 0.560 + 0.15 \cdot 0.394 \approx 0.619$,
+$\mathrm{GeLU}'(-0.10) \approx 0.460 + (-0.10) \cdot 0.397 \approx 0.421$.
+Then
+\[
+  \delta^{(1)}
+  \;=\; \bigl(W^{(2)\top} \delta^{(2)}\bigr) \odot \varphi'(z^{(1)})
+  \;=\; \begin{bmatrix} -0.409 \cdot 0.619 \\ -0.327 \cdot 0.421 \end{bmatrix}
+  \;\approx\; \begin{bmatrix} -0.253 \\ -0.138 \end{bmatrix}.
+\]
+Hidden-layer parameter gradients:
+\[
+  \frac{\partial \mathcal{L}}{\partial W^{(1)}}
+  \;=\; \delta^{(1)} x^\top
+  \;=\; \begin{bmatrix} -0.253 \\ -0.138 \end{bmatrix} \cdot 0.5
+  \;\approx\; \begin{bmatrix} -0.127 \\ -0.069 \end{bmatrix},
+  \qquad
+  \frac{\partial \mathcal{L}}{\partial b^{(1)}}
+  \;=\; \delta^{(1)}
+  \;\approx\; \begin{bmatrix} -0.253 \\ -0.138 \end{bmatrix}.
+\]
+
+\textbf{One SGD step at $\eta = 0.05$.} Apply
+$\theta \leftarrow \theta - \eta\, \nabla_\theta \mathcal{L}$.
+\[
+  W^{(2)} \leftarrow [0.50, 0.40] - 0.05 \cdot [-0.069, 0.038]
+  \;\approx\; [0.503,\, 0.398],
+  \qquad
+  b^{(2)} \leftarrow 0 - 0.05 \cdot (-0.817)
+  \;\approx\; 0.041.
+\]
+\[
+  W^{(1)} \leftarrow \begin{bmatrix} 0.30 \\ -0.20 \end{bmatrix}
+  - 0.05 \cdot \begin{bmatrix} -0.127 \\ -0.069 \end{bmatrix}
+  \;\approx\; \begin{bmatrix} 0.306 \\ -0.197 \end{bmatrix},
+  \qquad
+  b^{(1)} \leftarrow [0, 0] - 0.05 \cdot [-0.253, -0.138]
+  \;\approx\; [0.013,\, 0.007].
+\]
+After this single step, the prediction at $x = 0.5$ moves
+slightly toward $0.841$. Iterate to convergence and the network
+will fit the curve.
+
+\textbf{The reader takeaway.} Every number in this example came
+from \eqref{eq:nn-mlp}, \eqref{eq:nn-delta-recursion}, and
+\eqref{eq:nn-param-grads}. There is no hidden machinery, no
+trick the explanation glosses over. Backprop is just the chain
+rule; SGD is just a step against the gradient; the rest is
+careful bookkeeping. A network with a million parameters
+and a hundred layers does the same thing, only at scale.
+\end{workedexample}
+
+\subsubsection{Worked Example B: XOR via 2-Layer MLP (Necessity)}
+
+\begin{workedexample}[B: Why we need the hidden layer]
+
+\textbf{Setup.} Inputs are the four corners of the unit square
+$\{(0,0), (0,1), (1,0), (1,1)\}$ with the XOR labels
+$\{0, 1, 1, 0\}$. The pedagogical question is whether a network
+without a hidden layer can fit this data set.
+
+\textbf{The single-layer attempt fails geometrically.} A
+no-hidden-layer network with sigmoid output is
+$\hat y = \sigma(w_1 x_1 + w_2 x_2 + b)$. Predicting the correct
+label at every input requires $w_1 x_1 + w_2 x_2 + b$ to be
+strongly positive for $(0,1)$ and $(1,0)$ and strongly negative
+for $(0,0)$ and $(1,1)$. But the locus
+$w_1 x_1 + w_2 x_2 + b = 0$ is a single straight line in the
+plane, and any straight line that places $(0,1)$ and $(1,0)$ on
+the positive side must also place at least one of $(0,0)$ or
+$(1,1)$ on that side --- the four points sit at the corners of a
+unit square, with the two ``$1$''-labelled points on one diagonal
+and the two ``$0$''-labelled points on the other, and no straight
+line separates two diagonals of a square into opposite halves.
+\citet{minsky1969perceptrons} stated and proved this in 1969;
+Worked Example~B has now stated and verified it geometrically.
+
+\textbf{The two-layer solution.} Add a hidden layer of width $2$
+with ReLU activations. The following weights solve XOR exactly:
+\[
+  W^{(1)} = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}, \;
+  b^{(1)} = \begin{bmatrix} 0 \\ -1 \end{bmatrix}, \;
+  W^{(2)} = \begin{bmatrix} 1 & -2 \end{bmatrix}, \;
+  b^{(2)} = 0.
+\]
+Verify on all four inputs.
+
+\smallskip
+\begin{center}
+\small
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+$(x_1, x_2)$ & $z^{(1)}$ & $h^{(1)} = \mathrm{ReLU}(z^{(1)})$ & $z^{(2)}$ & $\hat y$ & $y$ & error \\
+\hline
+$(0, 0)$ & $(0,\, -1)$ & $(0,\, 0)$ & $0$ & $0$ & $0$ & $0$ \\
+$(0, 1)$ & $(1,\, 0)$ & $(1,\, 0)$ & $1$ & $1$ & $1$ & $0$ \\
+$(1, 0)$ & $(1,\, 0)$ & $(1,\, 0)$ & $1$ & $1$ & $1$ & $0$ \\
+$(1, 1)$ & $(2,\, 1)$ & $(2,\, 1)$ & $0$ & $0$ & $0$ & $0$ \\
+\hline
+\end{tabular}
+\end{center}
+\smallskip
+
+The network outputs the correct label at every point. The two
+hidden units perform two different linear projections of the
+input, and the ReLU clips one of them at the origin; the output
+layer subtracts twice the second from the first, producing the
+XOR pattern. Geometrically, the hidden layer carves the input
+plane into a piecewise-linear region whose boundary bends. A
+straight line cannot bend, but the composition of two affine
+layers with a nonlinearity between them can.
+
+\textbf{Backprop on the converged solution.} Because the network
+already produces zero error at every input, the squared-error
+loss is exactly zero, $\delta^{(2)} = \hat y - y = 0$ at every
+point, and every parameter gradient is zero. This is what
+optimality looks like to the optimiser: nothing to update.
+
+\textbf{Backprop at a perturbation.} To show the
+$\delta$-recursion produce non-trivial numbers, perturb
+$W^{(2)} = [1, -2]$ to $W^{(2)} = [0.9, -1.8]$ and walk one
+backward pass on the input $(0, 1)$, target $y = 1$.
+
+The forward pass at this perturbed configuration:
+$z^{(1)} = (1, 0)$, $h^{(1)} = (1, 0)$,
+$\hat y = z^{(2)} = 0.9 \cdot 1 + (-1.8) \cdot 0 = 0.9$.
+The error is $\hat y - y = -0.1$, so $\delta^{(2)} = -0.1$.
+
+Output-layer parameter gradients:
+$\partial \mathcal{L} / \partial W^{(2)}
+= -0.1 \cdot [1, 0] = [-0.1, 0]$,
+$\partial \mathcal{L} / \partial b^{(2)} = -0.1$. The gradient on
+$W^{(2)}_2$ is zero because the second hidden unit was inactive
+at this input ($h^{(1)}_2 = 0$); there is no signal pulling
+$W^{(2)}_2$ in any direction from this example.
+
+Propagate $\delta$ to the hidden layer:
+$W^{(2)\top} \delta^{(2)} = [0.9; -1.8] \cdot (-0.1) = [-0.09; 0.18]$.
+The ReLU derivative at $z^{(1)} = (1, 0)$ is $(1, 0)$ (positive
+input gives derivative $1$; zero input gives derivative $0$ by
+the A3.1 convention). So
+$\delta^{(1)} = [-0.09; 0.18] \odot [1; 0] = [-0.09; 0]$.
+
+Hidden-layer parameter gradients:
+$\partial \mathcal{L} / \partial W^{(1)}
+= [-0.09; 0] \cdot [0, 1] = \begin{bmatrix} 0 & -0.09 \\ 0 & 0 \end{bmatrix}$,
+$\partial \mathcal{L} / \partial b^{(1)} = [-0.09; 0]$.
+An SGD step would update $W^{(1)}$, $b^{(1)}$, $W^{(2)}_1$, and
+$b^{(2)}$ but leave $W^{(1)}_{2,*}$ and $W^{(2)}_2$ unchanged.
+
+\textbf{The reader takeaway.} The same machinery from Worked
+Example~A produces the same kind of numbers on a classification
+problem with a hidden layer. The dead-neuron issue is concrete:
+a hidden unit that is inactive at a given input contributes zero
+to the gradient from that input. Over a full training set, units
+that are inactive on every input become permanently dead. Init
+choice (\S\ref{sec:nn-init}) and learning-rate choice are the
+two practical knobs that prevent this from happening.
+\end{workedexample}
+
+% --- END Worked Examples ---
+% Next: End matter (Proved/Assumed, Connections, Bridges,
+% Derivation Ledger, Takeaway) --- Task 14.
