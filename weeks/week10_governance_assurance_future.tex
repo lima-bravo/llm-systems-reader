@@ -238,7 +238,7 @@ $$ \text{Deployment} = (\text{model}, \text{system}, \text{operators}, \text{use
 Each component can fail in its own characteristic way. Model
 failures are the subject of Weeks 4--8: hallucination,
 jailbreak, bias, alignment regression. System failures are the
-subject of Week~9: retrieval drift, prompt injection, tool-call
+subject of Chapter~10: retrieval drift, prompt injection, tool-call
 errors. Operator failures include missing or incorrect
 monitoring, uncontrolled prompt changes, and rushed rollouts.
 User failures include overtrust, misuse, and mistaken
@@ -270,7 +270,7 @@ that deploys the system.
 
 \subsection{From Model Evaluation to System Assurance}
 
-Evaluation scores (Week~9) are necessary for assurance but not
+Evaluation scores (Chapter~10) are necessary for assurance but not
 sufficient. Assurance is a structured \emph{argument} that a
 system is acceptably safe for its intended use in its intended
 context, supported by evidence and resting on explicit
@@ -445,7 +445,7 @@ A pragmatic LLM hazard taxonomy organizes along five axes.
 \paragraph{Technical hazards.} Hallucination, refusal
 over-triggering, jailbreak susceptibility, prompt-injection
 susceptibility, RAG retrieval failures, tool misuse, numerical
-instability under aggressive quantization (Week~7).
+instability under aggressive quantization (Chapter~8).
 
 \paragraph{Data hazards.} Training data contamination,
 copyright and licensing violations, personally identifiable
@@ -509,14 +509,14 @@ datasets \citep{gebru2021datasheets} are the canonical
 artefact.
 
 \paragraph{Layer 2 (preventive, model).} Alignment training
-(Week~8), Constitutional AI, RLHF, refusal training. These
+(Chapter~9), Constitutional AI, RLHF, refusal training. These
 shape the model's behaviour but do not eliminate hazards; see
-Week~8's failure modes.
+Chapter~9's failure modes.
 
 \paragraph{Layer 3 (preventive, system).} Input classifiers
 (policy filters on user input), output classifiers (safety
 filters on model output), structured prompt templates that
-sandbox user content, retrieval sandboxing (Week~9) that treats
+sandbox user content, retrieval sandboxing (Chapter~10) that treats
 retrieved content as untrusted, tool-schema validation. These
 are cheap, deterministic, and easy to audit.
 
@@ -555,7 +555,7 @@ $\varepsilon_m$ are not universal constants; they are
 documented alongside $m_0$ in the assurance case $\mathcal{A}$.
 
 \paragraph{Layer 5 (corrective).} Rate limits (for suspected
-abuse), adapter rollback (Week~7), tool disablement (when a
+abuse), adapter rollback (Chapter~8), tool disablement (when a
 tool-use failure is detected), kill switches (for emergency
 takedown), documented incident response playbooks, explicit
 human override paths.
@@ -1134,19 +1134,19 @@ A governance-oriented lab for a realistic deployment scenario:
 
 \subsection{Bridges to Other Weeks}
 
-Week~10 is the integrator of everything that came before.
-Evaluation (Week~9) produces evidence for the assurance case.
-Alignment (Week~8) is a preventive control. Adaptation (Week~7)
+Chapter~11 is the integrator of everything that came before.
+Evaluation (Chapter~10) produces evidence for the assurance case.
+Alignment (Chapter~9) is a preventive control. Adaptation (Chapter~8)
 produces versioned artefacts that enter the governance registry.
-Scaling (Week~6) defines the capability level that dictates the
+Scaling (Chapter~7) defines the capability level that dictates the
 governance tier (GPAI systemic-risk vs.\ not).
-Pretraining (Week~5) provides the data-provenance artefact that
-feeds the datasheet. The transformer architecture (Week~4),
-tokenization (Week~3), and statistical foundations (Weeks~1--2)
+Pretraining (Chapter~6) provides the data-provenance artefact that
+feeds the datasheet. The transformer architecture (Chapter~5),
+tokenization (Chapter~4), and statistical foundations (Weeks~1--2)
 underwrite the technical claims on which the assurance case
 rests.
 
-Week~11 closes the book with modern LLM access patterns (APIs,
+Chapter~12 closes the book with modern LLM access patterns (APIs,
 SDKs, agents, MCP). Much of that chapter's engineering ---
 credential management, scope control, audit logging,
 tool-schema validation --- is governance made concrete.
@@ -1175,7 +1175,7 @@ mathematical claims.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 10 Takeaway}
+\subsection{Chapter 11 Takeaway}
 
 \begin{quote}
 Safety is not a property of a model; it is a property of a

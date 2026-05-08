@@ -81,7 +81,7 @@ classifier runs in parallel as a defense in depth.
   a base model; supervised fine-tuning teaches it the instruction/response
   format; preference data drives either a reward model + PPO (RLHF) or a
   reference-model-based direct loss (DPO, IPO, KTO, SimPO). The SFT
-  stage is usually a LoRA on the base (Week~7); the preference stage
+  stage is usually a LoRA on the base (Chapter~8); the preference stage
   is usually a LoRA on the SFT.}
   \label{fig:rlhf-pipeline}
 \end{figure}
@@ -175,7 +175,7 @@ losses signal over-fitting the preference signal.
 ground truth, alignment quality is known only through the evaluation
 suite. A poorly designed evaluation makes the model ``aligned'' to
 its own gaming strategy. This is the central practical risk of
-alignment engineering and the reason Week~9's evaluation chapter is
+alignment engineering and the reason Chapter~10's evaluation chapter is
 its natural companion.
 
 \subsection{Notation and Standing Assumptions}
@@ -187,7 +187,7 @@ $\pi_\theta(y \mid x)$: the trainable policy (current aligned model),
 $\theta$ its parameters. $\pi_{\mathrm{ref}}(y \mid x)$: a frozen
 reference policy, conventionally the post-SFT model. $\pi^*(y \mid x)$:
 the optimum of the KL-regularized RL objective.
-$\pi_0$: the pretrained base (Week~5).
+$\pi_0$: the pretrained base (Chapter~6).
 
 \textbf{Preference data.}
 $(x, y^+, y^-) \sim \mathcal{D}$: a preference triple with prompt
@@ -376,7 +376,7 @@ critique and the motivation for constitutional AI and RLAIF, which
 we return to below. The normative choice of \emph{whose}
 preferences get encoded is an engineering responsibility: it must be
 documented in the model card and revisable under governance
-(Week~10).
+(Chapter~11).
 
 \subsection{Stage 3a: RLHF with PPO}
 
@@ -690,7 +690,7 @@ product-specific quality metrics. Single-number ``alignment score''
 metrics hide far more than they reveal.
 
 \paragraph{Versioning and rollback.}
-Alignment deltas are LoRA adapters (Week~7). They should be
+Alignment deltas are LoRA adapters (Chapter~8). They should be
 versioned, signed, canary-deployed, and reversible within minutes.
 An aligned model is never ``done''; it is a continuously updated
 artefact, and the supporting infrastructure must be built for
@@ -706,7 +706,7 @@ data and seed.
 
 \textbf{Architecture.}
 Separate, auditable post-training pipeline downstream of the base
-model (Week~5) and the PEFT stack (Week~7). A distinct evaluation
+model (Chapter~6) and the PEFT stack (Chapter~8). A distinct evaluation
 harness --- not the same machines as training --- to guarantee
 independent assessment. A red-team input path that feeds both the
 training data and the evaluation suite.
@@ -845,13 +845,13 @@ A concrete lab for a team with modest resources:
 
 \subsection{Bridges to Other Weeks}
 
-Week~8 depends on pretraining (Week~5) for the base model and on
-adaptation (Week~7) for the LoRA machinery that runs all three
-post-training stages. It connects forward to Week~9, which treats
+Chapter~9 depends on pretraining (Chapter~6) for the base model and on
+adaptation (Chapter~8) for the LoRA machinery that runs all three
+post-training stages. It connects forward to Chapter~10, which treats
 evaluation --- the lens through which alignment quality is ever
-measured --- and to Week~10, where the governance framework treats
+measured --- and to Chapter~11, where the governance framework treats
 post-training lineage as a first-class audit artefact. RAG systems
-(Week~9) substitute \emph{retrieved context} for some of the
+(Chapter~10) substitute \emph{retrieved context} for some of the
 knowledge alignment might otherwise have to encode, and the decision
 of ``align vs.\ retrieve'' recurs throughout the rest of the book.
 
@@ -886,7 +886,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 8 Takeaway}
+\subsection{Chapter 9 Takeaway}
 
 \begin{quote}
 Alignment reshapes the output distribution of a base model to match

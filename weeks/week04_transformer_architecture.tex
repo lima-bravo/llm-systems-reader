@@ -217,7 +217,7 @@ constant-depth signal paths, and is in principle \emph{addressable}
 across the full context length $T$. Whether information at position
 $j$ is reliably \emph{recalled} when needed at position $i$ is an
 empirical question --- the lost-in-the-middle phenomenon
-(\citealt{liu2024lost}, Week~9) shows that addressability and
+(\citealt{liu2024lost}, Chapter~10) shows that addressability and
 reliable recall come apart in practice.
 
 \subsection{Scaled Dot-Product Self-Attention}
@@ -421,7 +421,7 @@ so the parameter count matches a single full-size head. Figure
 \Emp\ Heads specialize \citep{elhage2021mathematical}: some attend to
 adjacent positions (n-gram heads), some to syntactic dependencies,
 some to previously-seen tokens of the same type (induction heads,
-\citealt{olsson2022induction}, revisited in Week~5). This
+\citealt{olsson2022induction}, revisited in Chapter~6). This
 specialization is not engineered in; it \emph{emerges} from training
 (A4.3) and can regress under recipe changes --- it is an observation,
 not a guarantee.
@@ -907,16 +907,16 @@ Operations & Prompt length vs cache size
 \subsection{Bridges to Later Chapters}
 
 \begin{itemize}
-  \item \textbf{Week 5 (Pretraining \& In-Context)}: induction heads
+  \item \textbf{Chapter 6 (Pretraining \& In-Context)}: induction heads
         and in-context learning mechanisms
         \citep{olsson2022induction, xie2022explanation} live inside
         this architecture.
-  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: MoE replaces the
+  \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: MoE replaces the
         dense FFN with a sparse mixture; attention remains dense.
-  \item \textbf{Week 7 (Adaptation)}: LoRA adapts $W_Q, W_V$ projections
+  \item \textbf{Chapter 8 (Adaptation)}: LoRA adapts $W_Q, W_V$ projections
         with low-rank updates; quantization targets $W_1/W_2$ where
         most parameters live.
-  \item \textbf{Week 9 (LLM Systems)}: KV-cache management, prefix
+  \item \textbf{Chapter 10 (LLM Systems)}: KV-cache management, prefix
         caching, speculative decoding -- all are consequences of the
         attention structure derived here.
 \end{itemize}
@@ -1021,7 +1021,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 4 Takeaway}
+\subsection{Chapter 5 Takeaway}
 
 \begin{quote}
 The Transformer turns sequence modeling into parallel, differentiable

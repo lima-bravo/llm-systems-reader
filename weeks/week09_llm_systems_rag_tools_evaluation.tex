@@ -153,7 +153,7 @@ set of chunks that are \emph{sufficient} to derive $a^\star$; for
 an answer $y$, we write $\mathrm{Claims}(y)$ for the atomic
 factual claims extracted from $y$. We continue to use $x$ for the
 user-visible prompt, $y$ for the model answer, $\tau$ for decoding
-temperature (Week~1), and $T$ for context length. The generator
+temperature (Chapter~1), and $T$ for context length. The generator
 conditional is written $P_\theta(y \mid x, c_{(1)}, \dots, c_{(k_R)})$.
 
 We make three standing assumptions.
@@ -186,7 +186,7 @@ retrieved chunk \emph{tuple} $R_{k_R}(q) = (c_{(1)}, \dots, c_{(k_R)})$
 (an ordered list, since the generator is sensitive to position
 --- see lost-in-the-middle, Eq.~\eqref{eq:litm}) and the user
 query $q$ into a single token sequence, and $P_\theta$ is the
-frozen generator from Week~4. We use tuple notation rather than
+frozen generator from Chapter~5. We use tuple notation rather than
 set notation throughout to keep the order dependence explicit. The design space is
 larger than Eq.~\eqref{eq:rag-conditional} suggests: $R$, $k_R$, the
 chunking policy producing $\mathcal{C}$, and the prompt-construction
@@ -624,7 +624,7 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
   \mathrm{exec}_i(\mathrm{params}_t)$), and repeats until the policy
   emits a terminal answer. Only the Action is executed; the
   Thought is useful for debugging and sometimes for training (see
-  reasoning-trace-based methods in Week~8) but does not cross the
+  reasoning-trace-based methods in Chapter~9) but does not cross the
   trust boundary into the tool runtime.}
   \label{fig:react-loop}
 \end{figure}
@@ -632,7 +632,7 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
 \subsubsection{Tool schemas}
 
 Modern tool-use APIs (OpenAI function calling, Anthropic tool use,
-and the MCP standard introduced in Week~11) all require a
+and the MCP standard introduced in Chapter~12) all require a
 JSON-schema description of each tool: its name, its parameter
 names and types, and a natural-language description. The model is
 trained (or prompted) to emit calls that validate against the
@@ -919,7 +919,7 @@ The lost-in-the-middle curve Eq.~\eqref{eq:litm} is an
 \emph{empirical observation} on multiple production and
 research-grade models. We do \emph{not} have a theorem that
 predicts the U-shape from architecture alone; it correlates with
-positional-encoding behaviour (Week~4) and training-data
+positional-encoding behaviour (Chapter~5) and training-data
 positional biases, but no derivation connects them. Treat
 Eq.~\eqref{eq:litm} as a robust regularity, not a law.
 
@@ -941,7 +941,7 @@ theorem.
 \citet{mialon2023augmented} offer a general framing for LLM
 systems as language models augmented with reasoning (chain-of-
 thought, ReAct), tools (calculator, interpreter, search), and
-actions (external APIs). Week~9 should be read in this frame:
+actions (external APIs). Chapter~10 should be read in this frame:
 every augmentation is a system component, every system component
 has its own failure modes, and every deployment is a choice of
 which components to include.
@@ -1081,17 +1081,17 @@ A concrete end-to-end RAG + evaluation lab:
 
 \subsection{Bridges to Other Weeks}
 
-Week~9 connects back to almost every prior chapter. Retrieval
-substitutes for some of the knowledge alignment (Week~8) or
-adaptation (Week~7) would otherwise have to encode. Tool use is
+Chapter~10 connects back to almost every prior chapter. Retrieval
+substitutes for some of the knowledge alignment (Chapter~9) or
+adaptation (Chapter~8) would otherwise have to encode. Tool use is
 an alternative to scale for arithmetic, code execution, and
-dynamic knowledge (Week~6 would have that done by making the model
+dynamic knowledge (Chapter~7 would have that done by making the model
 bigger; here we make the surrounding system more capable).
 Evaluation is the lens under which every other week's claims
-become testable, and it is the hand-off into Week~10's governance
+become testable, and it is the hand-off into Chapter~11's governance
 framework, where eval results become assurance artefacts.
 
-Week~11 introduces the Model Context Protocol (MCP), which
+Chapter~12 introduces the Model Context Protocol (MCP), which
 standardizes the tool-use schema of this chapter across clients
 and servers and turns the ``integrate against my API'' problem
 into a declarative one.
@@ -1137,7 +1137,7 @@ $R_k(q)$, gold-span set $G$.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 9 Takeaway}
+\subsection{Chapter 10 Takeaway}
 
 \begin{quote}
 In production deployments built around RAG, tool use, and

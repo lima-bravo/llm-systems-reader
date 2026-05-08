@@ -1,12 +1,12 @@
 % Cross-chapter dependency graph.
-% Nodes are weeks; arrows indicate "exports results used by".
+% Nodes are chapters; arrows indicate "exports results used by".
 % Rendered in the front matter (see main.tex).
 
 \begin{figure}[H]
 \centering
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
-  node distance=1.0cm and 1.0cm,
+  node distance=0.9cm and 0.9cm,
   wk/.style={rectangle, rounded corners, draw=black!70, fill=black!5,
              minimum width=2.2cm, minimum height=0.9cm,
              align=center, font=\small},
@@ -14,71 +14,87 @@
   appl/.style={wk, fill=green!12, draw=green!50!black},
   syst/.style={wk, fill=orange!15, draw=orange!70!black},
   gov/.style={wk,  fill=red!10,    draw=red!70!black},
+  meta/.style={wk, fill=purple!10, draw=purple!60!black},
   arr/.style={-{Latex[length=2mm]}, draw=black!55, thick}
 ]
 
 % Row 1: foundations
-\node[core] (w1) {Week 1\\Foundations};
-\node[core, right=of w1] (w2) {Week 2\\Training};
-\node[core, right=of w2] (w3) {Week 3\\Tokenization};
+\node[core] (c1) {Chapter 1\\Foundations};
+\node[core, right=of c1] (c2) {Chapter 2\\Training};
+\node[core, right=of c2] (c3) {Chapter 3\\Neural Nets};
 
-% Row 2: architecture / pretraining
-\node[core, below=of w1] (w4) {Week 4\\Architecture};
-\node[core, right=of w4] (w5) {Week 5\\Pretraining};
-\node[core, right=of w5] (w6) {Week 6\\MoE / Scaling};
+% Row 2: input pipeline + architecture + pretraining
+\node[core, below=of c1] (c4) {Chapter 4\\Tokenization};
+\node[core, right=of c4] (c5) {Chapter 5\\Architecture};
+\node[core, right=of c5] (c6) {Chapter 6\\Pretraining};
+\node[core, right=of c6] (c7) {Chapter 7\\MoE / Scaling};
 
-% Row 3: adaptation / alignment
-\node[appl, below=of w4] (w7) {Week 7\\Adaptation};
-\node[appl, right=of w7] (w8) {Week 8\\Alignment};
-\node[syst, right=of w8] (w9) {Week 9\\RAG / Eval};
+% Row 3: adaptation / alignment / systems
+\node[appl, below=of c4] (c8) {Chapter 8\\Adaptation};
+\node[appl, right=of c8] (c9) {Chapter 9\\Alignment};
+\node[syst, right=of c9] (c10) {Chapter 10\\RAG / Eval};
 
-% Row 4: governance / access
-\node[gov,  below=of w7] (w10) {Week 10\\Governance};
-\node[syst, right=of w10] (w11) {Week 11\\APIs / MCP};
+% Row 4: governance / access / error model
+\node[gov,  below=of c8] (c11) {Chapter 11\\Governance};
+\node[syst, right=of c11] (c12) {Chapter 12\\APIs / MCP};
+\node[meta, right=of c12] (c13) {Chapter 13\\Error Model};
 
-% Edges - foundations -> downstream
-\draw[arr] (w1) -- (w4);
-\draw[arr] (w1.south east) -- (w5.north west);
-\draw[arr] (w1) -- ++(6.8,-0.4) |- (w8.west);
-\draw[arr] (w2) -- (w5);
-\draw[arr] (w2) -- (w6);
-\draw[arr] (w2) -- (w7);
-\draw[arr] (w3) -- (w4);
-\draw[arr] (w3) -- (w5);
+% Foundations -> downstream
+\draw[arr] (c1) -- (c5);             % cross-entropy -> architecture loss
+\draw[arr] (c1.south east) -- (c6.north west);  % CE -> pretraining
+\draw[arr] (c1) -- ++(8.0,-0.4) |- (c9.west);  % calibration -> alignment
+\draw[arr] (c2) -- (c6);             % SGD -> pretraining
+\draw[arr] (c2) -- (c7);             % scaling -> MoE
+\draw[arr] (c2) -- (c8);             % memory -> adaptation
+
+% Neural nets (new) -> architecture and adaptation
+\draw[arr] (c3) -- (c5);             % MLP, residuals -> Transformer
+\draw[arr] (c3) -- (c7);             % FFN block -> MoE replaces it
+\draw[arr] (c3) -- (c8);             % linear layers -> LoRA modifies them
+
+% Tokenization -> downstream
+\draw[arr] (c4) -- (c5);
+\draw[arr] (c4) -- (c6);
 
 % Architecture -> downstream
-\draw[arr] (w4) -- (w5);
-\draw[arr] (w4) -- (w6);
-\draw[arr] (w4) -- (w7);
-\draw[arr] (w4) -- ++(8.2,-3.0) |- (w11.west);
+\draw[arr] (c5) -- (c6);
+\draw[arr] (c5) -- (c7);
+\draw[arr] (c5) -- (c8);
+\draw[arr] (c5) -- ++(8.2,-3.0) |- (c12.west);
 
 % Pretraining -> alignment / efficiency
-\draw[arr] (w5) -- (w6);
-\draw[arr] (w5) -- (w8);
+\draw[arr] (c6) -- (c7);
+\draw[arr] (c6) -- (c9);
 
 % Efficiency -> serving
-\draw[arr] (w6) -- ++(2.5,-2.6) |- (w11.east);
+\draw[arr] (c7) -- ++(2.5,-2.6) |- (c12.east);
 
 % Adaptation -> alignment / serving
-\draw[arr] (w7) -- (w8);
-\draw[arr] (w7) -- ++(5.9,-1.2) |- (w11.west);
+\draw[arr] (c8) -- (c9);
+\draw[arr] (c8) -- ++(5.9,-1.2) |- (c12.west);
 
 % Alignment -> system / governance
-\draw[arr] (w8) -- (w9);
-\draw[arr] (w8) -- (w10);
+\draw[arr] (c9) -- (c10);
+\draw[arr] (c9) -- (c11);
 
 % System -> governance / access
-\draw[arr] (w9) -- (w10);
-\draw[arr] (w9) -- (w11);
+\draw[arr] (c10) -- (c11);
+\draw[arr] (c10) -- (c12);
 
 % Governance -> access (constraints)
-\draw[arr] (w10) -- (w11);
+\draw[arr] (c11) -- (c12);
+
+% Everything that produces failures -> error-model synthesis
+\draw[arr] (c10.south east) -- (c13.north west);
+\draw[arr] (c12) -- (c13);
 
 \end{tikzpicture}%
 }
 \caption{Cross-chapter dependency graph. Arrows indicate that results,
 definitions, or notation from the source chapter are used by the target
 chapter. Foundations (blue) feed architecture, adaptation and alignment
-(green) and then systems-level chapters (orange) and governance (red).}
+(green), then systems-level chapters (orange), governance (red), and
+finally the human-centric error model (purple) that synthesises across
+the stack.}
 \label{fig:chapter_dependencies}
 \end{figure}

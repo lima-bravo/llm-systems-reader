@@ -204,7 +204,7 @@ or recover context the user has not written into the prompt.
 Inference-time mechanisms can close part of the gap (retrieval,
 tool use, agentic critique loops, calibrated abstention,
 clarifying-question training), and the chapter assumes these are
-system-level interventions (Week~9, Week~11) layered on top
+system-level interventions (Chapter~10, Chapter~12) layered on top
 of the model rather than properties internal to it.
 \end{notationbox}
 
@@ -242,7 +242,7 @@ serving stacks reduce the structural failure rate further by
 to tokens that keep the partial output within the target grammar.
 JSON-mode and JSON-schema enforcement, regex-constrained generation,
 and finite-state-machine guards over the token distribution are all
-instances of the same idea. Function-calling APIs (Week~11)
+instances of the same idea. Function-calling APIs (Chapter~12)
 typically sit on top of constrained decoders.
 
 In diagnosis, structural failures are the easiest to identify ---
@@ -265,7 +265,7 @@ appeal to the world; they are failures of internal coherence.
 
 The mechanism that produces meaning failures is the same mechanism
 that produces fluent text in the first place. A language model
-trained on cross-entropy (Week~1) optimizes for the
+trained on cross-entropy (Chapter~1) optimizes for the
 \emph{plausibility} of the next token given the prefix.
 Plausibility is a local property. A token can be plausible at
 every position in a sequence and still produce, at the end of the
@@ -284,7 +284,7 @@ techniques sample multiple completions and compare them
 (self-consistency), invoke the model to critique and revise its
 own output (self-refine, Reflexion), or hand the output to a
 separate verifier model trained for this purpose. Agentic systems
-(Week~11) extend the same pattern by adding explicit
+(Chapter~12) extend the same pattern by adding explicit
 critique-and-revise loops to a chain of LM calls. None of these is
 a guarantee in the way a JSON parser is for structure; each is a
 mitigation that trades inference compute and orchestration
@@ -305,7 +305,7 @@ right but whether it \emph{is} right considered as a self-contained
 artifact. Read it once for fluency, then again for contradictions.
 When the cost of a meaning failure justifies the additional
 compute, engage the appropriate inference-time mitigation from the
-list above. These are, in the language of Week~5, ways of
+list above. These are, in the language of Chapter~6, ways of
 trading inference compute against meaning reliability.
 
 \subsubsection{Context: is the output appropriate for the situation?}
@@ -333,10 +333,10 @@ the situation and what the prompt encodes. The model has access
 only to the tokens in its context window. Anything the user knows
 about themselves, their audience, their goals, or their constraints
 that is not written into the prompt does not exist for the model.
-Few-shot prompting (Week~5) is, among other things, an attempt
+Few-shot prompting (Chapter~6) is, among other things, an attempt
 to encode situational expectations through examples. System prompts
-(Week~11) are an attempt to fix the situation up front.
-Alignment training (Week~8) shapes the model's defaults along
+(Chapter~12) are an attempt to fix the situation up front.
+Alignment training (Chapter~9) shapes the model's defaults along
 this axis --- politeness, refusal, length, formality --- but the
 defaults are defaults, not the situation.
 
@@ -381,7 +381,7 @@ the output contradicts source material the model was given, from
 \emph{extrinsic} hallucination, in which the output introduces
 unverifiable claims. Both are grounding failures.
 
-The remedy at the system level is retrieval (Week~9). A
+The remedy at the system level is retrieval (Chapter~10). A
 retrieval-augmented generation pipeline replaces the question
 ``what is the most probable thing to say'' with ``what is the most
 probable thing to say given these specific sources.'' The grounding
@@ -430,7 +430,7 @@ the user's organization's coding conventions, the user's medical
 history, the user's project's constraints, or any of the several
 hundred other things that shape what counts as a good answer in a
 real situation. Some of these can be imported into the context:
-through retrieval (Week~9), through tool use, through careful
+through retrieval (Chapter~10), through tool use, through careful
 prompting, through long-running agent contexts that accumulate
 state. None of them can be imported automatically.
 
@@ -455,7 +455,7 @@ recommended walk is bottom-up:
 \begin{enumerate}
   \item \emph{Structure}. Does the output parse, compile, validate
         against its schema? If not, the failure is structural and
-        the remedy lives in Week~5 (decoding) or Week~11
+        the remedy lives in Chapter~6 (decoding) or Chapter~12
         (constrained generation).
   \item \emph{Meaning}. Read the output as a self-contained
         artifact. Does it contradict itself? Does it use a term
@@ -508,38 +508,38 @@ chapters in ways that are worth making explicit. Engineers who
 hold the ladder in mind have a way of mapping user-facing
 complaints onto technical interventions.
 
-\textbf{Structure} is the territory of decoding (Week~5),
+\textbf{Structure} is the territory of decoding (Chapter~6),
 constrained sampling, and the structured-output contracts of tool
-use (Week~11). The mathematical objects involved are the
+use (Chapter~12). The mathematical objects involved are the
 softmax distribution, the JSON-schema-validating sampler, and the
 function-calling JSON contract.
 
 \textbf{Meaning} is the territory of cross-entropy training
-(Week~1), embeddings (Week~3), and the inference-compute
-trade-offs of self-checking and chain-of-thought (Week~5). The
+(Chapter~1), embeddings (Chapter~4), and the inference-compute
+trade-offs of self-checking and chain-of-thought (Chapter~6). The
 mathematical objects involved are the cross-entropy gradient, the
 embedding-space cosine similarity, and the sampling distributions
 that drive temperature and majority voting.
 
 \textbf{Context} is the territory of in-context learning
-(Week~5), prompt construction (Week~9), system prompts
-(Week~11), and the tone-and-style components of alignment
-(Week~8). The mathematical objects involved are the
+(Chapter~6), prompt construction (Chapter~10), system prompts
+(Chapter~12), and the tone-and-style components of alignment
+(Chapter~9). The mathematical objects involved are the
 preference-model log-likelihood, the few-shot prompt format, and
 the RLHF KL penalty that keeps the policy from over-tuning.
 
-\textbf{Grounding} is the territory of retrieval (Week~9), tool
+\textbf{Grounding} is the territory of retrieval (Chapter~10), tool
 use, the symbol-grounding literature \citep{harnad1990symbol,
 bender2020climbing}, and the memorization-versus-hallucination
-distinction of Week~5. The mathematical objects involved are
+distinction of Chapter~6. The mathematical objects involved are
 BM25, the dense-retrieval inner product, the ReAct loop, and the
-verification predicates of Week~10's hazard analysis.
+verification predicates of Chapter~11's hazard analysis.
 
 \textbf{Environment} is the territory of system design rather than
-model design. Long-context architectures (Week~4) extend how
-much environment can be imported. Agent loops (Week~11)
+model design. Long-context architectures (Chapter~5) extend how
+much environment can be imported. Agent loops (Chapter~12)
 accumulate environment over time. Documentation, logging, and
-incident reporting (Week~10) make the environment the
+incident reporting (Chapter~11) make the environment the
 \emph{system} sees explicit and auditable.
 
 The general pattern is that lower axes are increasingly
@@ -561,7 +561,7 @@ structurally fine, internally coherent, situationally appropriate,
 factually grounded, and environmentally informed but that is, by
 some standard the user holds, simply wrong --- offensive, biased,
 unethical, in conflict with values the user expects the system to
-hold. These failures live in Week~8's territory rather than
+hold. These failures live in Chapter~9's territory rather than
 this chapter's. The five axes ask whether the answer is correct;
 the normative dimension asks whether the answer is right, and
 right is not the same thing as correct.
@@ -569,14 +569,14 @@ right is not the same thing as correct.
 The second is the \emph{adversarial} failure: an output that has
 been deliberately induced by a malicious prompt, a poisoned
 retrieval source, or a manipulated tool. These failures cross the
-trust boundaries of Week~9 and Week~11 and are addressed by
+trust boundaries of Chapter~10 and Chapter~12 and are addressed by
 defenses in depth rather than by diagnostic ladders.
 
 The third is the \emph{drift} failure: an output that was correct
 yesterday and is wrong today because the world has changed. This
 is a failure of the system's integration with reality, not of any
 single output. The remedy lives in monitoring, evaluation, and
-governance (Week~10).
+governance (Chapter~11).
 
 The five-axis model is meant for the user-facing case in which a
 single output is in front of you and you want to know what to do.
@@ -633,43 +633,43 @@ located the failure at the level where the remedy lives.
 \subsection{Bridges to Other Weeks}
 
 \begin{itemize}
-  \item \textbf{Week~1 (Statistical Foundations).} The
+  \item \textbf{Chapter~1 (Statistical Foundations).} The
         \emph{Meaning} axis is the user-visible consequence of the
         cross-entropy training objective: the model learns
         plausibility, not truth, and global coherence is a
         side-effect rather than an enforced property.
-  \item \textbf{Week~3 (Tokenization and Embeddings).} The
+  \item \textbf{Chapter~4 (Tokenization and Embeddings).} The
         embedding space is the substrate on which meaning is
         encoded; the structure axis sits on top of the
         tokenization pipeline.
-  \item \textbf{Week~4 (Transformer Architecture).} Context
+  \item \textbf{Chapter~5 (Transformer Architecture).} Context
         length and lost-in-the-middle effects are direct
         contributors to the \emph{Environment} axis: the model can
         only use what it can attend to.
-  \item \textbf{Week~5 (Pretraining and In-Context Learning).}
+  \item \textbf{Chapter~6 (Pretraining and In-Context Learning).}
         In-context learning is the primary mechanism for shaping
         the \emph{Context} axis at inference time; sampling
         strategies trade compute for \emph{Meaning} reliability.
-  \item \textbf{Week~8 (Alignment).} Alignment shapes the
+  \item \textbf{Chapter~9 (Alignment).} Alignment shapes the
         defaults along the \emph{Context} axis (tone, refusal,
         length) without changing the \emph{Grounding} axis at all
         --- a confusion this chapter helps disentangle.
-  \item \textbf{Week~9 (RAG, Tools, Evaluation).} Retrieval is
+  \item \textbf{Chapter~10 (RAG, Tools, Evaluation).} Retrieval is
         the primary system-level remedy for \emph{Grounding};
         tools are the primary remedy for \emph{Environment} when
         external state is needed.
-  \item \textbf{Week~10 (Governance).} The diagnostic ladder
+  \item \textbf{Chapter~11 (Governance).} The diagnostic ladder
         feeds incident reports, hazard analyses, and assurance
         cases. A failure that climbs the ladder to
         \emph{Grounding} or \emph{Environment} typically requires
         a system-level control rather than a model-level fix.
-  \item \textbf{Week~11 (APIs, Agents, MCP).} Agents accumulate
+  \item \textbf{Chapter~12 (APIs, Agents, MCP).} Agents accumulate
         environment over time; the structured-I/O contracts of
         MCP bound the \emph{Structure} axis tightly enough that
         higher-axis failures dominate the production failure mix.
 \end{itemize}
 
-\subsection{Week 12 Takeaway}
+\subsection{Chapter 13 Takeaway}
 
 The five-axis model is not a theory. It is a vocabulary for
 talking about LLM failures across the gap between the engineer's

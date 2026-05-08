@@ -158,7 +158,7 @@ By the end of this week, you should be able to:
 
 GPT-style pretraining optimizes a single objective: maximize the
 autoregressive log-likelihood of text under the causal factorization
-from Week~1:
+from Chapter~1:
 \begin{equation}
 \label{eq:week5-pretrain-obj}
 \mathcal{L}(\theta)
@@ -202,7 +202,7 @@ Eq.~\eqref{eq:week5-memorization}).
 Standing assumptions are:
 \textbf{(A5.1)} Chinchilla exponents $(\alpha, \beta)$ and the
 compute-optimal form $(N^\star, D^\star) \propto C^{1/2}$ are imported
-from Week~2 (assumption A2.2) and extrapolate only within the fit
+from Chapter~2 (assumption A2.2) and extrapolate only within the fit
 range.
 \textbf{(A5.2)} Mechanistic hypotheses for in-context learning
 (implicit Bayesian inference, induction heads, gradient descent in
@@ -224,7 +224,7 @@ worth understanding.
 
 \subsubsection{Autoregressive (Causal) LM}
 
-Eq.~\eqref{eq:week5-pretrain-obj}, with a causal mask (Week~4).
+Eq.~\eqref{eq:week5-pretrain-obj}, with a causal mask (Chapter~5).
 Every position is both a training \emph{context} and a training
 \emph{target}: the cross-entropy is summed over all $T$ positions in a
 single forward pass. Architectures: GPT family, Llama, Mistral,
@@ -331,7 +331,7 @@ copyrighted; some jurisdictions permit text-and-data mining, others
 require opt-in. Responsible pipelines now maintain a per-document
 provenance log (source URL, crawl date, license detection, opt-out
 signals), and the regulatory surface (EU AI Act, US state laws,
-individual suits) is rapidly evolving. This becomes a Week~10
+individual suits) is rapidly evolving. This becomes a Chapter~11
 governance input: your assurance case requires a defensible data
 provenance record.
 
@@ -350,7 +350,7 @@ fixed-length batches. Padding wastes FLOPs. The canonical solution is
 \emph{packing}: concatenate multiple short documents into a single
 sequence of length $T$, separated by the end-of-document token
 (\texttt{<|endoftext|>}, a.k.a.\ \texttt{<eos>}). Combined with a
-\emph{block-diagonal} attention mask (Week~4), attention cannot leak
+\emph{block-diagonal} attention mask (Chapter~5), attention cannot leak
 across documents within the same packed sequence, preserving the
 per-document autoregressive factorization.
 
@@ -374,14 +374,14 @@ the compute a uniform full-length pretrain would cost.
 
 \subsection{Scaling Laws Revisited: Compute-Optimal Training}
 
-From Week~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
+From Chapter~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
 is
 \begin{equation}
 \label{eq:week5-chinchilla}
 L(N, D) \;=\; E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}.
 \end{equation}
 
-\begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Week~2]
+\begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Chapter~2]
 Fix $C \approx 6\,N D$. Minimizing Eq.~\eqref{eq:week5-chinchilla}
 subject to $N D = C/6$ via the Lagrangian
 $\mathcal{J}(N, D, \mu) = L(N, D) - \mu\,(N D - C/6)$ yields the
@@ -475,7 +475,7 @@ trained autoregressive LM, implements the rule ``given
 \emph{previous-token head} (layer 1) and a \emph{copy-on-match head}
 (layer 2). The emergence of this circuit during training coincides
 with a sharp drop in in-context loss. Strength: mechanistically
-grounded in the architecture of Week~4. Weakness: extends only to
+grounded in the architecture of Chapter~5. Weakness: extends only to
 the copy-like component of ICL.
 
 \textbf{Gradient descent in the forward pass}
@@ -745,7 +745,7 @@ distribution. If not, switch metrics before making causal claims.
 For safety-relevant claims (e.g., ``the model cannot do $X$ at our
 scale''), conservative practice assumes smooth scaling and budgets
 for the predicted performance of a larger model under the same
-metric. Governance (Week~10) should require that any
+metric. Governance (Chapter~11) should require that any
 ``non-emergence'' argument used in an assurance case be replicated
 under at least one continuous metric; a single-metric
 non-capability claim is not evidence.
@@ -795,7 +795,7 @@ probe regime without new measurement.
   \item Output filters alone are insufficient: the training data
         itself must be treated as a privacy asset.
 \end{itemize}
-Week~10 (Governance) returns to memorization as a residual risk in
+Chapter~11 (Governance) returns to memorization as a residual risk in
 the assurance case.
 
 \subsection{Systems Engineering Implications}
@@ -849,7 +849,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         regressions occur on API upgrades.
   \item \textbf{Fluency as correctness}. Fluent-but-wrong outputs
         read more plausibly than hesitant-but-right outputs;
-        calibration probes (Week~1) are essential.
+        calibration probes (Chapter~1) are essential.
   \item \textbf{Contamination-as-capability}. A benchmark the model
         has already seen can create the illusion of generalization.
         Cutoff-date discipline matters.
@@ -861,20 +861,20 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
 \subsection{Bridges to Later Chapters}
 
 \begin{itemize}
-  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: Chinchilla-optimal
+  \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: Chinchilla-optimal
         $(N, D)$ planning interacts with MoE compute/quality tradeoffs.
-  \item \textbf{Week 7 (Adaptation)}: ICL is ``soft adaptation''; LoRA
+  \item \textbf{Chapter 8 (Adaptation)}: ICL is ``soft adaptation''; LoRA
         and instruction tuning are ``hard adaptation.''
-  \item \textbf{Week 8 (Alignment)}: the SFT stage starts from a
+  \item \textbf{Chapter 9 (Alignment)}: the SFT stage starts from a
         pretrained model of the kind built here; RLHF/DPO targets the
         next-token distribution we trained.
-  \item \textbf{Week 9 (LLM Systems)}: RAG is a principled way to
+  \item \textbf{Chapter 10 (LLM Systems)}: RAG is a principled way to
         sidestep in-weights memorization; evaluation harnesses
         extend the $k$-shot evaluation protocols introduced here.
-  \item \textbf{Week 10 (Governance)}: data provenance, contamination
+  \item \textbf{Chapter 11 (Governance)}: data provenance, contamination
         audits, and extraction red-teams become assurance-case
         evidence.
-  \item \textbf{Week 11 (Modern Access)}: API parameters like
+  \item \textbf{Chapter 12 (Modern Access)}: API parameters like
         \texttt{temperature}, \texttt{top\_p}, \texttt{frequency\_penalty}
         are the direct UI over the sampling math above.
 \end{itemize}
@@ -975,7 +975,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 5 Takeaway}
+\subsection{Chapter 6 Takeaway}
 
 \begin{quote}
 Pretraining creates a powerful statistical engine; prompting steers

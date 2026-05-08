@@ -140,7 +140,7 @@ By the end of this week, you should be able to:
 \begin{notationbox}
 The access stack introduces a different vocabulary from the
 modelling chapters. We fix it here and use it throughout
-Week~11.
+Chapter~12.
 
 \textit{Latency variables.} For a single request,
 $\mathrm{TTFT}$ denotes time-to-first-token (seconds from request
@@ -154,7 +154,7 @@ $N_\mathrm{out}$ tokens the end-to-end wall-clock is
 $\mathrm{TTFT}$ is dominated by prompt-processing (prefill), which
 scales with the number of input tokens $N_\mathrm{in}$ and with
 cache state; $\mathrm{TPOT}$ is dominated by per-step autoregressive
-decode (see Week~6).
+decode (see Chapter~7).
 
 \textit{Throughput and quota variables.} A provider enforces two
 per-minute budgets: $\mathrm{RPM}$ requests per minute and
@@ -200,7 +200,7 @@ We make the following assumptions unless otherwise noted.
     allowances are neglected in the queueing model.
   \item[A11.3 Trust boundary.] Tool outputs and MCP server
     responses are \emph{untrusted} content in the same sense as
-    retrieved chunks (A9.2, Week~9). The host is the security
+    retrieved chunks (A9.2, Chapter~10). The host is the security
     boundary; servers are untrusted by default.
 \end{description}
 \end{notationbox}
@@ -280,7 +280,7 @@ and any product-specific guardrails.
 
 \textbf{L1 Human.} A user with a task, a context, and
 expectations, operating under time pressure and cognitive load.
-Week~10's governance framing lives here.
+Chapter~11's governance framing lives here.
 
 The useful exercise is to pick any deployed LLM system and locate
 each layer. If one seems missing, either you are misreading (some
@@ -340,7 +340,7 @@ reason to use an SDK that manages conversation state explicitly.
 \subsubsection{Sampling and Decoding Parameters}
 
 The request body also carries decoding knobs, which we analyzed
-statistically in Week~5. A practitioner's quick reference:
+statistically in Chapter~6. A practitioner's quick reference:
 
 \textbf{temperature} (typically 0--2). Scales logits before
 softmax. Zero collapses to greedy decoding and is the correct
@@ -441,7 +441,7 @@ strings. Validation $\neq$ faithfulness.
 
 \subsubsection{Prompt Caching}
 
-The KV cache (Week~4, Week~6) is a per-request optimization. At
+The KV cache (Chapter~5, Chapter~7) is a per-request optimization. At
 the API layer, providers expose a second cache: a \emph{prefix
 cache} that allows repeated long prefixes (system prompt, large
 retrieved context, a document being Q\&A'd) to be billed and
@@ -901,7 +901,7 @@ stored as JSON records in a database; the agent retrieves
 relevant records via a tool call.
 
 \emph{Semantic memory.} Learned associations, retrievable by
-similarity. This is Week~9's RAG index, used as an agent tool
+similarity. This is Chapter~10's RAG index, used as an agent tool
 rather than as a one-shot lookup.
 
 \subsubsection{Termination}
@@ -1222,7 +1222,7 @@ in a pattern invisible to request-level graphs.
 
 \subsubsection{Eval Regression in CI}
 
-Week~9 introduced the evaluation stack. The deployment practice
+Chapter~10 introduced the evaluation stack. The deployment practice
 is to run a small fixed eval set on every prompt or model change
 and fail the build on regression beyond threshold. Libraries like
 \texttt{promptfoo}, \texttt{ragas}, and \texttt{inspect\_ai}
@@ -1407,34 +1407,34 @@ grounded in code you wrote yourself.
 
 \subsection{Bridges to Other Weeks}
 
-Week~11 is the outer ring of the reader:
+Chapter~12 is the outer ring of the reader:
 
-\textbf{Week~4} (transformer architecture) and \textbf{Week~6}
+\textbf{Chapter~5} (transformer architecture) and \textbf{Chapter~7}
 (efficiency) explain the runtime's job at L7 --- KV cache,
 attention, batching --- and why speculative decoding and prompt
 caching pay off.
 
-\textbf{Week~5} (pretraining, in-context learning) motivated the
+\textbf{Chapter~6} (pretraining, in-context learning) motivated the
 completion abstraction; the chat-completion schema is its API-
 layer encoding, with the caveat that the model is now assistant-
-tuned and Week~8's alignment story shapes what the raw model
+tuned and Chapter~9's alignment story shapes what the raw model
 under the API actually is.
 
-\textbf{Week~7} (adaptation, LoRA, quantization) determines what
+\textbf{Chapter~8} (adaptation, LoRA, quantization) determines what
 self-hosted runtimes look like: multi-tenant LoRA swap, NF4
 quantization, FP8 inference are all ways to make the L7 layer
 commercially viable.
 
-\textbf{Week~8} (alignment) gives you the assistant the API
+\textbf{Chapter~9} (alignment) gives you the assistant the API
 talks to. Tool-use reliability, refusal behaviour, and
 instruction-following accuracy are all downstream of RLHF/DPO
 training.
 
-\textbf{Week~9} (RAG, tools, evaluation) gave the theory; this
+\textbf{Chapter~10} (RAG, tools, evaluation) gave the theory; this
 chapter gives the wire format. Retrieval is a tool; evaluation
 is a CI stage; the RAG pipeline sits inside the agent loop.
 
-\textbf{Week~10} (governance) applies to every layer of the
+\textbf{Chapter~11} (governance) applies to every layer of the
 stack. The model card governs L8; the audit framework governs
 L5; assurance cases and red-team regression govern L2--L3; the
 human-factors argument lives at L1. Deployment without this

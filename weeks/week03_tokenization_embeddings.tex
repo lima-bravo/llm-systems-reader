@@ -225,7 +225,7 @@ deterministic function
 \mathbb{R}^{T \times d}.
 \end{equation}
 See Figure~\ref{fig:week3-pipeline}. After embedding, the rest of the
-Transformer (Week~4) operates purely on floats; the model never sees a
+Transformer (Chapter~5) operates purely on floats; the model never sees a
 character or a Unicode code-point again. The tokenizer is therefore a
 \emph{model boundary}: it defines the alphabet the rest of the system
 will ever perceive, and it must match exactly between training and
@@ -250,7 +250,7 @@ Three engineering claims follow immediately:
         token sequence is unrecoverable downstream (e.g., a
         capitalization lost in lowercasing).
   \item \textbf{Tokenization determines the prior}. Tokens are the
-        atomic events in the cross-entropy of Week~1; changing them
+        atomic events in the cross-entropy of Chapter~1; changing them
         changes both the likelihood surface and the notion of
         perplexity.
 \end{itemize}
@@ -637,7 +637,7 @@ The output layer of a language model computes unnormalized logits
 W_{\mathrm{out}} \in \mathbb{R}^{V \times d},
 \end{equation}
 where $\mathbf{h}$ is the final hidden state and $\mathbf{z}$ is fed
-into the softmax of Week~1. \emph{Tying} weights sets
+into the softmax of Chapter~1. \emph{Tying} weights sets
 $W_{\mathrm{out}} = E$, so the input embedding and the output projection
 share parameters. This halves the embedding parameter budget and,
 empirically, improves perplexity by a small but consistent margin on
@@ -655,7 +655,7 @@ machinery the model cannot distinguish ``dog bites man'' from
 Classical variants (sinusoidal, learned) are additive to the embedding;
 rotary~\citep{su2021rope} and ALiBi~\citep{press2022alibi} are
 multiplicative/additive inside the attention kernel. Positional
-encoding is covered in depth in Week~4.
+encoding is covered in depth in Chapter~5.
 
 \subsection{The Distributional Hypothesis and Analogy Vectors}
 
@@ -723,7 +723,7 @@ numbers are not comparable across papers.
 
 The practical implication: raw cosine similarity is uninformative
 without centering or whitening. Downstream retrieval pipelines
-(Week~9) routinely apply a mean-subtraction or PCA step before
+(Chapter~10) routinely apply a mean-subtraction or PCA step before
 comparing embeddings, and the effectiveness of that step is itself an
 empirical finding, not a theorem.
 
@@ -757,7 +757,7 @@ trained on Google News encode gender stereotypes
 (\texttt{computer\_programmer} is closer to \texttt{man} than to
 \texttt{woman}, \emph{etc.}). Similar patterns recur in modern LLM
 embeddings, although now mediated by the much richer contextualized
-representations of the Transformer stack (Week~4).
+representations of the Transformer stack (Chapter~5).
 
 Three engineering positions on bias in embeddings:
 \begin{itemize}
@@ -769,7 +769,7 @@ Three engineering positions on bias in embeddings:
         output classifiers, and human review are typically more
         effective than post-hoc embedding projections.
 \end{itemize}
-This is reinforced in Week~8 (alignment) and Week~10 (governance).
+This is reinforced in Chapter~9 (alignment) and Chapter~11 (governance).
 
 \subsection{Systems Engineering Implications}
 
@@ -857,24 +857,24 @@ ratio for each target language and plan context budgets accordingly.
 \subsection{Bridges to Later Chapters}
 
 \begin{itemize}
-  \item \textbf{Week 4 (Transformer Architecture)}: the embedding
+  \item \textbf{Chapter 5 (Transformer Architecture)}: the embedding
         matrix $E$ feeds directly into the residual stream; positional
         encodings (RoPE, ALiBi) are layered on top.
-  \item \textbf{Week 5 (Pretraining \& In-Context)}: the effective
-        dataset size $D$ in the Chinchilla law from Week~2 is measured
+  \item \textbf{Chapter 6 (Pretraining \& In-Context)}: the effective
+        dataset size $D$ in the Chinchilla law from Chapter~2 is measured
         in \emph{tokens}; a different tokenizer produces a different
         training compute accounting.
-  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: tied embeddings
+  \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: tied embeddings
         and byte-level vocabularies keep $V$ manageable; MoE gating
         operates on post-embedding activations.
-  \item \textbf{Week 7 (Adaptation, LoRA, Quantization)}: embedding
+  \item \textbf{Chapter 8 (Adaptation, LoRA, Quantization)}: embedding
         tables are quantization hot-spots because of their outsized
         parameter share; LoRA adaptation typically freezes them.
-  \item \textbf{Week 9 (LLM Systems: RAG, Tools)}: retrieval uses
+  \item \textbf{Chapter 10 (LLM Systems: RAG, Tools)}: retrieval uses
         sentence- or document-level embeddings distinct from token
         embeddings; anisotropy correction matters for cosine-based
         retrieval.
-  \item \textbf{Week 10 (Governance \& Assurance)}: tokenizer and
+  \item \textbf{Chapter 11 (Governance \& Assurance)}: tokenizer and
         embedding provenance are artefacts in a model card /
         datasheet~\citep{mitchell2019modelcards,gebru2021datasheets}.
 \end{itemize}
@@ -894,7 +894,7 @@ ratio for each target language and plan context budgets accordingly.
   \item \citet{bolukbasi2016man} --- gender bias in word embeddings.
   \item \citet{su2021rope}, \citet{press2022alibi} --- modern
         positional encoding schemes (previewed here, developed in
-        Week~4).
+        Chapter~5).
 \end{itemize}
 
 \subsection{Recommended University Lectures}
@@ -964,7 +964,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 3 Takeaway}
+\subsection{Chapter 4 Takeaway}
 
 \begin{quote}
 Tokenization defines the alphabet the model will ever perceive, and

@@ -157,7 +157,7 @@ By the end of this week, you should be able to:
 Training an LLM is, mechanically, a large-scale numerical optimization
 problem. The learner does not \emph{reason} about the target; it performs a
 long sequence of gradient updates against an empirical risk. The objective
-from Week~1, indexed over the $N_{\mathrm{tok}}$ (context, token) pairs in
+from Chapter~1, indexed over the $N_{\mathrm{tok}}$ (context, token) pairs in
 the training set, is the empirical cross-entropy
 \begin{equation}
 \label{eq:week2-empirical-loss}
@@ -165,7 +165,7 @@ the training set, is the empirical cross-entropy
   \;=\; \frac{1}{N_{\mathrm{tok}}} \sum_{i=1}^{N_{\mathrm{tok}}}
         -\log p_{\theta}\!\left( x^{(i)}_{t_i} \,\middle|\, x^{(i)}_{<t_i} \right),
 \end{equation}
-where $i$ indexes (context, token) pairs (Week~1, A1.1b) and the
+where $i$ indexes (context, token) pairs (Chapter~1, A1.1b) and the
 symbol $N$ is reserved for the model parameter count later in the
 chapter. The objective is optimized via variants of stochastic
 gradient descent:
@@ -226,7 +226,7 @@ spanned by the fit (roughly $10^{19}$--$10^{24}$ FLOPs);
 \textbf{(A2.3)} the memory budget
 (Eq.~\eqref{eq:week2-mem-budget}) assumes standard mixed-precision
 AdamW with per-worker full optimizer state; ZeRO-style sharding is
-layered on top in Week~6 and changes only the per-worker terms, not
+layered on top in Chapter~7 and changes only the per-worker terms, not
 the total.
 \end{notationbox}
 
@@ -428,8 +428,8 @@ a single accelerator's HBM.
 covered later: ZeRO~\citep{rajbhandari2020zero} shards the $16N$
 static term across workers; activation checkpointing attacks
 $M_{\mathrm{act}}$; QLoRA and 8-bit optimizers~\citep{dettmers20228bit}
-reduce $b_{\mathrm o}$; quantization at serving time (Week~7) reduces
-$b_{\mathrm p}$ further. Week~6 revisits the sharded form of
+reduce $b_{\mathrm o}$; quantization at serving time (Chapter~8) reduces
+$b_{\mathrm p}$ further. Chapter~7 revisits the sharded form of
 Eq.~\eqref{eq:week2-mem-budget}.
 
 \subsection{Learning Rate Schedules}
@@ -762,7 +762,7 @@ frontier is the envelope of the minima of those curves.
 \Norm\ Scaling laws predict \emph{training loss} as a function of
 resources under A2.2; they do \emph{not} predict:
 \begin{itemize}
-  \item emergent capabilities (discussed in Week~5 via
+  \item emergent capabilities (discussed in Chapter~6 via
         \citet{wei2022emergent} and \citet{schaeffer2023mirage});
   \item performance on specific downstream tasks;
   \item the effect of data quality, deduplication, or mixture ratios.
@@ -795,7 +795,7 @@ itself an empirical question.
 inference-time, activation-recompute, and MoE routing cost, and is
 only a first-order estimate.
 (iv) Loss is a proxy for capability; the gap between the two is
-what Week~5 calls ``emergent capabilities'' and is \emph{not}
+what Chapter~6 calls ``emergent capabilities'' and is \emph{not}
 governed by Eq.~\eqref{eq:week2-chinchilla}.
 \end{provedassumed}
 
@@ -874,25 +874,25 @@ mistake that better instrumentation would have caught.
 \subsection{Bridges to Later Chapters}
 
 \begin{itemize}
-  \item \textbf{Week 3 (Tokenization and Embeddings)}: embedding tables
+  \item \textbf{Chapter 4 (Tokenization and Embeddings)}: embedding tables
         are the largest single contributor to optimizer state memory;
         tokenizer choice directly affects the effective $D$ in
         Eq.~\eqref{eq:week2-chinchilla}.
-  \item \textbf{Week 4 (Transformer Architecture)}: the layer
+  \item \textbf{Chapter 5 (Transformer Architecture)}: the layer
         normalization placement (pre-LN vs post-LN)
         \citep{xiong2020onlayer} interacts with warmup schedule length.
-  \item \textbf{Week 5 (Pretraining \& In-Context)}: the scaling-law
+  \item \textbf{Chapter 6 (Pretraining \& In-Context)}: the scaling-law
         formulas set the budget; emergent capability claims must be
         checked against them for confounds~\citep{schaeffer2023mirage}.
-  \item \textbf{Week 6 (Efficiency, Scaling, MoE)}: ZeRO
+  \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: ZeRO
         \citep{rajbhandari2020zero} and pipeline parallelism
         \citep{narayanan2021efficient} are direct responses to the
         optimizer-memory constraint derived here.
-  \item \textbf{Week 7 (Adaptation, LoRA, Quantization)}: adaptation
+  \item \textbf{Chapter 8 (Adaptation, LoRA, Quantization)}: adaptation
         methods replace a full-fidelity optimizer over $10^{11}$
         parameters with one over $\le 10^{7}$, tracing back to the
         cost equation laid out in \S\,Scaling Laws.
-  \item \textbf{Week 10 (Governance \& Assurance)}: reproducibility
+  \item \textbf{Chapter 11 (Governance \& Assurance)}: reproducibility
         protocols become evidence in an assurance case; training
         regression detection is an operational-safety control.
 \end{itemize}
@@ -1001,7 +1001,7 @@ derivation already given in the text.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Week 2 Takeaway}
+\subsection{Chapter 2 Takeaway}
 
 \begin{quote}
 Training behavior in LLMs is governed less by ``intelligence'' than by
