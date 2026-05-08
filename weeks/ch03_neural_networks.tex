@@ -1462,5 +1462,245 @@ two practical knobs that prevent this from happening.
 \end{workedexample}
 
 % --- END Worked Examples ---
-% Next: End matter (Proved/Assumed, Connections, Bridges,
-% Derivation Ledger, Takeaway) --- Task 14.
+
+\begin{provedassumed}[Neural-network primitives: what is established vs assumed]
+\textbf{Proved here.}
+The composition form of an MLP and the explicit gradient
+recursion via backpropagation
+(\S\ref{sec:nn-backprop},
+Eqs.~\ref{eq:nn-delta-recursion}--\ref{eq:nn-param-grads}) are
+direct applications of the calculus chain rule to the affine /
+elementwise composition of \eqref{eq:nn-mlp}. The
+forward / backward FLOP equivalence follows from counting matrix
+multiplies and is exact up to a small constant. The
+variance-preservation derivation that motivates Xavier and He
+init (\S\ref{sec:nn-init}, Eq.~\ref{eq:nn-var-preserve}) holds
+under independence and zero-mean assumptions stated explicitly
+in the derivation. The identity-path interpretation of residual
+connections at initialisation, and the gradient-non-vanishing
+argument through them
+(\S\ref{sec:nn-residual}, Eq.~\ref{eq:nn-residual}), follow
+from differentiating the residual recursion.
+
+\textbf{Empirical / observed.}
+The choice among ReLU, GeLU, and SwiGLU as the activation in
+modern Transformers is empirical, not derived; the chapter
+documents the historical progression but the current preference
+is a benchmark consensus. The decision to use LayerNorm or
+RMSNorm in language modelling rather than BatchNorm is
+empirical, motivated by sequence-packing and small-batch
+considerations rather than a theorem. The pre-norm
+configuration is a recipe-conditional empirical observation
+(\S\ref{sec:nn-norm}, with the full argument deferred to
+Chapter~4). Universal approximation
+(\S\ref{sec:nn-function-class}) is a true theorem but says
+nothing about trainability and is not load-bearing for any
+engineering decision in the rest of the book.
+
+\textbf{Assumed.}
+A3.1 (differentiability almost everywhere, with the convention
+$\varphi'(0) := 0$ at ReLU's kink); A3.2 (finite floating-point
+arithmetic; rounding error flagged where it matters); A3.3 (the
+loss is the cross-entropy from Chapter~1 in the LLM context;
+worked examples occasionally use squared error for regression
+illustrations).
+\end{provedassumed}
+
+\subsection{Bridges to Later Chapters}
+
+The chapter's seven primitives feed almost every chapter that
+follows. The table below indexes the cross-references.
+
+\begin{center}
+\small
+\begin{tabular}{|p{4.2cm}|p{8.2cm}|}
+\hline
+\textbf{Primitive established here} & \textbf{Used in} \\
+\hline
+Linear layer / MLP composition (\S\ref{sec:nn-function-class}) &
+  Chapter~4 (FFN, $W_Q/W_K/W_V/W_O$ projections), Chapter~7 (LoRA
+  low-rank deltas), Chapter~8 (reward-model and policy networks). \\
+Backpropagation (\S\ref{sec:nn-backprop}) &
+  Chapter~2's $6ND$ FLOP rule (justified here), Chapter~4's
+  per-block FLOP budgets, every training run in the rest of the
+  book. \\
+Activations: GeLU, SwiGLU, $\sigma$
+(\S\ref{sec:nn-activations}) &
+  Chapter~4 (FFN activation), Chapter~8 (Bradley--Terry sigmoid
+  link function), Chapter~5 (softmax decoding). \\
+Variance-preserving init (\S\ref{sec:nn-init}) &
+  Chapter~4's $1/\sqrt{d_k}$ attention scale (same argument),
+  Chapter~7 (LoRA He-init initialisation of the $A$ factor). \\
+LayerNorm / RMSNorm (\S\ref{sec:nn-norm}) &
+  Chapter~4 (full LayerNorm/RMSNorm derivation and pre-norm
+  placement), Chapter~6 (MoE block normalisation), Chapter~8
+  (alignment-stage normalisation choices). \\
+Residual connection (\S\ref{sec:nn-residual}) &
+  Chapter~4's residual stream, Chapter~6's MoE block (residual
+  around the routed FFN), Chapter~7 (depth-scaling intuitions
+  for adapter placement). \\
+The MLP block (\S\ref{sec:nn-mlp-block}) &
+  Chapter~4 (FFN composition), Chapter~6 (MoE replaces the dense
+  FFN with a sparse mixture), Chapter~7 (LoRA adapts the FFN's
+  matrices). \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Key References}
+
+\begin{itemize}
+  \item \citet{rosenblatt1958perceptron} --- the perceptron and
+        its learning rule.
+  \item \citet{minsky1969perceptrons} --- the XOR critique that
+        motivated multi-layer networks.
+  \item \citet{werbos1974beyond}, \citet{rumelhart1986learning}
+        --- backpropagation.
+  \item \citet{cybenko1989approximation},
+        \citet{hornik1991approximation} --- universal
+        approximation.
+  \item \citet{nair2010rectified} --- ReLU.
+  \item \citet{hendrycks2016gelu} --- GeLU.
+  \item \citet{shazeer2020glu} --- GLU and SwiGLU.
+  \item \citet{glorot2010understanding} --- Xavier / Glorot init.
+  \item \citet{he2015delving} --- He / Kaiming init.
+  \item \citet{ioffe2015batchnorm} --- BatchNorm (overview only).
+  \item \citet{ba2016layernorm} --- LayerNorm.
+  \item \citet{zhang2019rmsnorm} --- RMSNorm.
+  \item \citet{he2016resnet} --- residual connections.
+  \item \citet{chen2018neuralode} --- neural ODE limit (one-line
+        nod only).
+\end{itemize}
+
+\subsection{Recommended University Lectures}
+
+\begin{itemize}
+  \item Stanford CS231n --- the canonical undergraduate-friendly
+        course on neural-network fundamentals; lectures on
+        backpropagation, activations, and initialisation are
+        directly aligned with this chapter.
+  \item NYU Deep Learning (Yann LeCun) --- comprehensive
+        treatment of the function-class, optimisation, and
+        depth-trainability arguments; covers ResNet and the
+        residual response in detail.
+  \item MIT 6.S191 --- shorter course; useful for revisiting the
+        backprop derivation.
+\end{itemize}
+
+\subsection{Practitioner Lab}
+
+\begin{enumerate}
+  \item \textbf{XOR from scratch.} Implement the 2-layer ReLU
+        XOR solution from Worked Example~B in 20 lines of
+        NumPy. Verify the forward pass on all four inputs.
+        Initialise the network from random weights, train on
+        the four points with squared-error loss and SGD, and
+        watch the loss curve drop to near zero. Print the
+        learned weights and compare to the canonical solution
+        in Worked Example~B; SGD will typically find a
+        permutation or rescaling of the canonical weights, not
+        the canonical weights themselves.
+  \item \textbf{Vanishing-gradient demonstration.} Train a
+        20-layer MLP with $\tanh$ activations on a tiny
+        regression task. Plot the gradient norm at each layer
+        across the first 100 steps. Observe that the norm at
+        the input-layer side decays exponentially with depth.
+        Replace $\tanh$ with ReLU; observe the gradient norms
+        recover. Add residual connections; observe that they
+        recover further.
+  \item \textbf{Init ablation.} Train a 10-layer MLP with ReLU
+        on MNIST under three initialisations: zero variance
+        (variance collapse), variance $1.0$ (variance
+        explosion), and He init. Plot the loss curves. Verify
+        that only the He-init network trains.
+  \item \textbf{Forward / backward FLOP audit.} For a
+        $\{d, d_f, L\} = \{4096, 16384, 32\}$ Transformer block
+        configuration, compute the FLOPs of one forward pass
+        and one backward pass per token. Verify that the
+        backward pass is approximately twice the forward pass,
+        consistent with the $6ND$ rule.
+  \item \textbf{Normaliser comparison.} Train a small Transformer
+        with LayerNorm and with RMSNorm; verify the empirical
+        observation that they produce equivalent loss curves
+        within run-to-run noise, with RMSNorm faster per step.
+\end{enumerate}
+
+\subsection*{Derivation Ledger (Ch. 3)}
+
+\begin{derivledger}
+Compact index of the chapter's central identities.
+\begin{itemize}
+  \item \textbf{MLP composition.}\
+        $f_\theta(x) = h^{(L)}$ with
+        $h^{(\ell)} = \varphi(W^{(\ell)} h^{(\ell-1)} + b^{(\ell)})$
+        --- Eq.~\eqref{eq:nn-mlp}.
+  \item \textbf{Backprop $\delta$-recursion.}\
+        $\delta^{(\ell-1)} = (W^{(\ell)\top} \delta^{(\ell)}) \odot \varphi'(z^{(\ell-1)})$
+        --- Eq.~\eqref{eq:nn-delta-recursion}.
+  \item \textbf{Parameter gradients.}\
+        $\partial \mathcal{L} / \partial W^{(\ell)} = \delta^{(\ell)} h^{(\ell-1)\top}$,
+        $\partial \mathcal{L} / \partial b^{(\ell)} = \delta^{(\ell)}$
+        --- Eq.~\eqref{eq:nn-param-grads}.
+  \item \textbf{Forward / backward FLOP equivalence.}\
+        Backward pass costs $\approx 2\times$ forward pass to
+        within constants; total $\approx 6P$ FLOPs per training
+        token (justifies the $6ND$ rule of Chapter~2).
+  \item \textbf{ReLU.}\
+        $\varphi(z) = \max(0, z)$, $\varphi'(z) = \mathbb{1}[z>0]$
+        --- Eq.~\eqref{eq:nn-relu}.
+  \item \textbf{GeLU.}\
+        $\varphi(z) = z \cdot \Phi(z)$ --- Eq.~\eqref{eq:nn-gelu}.
+  \item \textbf{GLU / SwiGLU.}\
+        $\varphi(x) = (W_g x) \odot \varphi(W_u x)$
+        --- Eq.~\eqref{eq:nn-glu}.
+  \item \textbf{Variance preservation.}\
+        $\Var(W) = 1/d_{\rm in}$
+        --- Eq.~\eqref{eq:nn-var-preserve}.
+  \item \textbf{Xavier init.}\
+        $\Var(W) = 2/(d_{\rm in} + d_{\rm out})$
+        --- Eq.~\eqref{eq:nn-xavier}.
+  \item \textbf{He init.}\
+        $\Var(W) = 2/d_{\rm in}$
+        --- Eq.~\eqref{eq:nn-he-init}.
+  \item \textbf{LayerNorm.}\
+        $\mathrm{LN}(x) = \gamma \odot (x - \mu(x))/(\sigma(x) + \epsilon) + \beta$
+        --- Eq.~\eqref{eq:nn-layernorm}.
+  \item \textbf{RMSNorm.}\
+        $\mathrm{RMSNorm}(x) = \gamma \odot x / (\mathrm{RMS}(x) + \epsilon)$
+        --- Eq.~\eqref{eq:nn-rmsnorm}.
+  \item \textbf{Residual connection.}\
+        $h^{(\ell)} = h^{(\ell-1)} + F^{(\ell)}(h^{(\ell-1)})$
+        --- Eq.~\eqref{eq:nn-residual}.
+  \item \textbf{Transformer FFN.}\
+        $\mathrm{FFN}(x) = W_2 \varphi(W_1 x + b_1) + b_2$
+        --- Eq.~\eqref{eq:nn-ffn}.
+\end{itemize}
+\end{derivledger}
+
+\subsection{Chapter 3 Takeaway}
+
+Modern neural networks are not exotic. They are compositions of
+linear layers, nonlinear activations, normalisations, and
+residual connections, trained by gradient descent through the
+chain rule. Each primitive in this chapter exists for a reason
+that is empirically grounded and historically traceable. The
+perceptron taught us that adjusting weights in proportion to
+errors was a viable mechanism for learning. The XOR critique
+taught us that depth was necessary. Backpropagation made depth
+tractable. ReLU and GeLU removed the saturation problem that had
+kept networks shallow. Xavier and He init kept the activation
+variance from collapsing or exploding at depth. LayerNorm and
+RMSNorm kept it stable through training. Residual connections
+made networks of a hundred layers train as well as networks of
+ten. None of these moves was inevitable; each was a response to
+a specific failure of the design that came before.
+
+The Transformer of Chapter~4 is what these primitives compose
+into when you also add the attention mechanism. By the end of
+this chapter you should be able to read Chapter~4 as a
+particular arrangement of pieces you already understand, rather
+than as a list of unfamiliar names. That is the point of putting
+this chapter ahead of the architecture: to make the architecture
+legible.
+
+% --- END Chapter 3 ---
