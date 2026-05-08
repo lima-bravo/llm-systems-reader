@@ -4,6 +4,94 @@ This file records the wave-level revision history of the reader. Each
 wave is a self-contained editorial pass committed as one or more git
 commits. Earlier waves built the chapters; later waves polished them.
 
+## Wave 11 — Restructure (May 2026)
+
+A reader-feedback pass surfaced that the book had been quietly
+assuming a deep-learning prerequisite: the existing chapters
+introduced the FFN, LayerNorm, and residual connection on
+demand inside Chapter 4 (Transformer), but no chapter taught the
+reader what an MLP is, what backprop is, why depth is trainable,
+or why the modern activations and normalisers won. Wave 11 fixed
+this by adding a foundational neural-networks chapter as the new
+Chapter 3, and by simplifying the chapter-heading convention so
+that future structural changes are cheaper.
+
+### Wave 11.1 — Drop the "Week N:" prefix from section headings
+
+A single mechanical pass stripped the `Week N:` prefix from
+every `\section{}` header in all 12 chapter files. LaTeX
+continues to auto-number the sections via `\thesection`; only
+the manually-typed prefix is gone. Internal labels
+(`sec:weekN-*`, `eq:weekN-*`) and file names (`weekNN_*.tex`)
+were untouched to avoid downstream churn in cross-references and
+equation references.
+
+### Wave 11.2 — Add Chapter 3: Neural Networks; renumber
+
+Sixteen sequential editorial tasks produced the new chapter:
+
+- **Tasks 1–3:** scope memo, existing-content survey of where
+  neural-network material currently leaks into the book, and
+  section-level outline with page budgets. Three planning
+  artefacts (`SCOPE_CH3_NEURAL_NETWORKS.md`,
+  `SURVEY_NN_MATERIAL.md`, `OUTLINE_CH3_NEURAL_NETWORKS.md`).
+- **Tasks 4–5:** Setting the Scene prologue in the Sagan voice
+  (~1,100 words, sixteen named seminal contributions from
+  Rosenblatt 1958 through Shazeer 2020) and chapter scaffolding
+  (learning objectives, components covered, notation block with
+  `φ` vs `σ` and chain-rule naming-clash callouts).
+- **Tasks 6–12:** seven body sections covering the neural
+  network as a function class with universal-approximation
+  acknowledgment; backpropagation with hand-derivation and the
+  forward / backward FLOP equivalence justifying Chapter 2's
+  `6ND` rule; activations from sigmoid through SwiGLU; weight
+  initialisation (Xavier/He) with the variance-preservation
+  argument; normalisation (BatchNorm overview, LayerNorm,
+  RMSNorm); residual connections with the gradient-flow and
+  optimisation-floor arguments; and the MLP block as the
+  Transformer primitive that Chapter 5 composes.
+- **Task 13:** two paired worked examples — 1-D regression for
+  mechanics (hand-walk one forward pass, one backward pass, one
+  SGD step on `y = sin(2x)` with a width-2 MLP) and XOR for
+  necessity (geometric impossibility argument for single-layer,
+  canonical 2-layer ReLU solution verified on all four inputs,
+  perturbation showing the dead-neuron issue concretely).
+- **Task 14:** end matter — Proved vs Assumed block, Bridges
+  table mapping each primitive to where it is used downstream,
+  Key References (14 named contributions), Recommended
+  University Lectures, Practitioner Lab (5 exercises),
+  Derivation Ledger (14-entry equation index), and the closing
+  Takeaway.
+- **Task 15:** integration. Added the new chapter to `main.tex`,
+  ran a single `sed` pass in reverse order of N to renumber all
+  `Week~N` and `Week N` cross-references in the existing
+  chapters (Old CH3 → New CH4, Old CH4 → New CH5, ...,
+  Old CH12 → New CH13). Rewrote `figures/chapter_dependencies.tex`
+  with 13 nodes in four rows and added the new arrows from CH1
+  and CH2 into CH3 and from CH3 into CH5, CH7, and CH8.
+- **Task 16:** README and CHANGELOG updates; refreshed shipped
+  PDF.
+
+The chapter is roughly 25 pages, in line with the outline's
+26-page budget. The full book grew from 261 pages (12 chapters)
+to 291 pages (13 chapters), a ~30-page gain accounted for by
+the new chapter plus a few pages of TOC overhead.
+
+#### Items deferred from Wave 11
+
+- Backward references from Chapter 5 (Transformer) to Chapter 3
+  (Neural Networks). Chapter 5 currently introduces the FFN,
+  LayerNorm/RMSNorm, and the residual stream as if they were
+  new ideas; with Chapter 3 in place it could short-circuit
+  those introductions and refer the reader back. Tightening
+  the chain is a separate editorial pass.
+- Renaming chapter files from `weekNN_*.tex` to `chNN_*.tex`
+  with the new numbering. The file names are stable internal
+  anchors and renaming would touch every `\input{}` line plus
+  any tool that references the files; the cleaner state is to
+  leave the names in place and treat them as historical
+  artefacts.
+
 ## Wave 10 — Review-driven revisions (April 2026)
 
 A 12-chapter detailed audit (see `REVIEW_WEEK01.md` through

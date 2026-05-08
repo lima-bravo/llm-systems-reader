@@ -8,20 +8,26 @@ integration, failure modes, and tradeoffs.
 
 ## Scope
 
-Twelve chapters, each a deep-dive of roughly twenty pages:
+Thirteen chapters, each a deep-dive of roughly twenty pages:
 
 1. Statistical learning foundations — LLMs as conditional distributions
 2. Optimization, generalization, and scaling intuition
-3. Tokenization and embeddings — from text to vectors
-4. The Transformer — attention as the core computational primitive
-5. Pretraining, GPT-style models, and in-context learning
-6. Efficiency, scaling, and Mixture-of-Experts
-7. Model adaptation — LoRA, quantization, deployment reality
-8. Alignment, instruction tuning, and preference optimization
-9. LLM systems — retrieval, tool use, and evaluation harnesses
-10. Governance, assurance, and the future of AI systems
-11. Modern LLM access — APIs, SDKs, agents, IDE integrations, MCP
-12. A human-centric model for understanding LLM errors
+3. Neural networks — the function class, backpropagation, and the
+   primitives that make depth trainable
+4. Tokenization and embeddings — from text to vectors
+5. The Transformer — attention as the core computational primitive
+6. Pretraining, GPT-style models, and in-context learning
+7. Efficiency, scaling, and Mixture-of-Experts
+8. Model adaptation — LoRA, quantization, deployment reality
+9. Alignment, instruction tuning, and preference optimization
+10. LLM systems — retrieval, tool use, and evaluation harnesses
+11. Governance, assurance, and the future of AI systems
+12. Modern LLM access — APIs, SDKs, agents, IDE integrations, MCP
+13. A human-centric model for understanding LLM errors
+
+Chapter 3 (neural networks) is foundational scaffolding for readers
+who have not taken a deep-learning course; readers who have can
+skim or skip it. Every other chapter uses its primitives.
 
 Each chapter follows a consistent template: a Sagan-voiced *Setting the
 Scene* prologue (problem → lineage → current practice → failure modes),
@@ -36,7 +42,10 @@ lectures, practitioner lab, and a closing takeaway.
 ├── main.tex                 Top-level document; \input's every chapter
 ├── preamble.tex             Packages, math macros, TikZ setup, styling
 ├── references.bib           Bibliography (papers + vendor docs + course URLs)
-├── weeks/                   One .tex file per chapter (week01..week12)
+├── weeks/                   One .tex file per chapter (week01..week12
+│                            for the original 12 chapters; ch03 for
+│                            the new neural-networks chapter inserted
+│                            in Wave 11.2)
 ├── figures/                 TikZ source for diagrams
 ├── labs/                    Accompanying Jupyter notebooks (one per week)
 ├── templates/               Assurance-case, hazard-analysis, controls matrix
@@ -78,8 +87,14 @@ on a stock Debian TeX Live installation.
 - **Figures**: TikZ diagrams live in `figures/*.tex` and are included via
   `\input{figures/<name>}` inside a `figure` environment with a caption and
   label.
-- **Chapters**: one `\section` per week. Subsections follow the template in
-  Week 1. Cross-reference with `\label{sec:weekN-subject}` and `\ref{}`.
+- **Chapters**: one `\section` per chapter, no manual "Chapter N:"
+  prefix in the heading (LaTeX auto-numbers). Subsections follow
+  the template in Chapter 1. Cross-reference with
+  `\label{sec:weekN-subject}` for the original chapters and
+  `\label{sec:nn-subject}` for the new neural-networks chapter,
+  resolved via `\ref{}`. File names retain their original
+  `weekNN_*.tex` numbering as stable internal anchors; the
+  rendered chapter numbering is what changed in Wave 11.2.
 - **Math macros**: common symbols (`\E`, `\R`, `\KL`, `\entropy`) are defined
   in `preamble.tex` — prefer these over inline `\mathbb{...}`.
 
