@@ -1,0 +1,308 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 14 -- What to Ask Before You Deploy
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{What to Ask Before You Deploy}
+\label{ntg:ch14}
+
+\section*{A note on purpose}
+\addcontentsline{toc}{section}{A note on purpose}
+
+The preface promised that a reader who finished this guide
+would be able to ask better questions of the engineers who
+build these systems, the vendors who sell them, and the
+colleagues who deploy them. The thirteen chapters that
+came before have built the vocabulary and the mechanisms.
+This chapter is the bridge from understanding to use.
+
+It is organised around the failure modes the guide has
+already covered. For each, there are two or three questions
+a non-technical reader can ask that are, in fact, demanding
+questions --- ones that require a real answer and that reveal
+something about the quality of the system. They are not
+trick questions. They are the questions a competent and
+informed person asks when deciding whether to trust a system
+enough to use it in a context where the answer matters.
+
+A vendor, engineer, or colleague who cannot answer these
+questions --- or who dismisses them as too technical, too
+obscure, or not relevant to your use case --- is telling
+you something worth knowing.
+
+\section{On hallucination}
+\addcontentsline{toc}{section}{On hallucination}
+
+A language model produces the most plausible continuation
+of the prompt it has been given. Plausibility and truth are
+correlated but not the same. The model has no native way to
+tell the two apart. The grounding axis of the error model
+in Chapter~13 is where hallucinations live.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{What is the retrieval architecture, and how
+        are retrieved passages attributed in the response?}
+        A system that generates responses from the model's
+        weights alone is systematically more prone to
+        hallucination than one that retrieves from a
+        specific document store and cites its sources.
+        If citations are present, you can verify them.
+        If they are not, you cannot.
+
+  \item \emph{How was the system evaluated for factual
+        accuracy on content in our specific domain, and
+        what was the error rate?} General benchmarks
+        measure performance on broadly sampled questions.
+        Your deployment is not broadly sampled; it is
+        concentrated in your domain. A system with
+        impressive general-purpose accuracy may perform
+        far worse on specialised content that was
+        underrepresented in training. Ask for domain-specific
+        numbers.
+
+  \item \emph{What happens when the model is asked about
+        something it does not know?} A well-designed system
+        should express uncertainty and decline to confabulate
+        when it lacks grounding. A poorly calibrated system
+        will confabulate confidently. Ask for examples of
+        the system being asked questions it should not be
+        able to answer. The behaviour in those cases tells
+        you more than the behaviour in the easy cases.
+\end{itemize}
+
+\section{On sycophancy and reward hacking}
+\addcontentsline{toc}{section}{On sycophancy and reward hacking}
+
+The alignment pipeline optimises the model against a reward
+model trained on human preferences. If the preference data
+rewarded agreement with the user, the policy will learn to
+agree. If the preference data rewarded long responses, hedged
+prose, or certain opening formulae, the policy will learn
+those patterns too. These are features of the training
+process, not bugs the model is hiding.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{Has the model been tested for sycophancy
+        specifically --- for example, by presenting it with
+        false premises and measuring how often it agrees?}
+        Sycophancy testing is not standard in most vendor
+        evaluation suites. If a vendor has done it and has
+        results to share, that is a mark of seriousness.
+        If the question draws a blank, the system has
+        probably not been evaluated for this failure mode.
+
+  \item \emph{Does the model change its answer when the
+        user pushes back, and if so, under what conditions?}
+        A model that revises a correct answer in response
+        to user disagreement is behaving sycophantically.
+        A model that revises an incorrect answer when
+        presented with new evidence is behaving correctly.
+        The distinction is easy to miss and easy to test.
+        Ask for the policy and ask to see examples.
+
+  \item \emph{What KL constraint was used during RLHF
+        training, and how was the trade-off between
+        helpfulness and capability degradation monitored?}
+        This question does not require the vendor to answer
+        in detail. It requires them to acknowledge that
+        the trade-off exists and that they tracked it.
+        A vendor who has not thought about this has
+        produced an aligned model without understanding
+        what the alignment cost.
+\end{itemize}
+
+\section{On prompt brittleness}
+\addcontentsline{toc}{section}{On prompt brittleness}
+
+Two prompts that a human would read as equivalent can
+produce qualitatively different outputs from the same model.
+This is not random noise. It is a structural property of
+the attention mechanism (Chapter~5): the model is sensitive
+to the exact sequence of tokens it receives, and small
+changes to that sequence change the weighting across the
+context window.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{Has the system been tested with paraphrased
+        variants of the prompts used in production, and
+        how much does output quality vary across those
+        variants?} A brittle system will show high variance.
+        A robust system will show low variance. Most
+        evaluation suites test a single prompt formulation
+        per task. Paraphrase testing is the exception.
+
+  \item \emph{If the system uses a fixed system prompt,
+        how was that prompt selected, and how often is
+        it reviewed?} The system prompt encodes the
+        situational context the model receives before the
+        user's input. A poorly written system prompt can
+        produce systematic failures in every interaction.
+        Ask to see it. Ask how it was arrived at. Ask
+        what happens when a user's input conflicts with it.
+
+  \item \emph{What is the expected behaviour when users
+        phrase questions in ways the system prompt did
+        not anticipate?} Most real deployments receive
+        inputs the designers did not imagine. The
+        question is not whether this will happen but
+        whether the system degrades gracefully or fails
+        in unexpected ways.
+\end{itemize}
+
+\section{On context loss and long documents}
+\addcontentsline{toc}{section}{On context loss and long documents}
+
+A model with a large context window can accept a large
+document as input. Accepting a document and reliably using
+all of it are different things. The attention mechanism
+described in Chapter~5 is theoretically capable of relating
+any position in the context to any other, but in practice
+the model's ability to use information from the middle of
+a very long context is weaker than its ability to use
+information from the beginning or end. This is the
+``lost in the middle'' failure documented in Chapter~10.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{How was the model evaluated on long-context
+        tasks, and what was the tested context length?}
+        A vendor may advertise a 128,000-token context
+        window and evaluate the system only on tasks that
+        fit in 8,000 tokens. The advertised window and the
+        reliable window are not the same.
+
+  \item \emph{For document-based tasks, where is the
+        relevant information typically placed in the
+        prompt?} There is evidence that placing critical
+        information at the beginning or end of a long
+        prompt improves retrieval. If the system places
+        it in the middle and has not been tested on this,
+        the design may be suboptimal in a way the
+        vendor has not measured.
+
+  \item \emph{What happens when the context window is
+        exceeded?} Some systems truncate silently.
+        Others summarise. Others return an error. Truncation
+        that the user does not see is a context failure
+        that is invisible by design. Ask what the policy is
+        and whether the user is notified.
+\end{itemize}
+
+\section{On prompt injection}
+\addcontentsline{toc}{section}{On prompt injection}
+
+A prompt injection attack occurs when a malicious party
+embeds instructions in content the model processes ---
+a retrieved document, a tool result, a user-supplied input
+--- that cause the model to execute those instructions as
+if they were part of the system prompt. It is, as
+Chapter~12 notes, roughly what SQL injection once was to
+web applications: a class of attack that arises from
+treating untrusted input as trusted instruction.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{Does the system process content from untrusted
+        sources --- web pages, user documents, email,
+        third-party tool outputs --- and if so, what
+        mitigations are in place against prompt injection?}
+        A system that retrieves from the public web and
+        then generates responses from retrieved content
+        is exposed to any attacker who can get a document
+        indexed. Ask what the system does when a retrieved
+        document contains instructions addressed to the
+        model.
+
+  \item \emph{What is the trust boundary between the
+        system prompt and user input, and is it enforced
+        at the model level or only at the application level?}
+        Application-level enforcement (filtering, sanitising
+        inputs before they reach the model) is weaker
+        than model-level enforcement (the model having been
+        trained to distinguish between instruction sources).
+        Neither is perfect. Ask which is being relied on.
+
+  \item \emph{Has the system been red-teamed against
+        prompt injection specifically, and what was the
+        result?} Red-teaming is the practice of deliberately
+        trying to make the system behave badly. A vendor
+        who has red-teamed and has results to share is
+        ahead of one who has not. A vendor who is unaware
+        of prompt injection as a threat class is, for most
+        production deployments, not a suitable partner.
+\end{itemize}
+
+\section{On automation complacency}
+\addcontentsline{toc}{section}{On automation complacency}
+
+As Chapter~11 describes, the most insidious failure mode of
+any reliable-seeming system is the erosion of the human
+review that was supposed to catch its errors. A system that
+is correct ninety-five per cent of the time is one that is
+wrong one time in twenty, and a reviewer who has learned to
+expect correctness will stop reading carefully. The failure
+rate is a constant; the detection rate falls.
+
+\medskip
+\noindent\textbf{Ask:}
+
+\begin{itemize}
+  \item \emph{What human review process is in place for
+        the outputs this system generates, and how has that
+        process been designed to remain effective as the
+        system is perceived as reliable?} The question is
+        not only whether there is a review process but
+        whether the process has been designed to resist
+        complacency. Review processes that do not build
+        in adversarial checks --- deliberately introducing
+        known errors for reviewers to catch --- tend to
+        degrade over time.
+
+  \item \emph{How are errors discovered and fed back into
+        the system or its operating procedures?} An
+        isolated error in a single output is an incident.
+        A pattern of errors is a systemic failure. The
+        difference between organisations that learn from
+        deployment and organisations that do not is whether
+        there is a structured path from observed error to
+        corrective action. Ask what that path is.
+
+  \item \emph{Who is accountable for errors that pass
+        through human review?} The question is not only
+        about process but about incentives. If accountability
+        for errors is diffuse, review will be less careful
+        than if a specific person or team is responsible
+        for what passes. This is an organisational question
+        as much as a technical one.
+\end{itemize}
+
+\section{A closing note on these questions}
+\addcontentsline{toc}{section}{A closing note on these questions}
+
+The questions above are not a compliance checklist. A vendor
+who has answered all of them satisfactorily has not thereby
+produced a safe system; they have produced a system whose
+known failure modes have been attended to. New failure modes
+will emerge in deployment. The questions are the beginning
+of a productive ongoing conversation, not the end of it.
+
+A non-technical reader who can ask these questions, and who
+knows enough to evaluate the answers, has something more
+valuable than a checklist: a working model of how these
+systems fail. That model is what the preceding chapters were
+built to provide. The questions are its application.
+
+The next and final chapter of this guide returns to the
+reader who began it.

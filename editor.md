@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, and Feynman Standard mechanism pass complete
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, and NTG completion pass complete
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. NTG now meets the Feynman Standard in all three chapters where mechanism-level understanding had been absent. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. NTG now meets the Feynman Standard across all chapters, has a worked diagnosis example for the five-axis model, a practical synthesis for non-technical readers deploying these systems, and a closing note that returns to the preface's promises. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -178,6 +178,35 @@ Editorial review identified three chapters where the NTG explained *what* a comp
 | `chapter04_letters_to_vectors.tex` | "Why training pressure carves meaning into the space" | Next-token prediction creates shared prediction targets for words that appear in similar contexts; the cheapest path to lower loss is similar internal representations. The geometry is the residue of that pressure, not a designed feature. Bias-as-corpus-statistics consequence follows directly. |
 | `chapter05_attention.tex` | "What produces the weights: the learned matching mechanism" | Each position produces a query (what am I looking for?) and a key (what do I have to offer?). The model learned, through gradient updates on billions of next-word predictions, to produce queries and keys that match when one token is relevant to another. Pronoun-antecedent example walked through concretely. |
 | `chapter08_adapting_giant_models.tex` | "Why the low-rank bet is usually a good one" | Adaptation tasks shift behavioural defaults among things the model already knows, not acquire new knowledge. That kind of change is narrow relative to the full parameter space. LoRA exploits the narrowness. The bet fails for tasks requiring genuinely new capability absent from pretraining. |
+
+---
+
+### A12. ✓ NTG completion pass — FIXED 2026-05-09
+
+Final pass to bring the non-technical guide from educational to equipped: reader finishes able not just to understand but to act.
+
+**Remaining Feynman Standard gaps fixed:**
+
+| Chapter | Subsection added | Mechanism explained |
+|---------|-----------------|---------------------|
+| `chapter03_neural_networks.tex` | "How the weights are adjusted: what backpropagation actually does" | Forward pass produces loss; backward pass applies the chain rule in reverse to compute per-weight gradient; cost = two passes × every example × thousands of iterations. GPU parallelism: within-layer multiplications are independent, so cards designed for video game rendering accelerate training by two to three orders of magnitude. Vanishing gradient: chain-rule multiplication of many small numbers → signal near zero at early layers; residual shortcut short-circuits the chain and fixes this. |
+| `chapter09_teaching_manners.tex` | "What the reward model actually learns" | Reward model = function from (prompt, response) → scalar. Trained on ranked pairs, not on absolute labels. Loss penalises higher score for rejected response; rewards correct ordering. Consequence: model learns a pattern-matcher, not a judge. Reward hacking follows directly (policy finds inputs that fool the pattern-matcher). Sycophancy follows directly (agreement was marginally preferred in annotation data → reward model rewards agreement → policy learns to agree). |
+
+**Ch13 worked diagnosis example added:**
+- New `\section{A worked diagnosis}` inserted between "Walking the ladder" and "Connections to earlier chapters"
+- Prompt: "Who wrote 1984, give me a brief summary"
+- Model response contains: one grounding failure (Room 101 attributed to Ministry of Truth, should be Ministry of Love) and one plausibility-trap attribution (1948→1984 digit-reversal — widely repeated, never confirmed by Orwell)
+- Walked axis by axis: structure, meaning, context pass; grounding fails at two specific details; environment passes
+- Key lesson: grounding failures concentrate in peripheral details (supporting citations, secondary attributions, names and dates) precisely because those details are underrepresented in training
+
+**Two new chapters written and registered in `non_technical_guide.tex`:**
+
+| File | Content |
+|------|---------|
+| `chapter14_what_to_ask.tex` | "What to Ask Before You Deploy" — 6 sections covering hallucination, sycophancy/reward hacking, prompt brittleness, context loss, prompt injection, automation complacency. Each section: 2-3 concrete questions a non-technical reader can ask engineers or vendors. Questions are demanding (require real answers, reveal system quality). Closing note: questions are the beginning of a productive conversation, not a checklist. |
+| `chapter15_closing_note.tex` | "A Closing Note, and Where to Go Next" — returns to preface promises; consolidates what the reader now holds (the mechanism, not just the vocabulary); separates what will change (specific models/architectures) from what will not (objective → plausibility gap; preference model → pattern-matcher; form-without-reference problem). Annotated further reading: technical companion; three key papers (Vaswani 2017, Ouyang 2022, Schaeffer 2023); two popular books (Mitchell 2019, Christian 2020); guidance on reading lab blogs critically. |
+
+`non_technical_guide.tex` updated: `chapter14_what_to_ask` added to `\mainmatter`; `chapter15_closing_note` added to `\backmatter`.
 
 ---
 

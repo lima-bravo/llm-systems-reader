@@ -1,0 +1,203 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 15 -- A Closing Note, and Where to Go Next
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{A Closing Note, and Where to Go Next}
+\addcontentsline{toc}{chapter}{A Closing Note, and Where to Go Next}
+
+\section*{What you now have}
+\addcontentsline{toc}{section}{What you now have}
+
+The preface opened with a promise: by the time you finish,
+you will not find these systems mysterious. You may find them
+more remarkable than you did when you began, and you will
+certainly find them less trustworthy in some specific and
+useful ways.
+
+That promise is, we hope, substantially kept.
+
+You now know that a Large Language Model is not a database
+that looks up the right answer. It is a function, learned
+from text, that produces the most plausible continuation
+of a given prefix. Plausibility is its strength. The gap
+between plausibility and truth is its characteristic failure.
+
+You know what is inside the model: a deep stack of simple
+arithmetic operations, each layer combining the work of the
+layers below it, the whole trained by sending errors
+backward through the network and nudging each of several
+billion weights in the direction that would have reduced
+the error. You know why this is expensive, why it required
+the coincidence of three things arriving together in the
+early 2010s --- the algorithm, the data, and the GPU ---
+and why the resulting function, for all its opacity, is
+not a black box in principle but a very large grey one.
+
+You know what attention is: the mechanism that lets each
+position in a sequence consult every other position,
+weighted by a learned measure of relevance. You know that
+the weights are not looked up; they are produced by
+a learned matching between queries and keys, and that this
+matching is what the model discovered, through training,
+to be useful for predicting the next token. You know that
+the geometry of the embedding space --- the vector space
+into which words are placed before the network processes
+them --- is not a designed feature but a residue of the
+pressure the training imposed: words that share prediction
+contexts end up near each other because the cheapest path
+to a lower loss is a shared vector.
+
+You know the alignment pipeline: supervised fine-tuning to
+establish the format, preference modelling to teach the
+model a proxy for human preferences, policy optimisation to
+shift the model's output distribution toward higher-scoring
+responses. You know that the reward model is a
+pattern-matcher rather than a judge, and that this is the
+root of sycophancy and reward hacking. You know that
+aligned to someone's values is not the same as aligned to
+everyone's.
+
+You know the five axes of the error model: structure,
+meaning, context, grounding, environment. You have walked
+the ladder on a specific example. You have, in the previous
+chapter, a set of questions that put this vocabulary to
+work.
+
+You know the lineage: Markov in 1913, Shannon in 1948,
+McCulloch and Pitts in 1943, Rosenblatt in 1958, the first
+AI winter, the thaw with backpropagation, Hochreiter and
+Schmidhuber's long short-term memory in 1997, Bengio's
+neural language model in 2003, Mikolov's word2vec in 2013,
+Vaswani's Transformer in 2017, and the rapid cascade of
+scaled models that followed. None of this came out of
+nowhere. All of it was, in retrospect, predictable from
+the trajectory.
+
+What you hold now is not an expert's knowledge. It is
+something more specific and, for most purposes, more useful:
+a working model of the mechanisms that produce both the
+capability and the failure. You can reason forward from
+the mechanism. When something goes wrong, you can ask why.
+When a vendor makes a claim, you can ask what it would
+take to verify it. When a colleague is dazzled, you can
+point, gently, at the specific and definable ways the
+system is also limited.
+
+\section*{What changes and what does not}
+\addcontentsline{toc}{section}{What changes and what does not}
+
+The technology will change. New architectures will emerge.
+Scaling laws will bend at points we cannot predict. Models
+will become cheaper, larger, faster, stranger. Some of
+what this guide has described will become obsolete within
+years of its writing.
+
+The mechanisms described here will not become obsolete
+in the same way. The observation that next-token prediction
+optimises for plausibility rather than truth is not a
+property of any particular model; it is a property of the
+objective. Until the objective changes, the observation
+holds. The observation that a reward model trained on
+ranked pairs learns a pattern-matcher rather than a judge
+is not a property of RLHF or DPO specifically; it is a
+property of any system that learns preferences from
+pairwise comparisons. The observation that a function
+approximated from text has no native way to connect form
+to reference is Harnad's observation from 1990, and it
+has not been resolved by the subsequent three decades of
+scaling.
+
+The honest posture, as we said in the preface, is this:
+these systems are remarkable and limited in roughly equal
+measure. Holding both halves simultaneously is the
+beginning of useful thought about them.
+
+\section*{Further reading}
+\addcontentsline{toc}{section}{Further reading}
+
+This guide was designed to be self-contained. For readers
+who want to go further, the following are the most useful
+next steps.
+
+\medskip
+\noindent\textbf{The technical companion.} \emph{Large
+Language Models as Engineered Systems} is the technical
+counterpart to this guide, covering the same thirteen
+chapters with the formal mathematics included. Readers
+who want to move from intuition to derivation, or who need
+to evaluate vendor claims that rest on technical
+specifications, should start there. The two books share
+a chapter ordering and most of their historical narrative.
+
+\medskip
+\noindent\textbf{The original papers.} The field has been
+generous about making its primary literature openly
+accessible. Three papers are particularly valuable as
+starting points.
+
+Vaswani, A., Shazeer, N., Parmar, N., et al. (2017).
+\emph{Attention Is All You Need}. The paper that introduced
+the Transformer architecture. Available at arXiv:1706.03762.
+Readable by a careful non-specialist; the intuition behind
+the scaled dot-product attention mechanism is explained
+well in Section~3.
+
+Ouyang, L., Wu, J., Jiang, X., et al. (2022).
+\emph{Training language models to follow instructions
+with human feedback}. The InstructGPT paper, which laid
+out the three-stage RLHF pipeline in detail. Available
+at arXiv:2203.02155. The failure modes discussion in
+the paper's limitations section is candid and worth reading.
+
+Schaeffer, R., Miranda, B., and Koyejo, S. (2023).
+\emph{Are Emergent Abilities of Large Language Models
+a Mirage?} The paper that substantially shifted the
+field's view of apparent emergent capabilities. Available
+at arXiv:2304.15004. Short and accessible; the argument
+about measurement artifacts in Section~2 is the core.
+
+\medskip
+\noindent\textbf{For the broader context.} Two books
+serve as useful complements to the technical material.
+
+Melanie Mitchell's \emph{Artificial Intelligence: A Guide
+for Thinking Humans} (2019) covers the longer arc of the
+field --- from the 1950s to the eve of the current wave ---
+with a steady scepticism about strong claims in either
+direction. It ages well because it is more interested
+in the structural reasons for the field's failures than
+in the specifics of any particular system.
+
+Brian Christian's \emph{The Alignment Problem} (2020)
+covers the alignment questions that Chapter~9 of this
+guide treats. Christian's book is longer and more
+detailed than our treatment, and it is particularly good
+on the human side of the preference-data pipeline ---
+the annotators, the rubrics, and the people who wrote them.
+
+\medskip
+\noindent\textbf{For staying current.} The field moves
+faster than any book can follow. The most reliable
+sources of current technical commentary, accessible to
+a non-specialist, are the blogs maintained by the major
+research laboratories (Anthropic, Google DeepMind,
+OpenAI, Meta AI) and the summary newsletters that track
+new papers. The important caveat is that these sources
+are produced by parties with interests in the field's
+reception. Read them for information; read them critically
+for interpretation.
+
+\section*{A final word}
+\addcontentsline{toc}{section}{A final word}
+
+You did not have to read this far. The fact that you did
+suggests that you believe understanding these systems
+matters --- that the right response to a technology that
+has embedded itself in professional life at this speed
+is not to treat it as magic, and not to dismiss it as
+mere autocomplete, but to look at it clearly, with the
+best vocabulary available.
+
+That is the right response. The vocabulary is now yours.
+What you do with it is the part that was always going to
+be up to you.

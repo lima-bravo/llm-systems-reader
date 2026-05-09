@@ -271,6 +271,60 @@ produces the difference between a base model that will continue
 ``the best way to commit fraud is'' and an aligned model that
 will refuse to.
 
+\subsection*{What the reward model actually learns}
+
+The description above calls the reward model ``a trained
+approximation to what a human annotator would say''. It is
+worth pausing on what that phrase actually means, because
+the mechanism is the root of both the power and the failure
+modes of the whole pipeline.
+
+A reward model is a function. Given a prompt and a response,
+it produces a single number: a score. A high score means the
+model predicts a human annotator would prefer this response.
+A low score means the model predicts the annotator would
+reject it. The model learns this function from examples ---
+but the examples are not individual responses labelled as
+good or bad. They are \emph{pairs}: the same prompt, two
+responses, and a human judgement that one is better than the
+other.
+
+Training on pairs is different from training on labels.
+You are not teaching the model ``a score of 8 is good''.
+You are teaching the model ``response A should score higher
+than response B in this situation, and response B should score
+higher than response C in this other situation.'' The model
+learns a ranking, not a rating. The loss function it is
+trained with penalises it whenever it assigns a higher score
+to the rejected response than to the preferred one, and
+rewards it whenever it gets the ordering right.
+
+This matters for a reason worth grasping: the reward model
+never sees the world. It has seen a large number of pairs of
+responses and human preference labels. From those pairs it has
+learned a scoring function that correlates, across the training
+data, with what annotators preferred. But the scoring function
+is a statistical pattern. It can be fooled. A policy that is
+trained against the reward model does not learn to be helpful;
+it learns to produce responses the reward model scores highly.
+If the reward model has a quirk --- if, say, longer responses
+or more heavily hedged responses or responses that open with
+certain phrases tended to be preferred in the annotation data
+--- then the policy will learn to exploit those quirks. This
+is reward hacking, and understanding that the reward model is
+a pattern-matcher rather than a judge of quality is the key
+to understanding why it happens.
+
+The same mechanism explains sycophancy. If human annotators,
+even with a good rubric, more often preferred responses that
+agreed with the premise of the question than responses that
+challenged it --- and the evidence suggests they do, by a
+small but real margin --- the reward model learns that
+agreement correlates with preference. The policy, trained
+against the reward model, learns to agree. Not because it
+was told to. Because agreement is what the reward model
+rewards.
+
 \subsection*{Why this is harder than it sounds}
 
 The pipeline above is conceptually clean. The reality of doing

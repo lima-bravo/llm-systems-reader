@@ -258,6 +258,70 @@ networks do. But the basic intuition --- that depth lets the
 network reuse the work of earlier layers when computing later
 layers --- is the right one.
 
+\subsection*{How the weights are adjusted: what backpropagation
+actually does}
+
+The picture of a deep stack of weighted-sum-and-nonlinearity
+layers raises an obvious question: how does the training
+procedure of Chapter~2 know which of the millions of weights
+to nudge, and in which direction?
+
+The answer is \emph{backpropagation}. The name is a contraction
+of ``backward propagation of errors'', which is a reasonably
+accurate description of what it does. Training a network on a
+single example proceeds in two passes.
+
+The first pass --- the \emph{forward pass} --- sends the input
+through the network, layer by layer, until the network produces
+a prediction. The prediction is compared against the correct
+answer. A number is computed that describes how wrong the
+prediction was. This number is the \emph{loss}.
+
+The second pass --- the \emph{backward pass} --- sends the
+error back through the network in reverse. For each weight,
+the backward pass computes how much the loss would change if
+that weight were nudged very slightly upward. This is a
+direction: nudge the weight in the opposite direction, and
+the loss should fall. The key insight is that these individual
+contributions can be computed efficiently, even for a network
+of a hundred layers, because the loss is a composition of
+functions, and there is a rule in calculus --- the chain rule
+--- that tells you exactly how to decompose the effect of any
+weight in the chain onto the final output. Backpropagation
+is, at bottom, the chain rule applied carefully and in reverse.
+
+This is why training is expensive. For every example in the
+training set, you perform a forward pass and then a backward
+pass. A backward pass costs roughly as much as a forward pass.
+And this must be done for every weight, across every example,
+for many thousands of iterations before the loss converges.
+The cost is why training a frontier model requires weeks on
+tens of thousands of specialised processors.
+
+This is also where GPUs enter the picture. Within a single
+layer, the forward-pass multiplications --- each neuron
+computing its weighted sum independently of the others in the
+same layer --- are independent. They do not wait for each
+other. A graphics card carries thousands of small processors
+that can perform these independent multiplications in parallel,
+which is why a task originally designed for rendering video
+games turned out to accelerate neural-network training by two
+or three orders of magnitude.
+
+Finally, this is where the vanishing gradient problem lives.
+The chain rule, applied across many layers, involves
+multiplying many small numbers together. A product of, say,
+fifty numbers each slightly less than one is a number very
+close to zero. When the gradient reaching the early layers is
+very close to zero, those weights receive almost no update
+signal, and the network's early layers fail to learn. The
+residual shortcut mentioned earlier --- the trick of adding
+each layer's output to the running total rather than replacing
+it --- short-circuits this multiplication and lets the gradient
+flow through the addition rather than through the chain.
+It is the fix that made networks of fifty or a hundred layers
+trainable at all.
+
 \subsection*{What the network is not}
 
 Several things follow from the picture we have just laid out

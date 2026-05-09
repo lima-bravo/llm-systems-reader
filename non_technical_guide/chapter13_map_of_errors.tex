@@ -472,6 +472,104 @@ not exist cannot be fixed by the user at all, because the
 user did not know the fact was wrong. The limiting axis is
 the one to pay first.
 
+\section{A worked diagnosis}
+\addcontentsline{toc}{section}{A worked diagnosis}
+
+The ladder is easier to use after you have walked it once.
+Here is a short worked example: a plausible, confident, fluent
+response that contains a real failure, diagnosed axis by axis.
+
+\medskip
+\noindent\textbf{The prompt:}
+\begin{quote}
+\emph{Can you tell me who wrote the novel \textit{1984} and give
+me a brief summary of the plot?}
+\end{quote}
+
+\noindent\textbf{The model's response:}
+\begin{quote}
+\emph{1984 was written by George Orwell and published in 1949.
+The novel is set in a totalitarian society called Oceania,
+ruled by an organisation known as the Party and its figurehead
+Big Brother. The protagonist Winston Smith works at the Ministry
+of Truth, where his job is to rewrite historical records to
+match the Party's current version of events. Winston begins a
+forbidden love affair with a woman named Julia, and together
+they contact a man called O'Brien, who they believe leads a
+secret resistance movement. The novel culminates in Winston
+being captured and brought to Room 101 in the Ministry of
+Truth, where he is psychologically broken by being confronted
+with his greatest fear. The novel's title, many believe, was
+formed by reversing the last two digits of 1948, the year
+Orwell was writing it.}
+\end{quote}
+
+\medskip
+\noindent Walk the ladder.
+
+\medskip
+\textbf{Structure.} Grammatically correct sentences, clear
+paragraphs, no malformed output. Structure passes.
+
+\textbf{Meaning.} The response is internally coherent. Each
+sentence follows naturally from the last. There are no
+contradictions. The argument about Winston's arc holds
+together as written. Meaning passes.
+
+\textbf{Context.} The tone is appropriate for a general
+knowledge question. The length is reasonable. The response
+answers the actual question asked. Context passes.
+
+\textbf{Grounding.} Here the ladder catches something.
+Room 101 is not in the Ministry of Truth. In the novel it
+is in the Ministry of Love --- the building responsible for
+torture and psychological reconditioning. Winston works in
+the Ministry of Truth, but he is taken to a different
+building entirely for his interrogation. The two ministries
+are distinct. The model's response conflates them in a
+single sentence that sounds correct because it has the
+right surface shape (a place, an action, a consequence)
+even though the detail is wrong.
+
+The final sentence is a different kind of grounding problem.
+The claim that Orwell arrived at the title 1984 by reversing
+the digits of 1948 is plausible and widely repeated.
+Orwell himself never confirmed it in any letter or diary
+entry that has come to light. It may be true; it may be a
+story that accumulated credibility by being repeated. The
+model presents it as common knowledge (``many believe'')
+rather than as a verified fact --- a small hedge, but the
+hedge is easy to miss. A reader who passed the claim along
+would be passing along an unverified attribution with a
+degree of confidence it does not earn.
+
+\textbf{Environment.} The question is specific and clear.
+No underspecification. Environment passes.
+
+\medskip
+\noindent\textbf{Diagnosis:} one grounding failure
+(wrong ministry for Room 101) and one disguised grounding
+problem (an unverified attribution presented as common
+knowledge). The fix is not to distrust the model's account of
+the novel's themes or characters, which is accurate. The fix
+is to treat any specific, checkable detail --- a place, a date,
+an attribution --- as a hypothesis, and to verify it if the
+answer will be used somewhere it matters.
+
+\medskip
+This is the discipline the ladder recommends. Structure,
+meaning, and context passed; the response reads fluently; the
+novel's themes are described correctly; the failure is
+concentrated in two specific details that only a reader who
+already knows the novel, or who checks, will catch. That
+concentration is characteristic of grounding failures. They
+are not randomly distributed. They tend to appear in the
+peripheral details --- the supporting citations, the secondary
+attributions, the names and dates that surround a well-known
+core --- precisely because those details are statistically
+underrepresented in training and the model interpolates them
+from pattern rather than from memory.
+
 \section{Connections to earlier chapters}
 \addcontentsline{toc}{section}{Connections to earlier chapters}
 
