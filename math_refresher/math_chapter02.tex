@@ -87,50 +87,12 @@ Exact gradients are expensive; minibatches trade bias for variance: write $\hat 
   \item \textbf{Mixed precision with loss scaling.}  
   Forward/backward often run in bf16/fp16 for throughput; tiny gradients can flush to subnormals or zero in those formats. Multiply the scalar loss by a large factor $s$ before backward pass so chain-rule gradients inherit scale; divide accumulated gradients by $s$ before the optimizer applies updates (often fp32)---recovering usable magnitude without changing the mathematically correct descent direction.
 
-  \item \textbf{Scaling-law interpretation.}
+  \item \textbf{Scaling-law interpretation.}  
   Empirical forms such as
   \[
     L(N,D)=L_\infty + aN^{-\alpha} + bD^{-\beta}
   \]
   summarise measured iso-loss contours across runs when architecture and data pipelines stay comparable. Use them as \emph{budget planners}: given fixed compute $C\approx 6ND$ tokens-parameter conventions from Kaplan/Chinchilla-style analyses, pick $(N,D)$ pairs predicted to sit near the elbow rather than extrapolate blindly across regimes where data quality or objectives shifted.
-
-  \item \textbf{Constrained optimisation and Lagrange multipliers.}
-
-  Two later chapters (Chapter~6's Chinchilla compute-optimal derivation and Chapter~9's DPO loss derivation) require minimising or maximising a function subject to an equality constraint. The technique is Lagrange multipliers; the argument below is the prerequisite.
-
-  \emph{The setup.} Minimise $f(\mathbf{x})$ subject to $g(\mathbf{x}) = 0$. At a constrained optimum, the gradient of $f$ must be parallel to the gradient of $g$ (otherwise a feasible step reducing $f$ would exist). Introducing a scalar multiplier $\lambda$, the optimum satisfies:
-  \[
-    \nabla f(\mathbf{x}^\star) = \lambda \,\nabla g(\mathbf{x}^\star),
-    \qquad g(\mathbf{x}^\star) = 0.
-  \]
-  Equivalently, define the Lagrangian $\mathcal{L}(\mathbf{x},\lambda) = f(\mathbf{x}) - \lambda\, g(\mathbf{x})$ and set $\nabla_{\mathbf{x}}\mathcal{L} = 0$ and $\partial_\lambda \mathcal{L} = 0$.
-
-  \emph{Application: Chinchilla compute-optimal allocation (Chapter~6).}
-  Fix compute budget $C = 6ND$ (FLOPs, where $N$ = parameters, $D$ = training tokens). The Chinchilla result minimises $L(N,D)$ subject to $6ND = C$. The Lagrangian is $L(N,D) - \lambda(6ND - C)$. Setting partial derivatives to zero and eliminating $\lambda$ yields the compute-optimal ratio $D/N$; the resulting allocation is $N^\star \propto C^{1/2}$, $D^\star \propto C^{1/2}$, both scaling as the square root of compute.
-
-  \item \textbf{Normalising constants and partition functions.}
-
-  A second tool required by Chapter~9 is the \emph{normalising constant} (also called the partition function in the statistical-physics framing that RLHF literature inherits).
-
-  \emph{The setup.} Given an unnormalised non-negative function $\tilde{p}(y)$, the normalised distribution is
-  \[
-    p(y) = \frac{\tilde{p}(y)}{Z}, \qquad Z = \sum_y \tilde{p}(y).
-  \]
-  $Z$ is the partition function. It depends on all outcomes $y$ jointly; in general, computing it requires summing over all possible $y$, which may be intractable.
-
-  \emph{Why it matters for DPO (Chapter~9).}
-  The KL-regularised RL optimum has the form
-  \[
-    \pi^\star(y \mid x) = \frac{\pi_{\mathrm{ref}}(y\mid x)\,e^{r(x,y)/\beta}}{Z(x)},
-    \qquad Z(x) = \sum_y \pi_{\mathrm{ref}}(y\mid x)\,e^{r(x,y)/\beta}.
-  \]
-  $Z(x)$ is intractable to compute directly. The DPO derivation avoids this by taking the \emph{ratio} of $\pi^\star$ at two outputs $y^+$ and $y^-$, at which point $Z(x)$ cancels:
-  \[
-    \frac{\pi^\star(y^+\mid x)}{\pi^\star(y^-\mid x)}
-    = \frac{\pi_{\mathrm{ref}}(y^+\mid x)\,e^{r(x,y^+)/\beta}}
-           {\pi_{\mathrm{ref}}(y^-\mid x)\,e^{r(x,y^-)/\beta}}.
-  \]
-  The rest of the DPO derivation is algebraic manipulation of this ratio. The partition function cancellation is the key step; understanding that $Z(x)$ is the same scalar in numerator and denominator is all you need.
 \end{itemize}
 
 \section*{How These Results Build on Each Other}
@@ -141,8 +103,6 @@ Exact gradients are expensive; minibatches trade bias for variance: write $\hat 
   \item Bias correction fixes startup distortion in adaptive moments.
   \item Clipping and precision controls handle numerical and tail-event instability.
   \item Scaling fits summarize many such runs for planning decisions.
-  \item Lagrange multipliers convert a constrained minimisation into an unconstrained one, enabling the Chinchilla compute-optimal allocation and the DPO policy derivation.
-  \item Partition-function cancellation in ratios makes intractable normalising constants disappear, which is the algebraic engine of DPO.
 \end{enumerate}
 
 \section*{Reminder Glossary (Term by Term)}
@@ -157,9 +117,6 @@ Exact gradients are expensive; minibatches trade bias for variance: write $\hat 
   \item \textbf{Warmup:} gradual LR increase to stabilize early dynamics.
   \item \textbf{Scaling law:} empirical relation among model size, data, compute, and loss.
   \item \textbf{AdamW:} Adam-style adaptive steps with weight decay applied directly to parameters (decoupled from gradient preconditioning).
-  \item \textbf{Lagrange multiplier ($\lambda$):} scalar that enforces an equality constraint by augmenting the objective; at the constrained optimum, $\nabla f = \lambda\,\nabla g$.
-  \item \textbf{Lagrangian:} the augmented function $\mathcal{L}(\mathbf{x},\lambda) = f(\mathbf{x}) - \lambda\,g(\mathbf{x})$ whose unconstrained stationary points solve the constrained problem.
-  \item \textbf{Partition function ($Z$):} normalising constant for an unnormalised distribution; often intractable to compute but cancels in ratios of probabilities.
 \end{itemize}
 
 \section*{Worked Example (Training-Dynamics Diagnosis)}

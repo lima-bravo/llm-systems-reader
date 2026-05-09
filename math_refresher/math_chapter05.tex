@@ -1,7 +1,7 @@
 \chapter{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
 
 \section*{Setting the Scene}
-Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish. But attention alone is position-blind: the formula $\mathrm{softmax}(QK^\top/\sqrt{d_k})V$ treats all positions identically unless position is injected explicitly. This chapter covers both the attention mechanism and the positional encoding family that completes it.
+Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish.
 
 \paragraph{Step A --- bilinear compatibility.}
 \textbf{Problem.} Position \(t\) must aggregate information from other positions weighted by relevance.
@@ -27,12 +27,6 @@ Attention replaces recurrence's sequential bottleneck with explicit pairwise com
 \textbf{Lineage.} Dao et al.\ IO-aware kernels (2022 era).
 \textbf{Mental model.} Preface Step~6 variance arguments resurface when chunking randomises attention pathways.
 
-\paragraph{Step E --- injecting position.}
-\textbf{Problem.} Attention is permutation-equivariant; without positional information ``the cat sat on the mat'' and ``the mat sat on the cat'' produce identical representations.
-\textbf{Insight.} Add a position-dependent signal to each token representation before or inside attention. Three families appear in the main text: absolute sinusoidal (Vaswani), relative bias (ALiBi), and rotation-based (RoPE).
-\textbf{Lineage.} Vaswani (2017) sinusoids $\to$ Shaw et al.\ relative encodings (2018) $\to$ Su et al.\ RoPE (2021) $\to$ Press et al.\ ALiBi (2022).
-\textbf{Mental model.} RoPE rotates each query and key by an angle proportional to its position; relative position appears as the \emph{difference} of angles, which survives the dot product.
-
 If shapes align, attention is honest matrix cookbookery---when shapes drift, bugs hide silently.
 
 \section*{Notation Introduced in This Chapter}
@@ -43,8 +37,6 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item $d_k$: per-head key/query dimension.
   \item $Q,K,V$: query/key/value matrices.
   \item $M$: additive mask matrix applied before softmax.
-  \item $\mathbf{R}_\theta$: $2\times 2$ rotation matrix by angle $\theta$.
-  \item $m, n$: token position indices; $\theta_i$: per-dimension base frequency in RoPE.
 \end{itemize}
 
 \section*{What You Need To Recall Precisely}
@@ -62,38 +54,6 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item \textbf{Head decomposition:} independent projections create multiple interaction subspaces.
   \item \textbf{Residual and normalization:} residual streams pass representations forward as \(x\leftarrow x+\mathrm{Block}(x)\), letting blocks learn corrections around identity rather than full maps from scratch. Normalisation (LayerNorm/RMSNorm inside Transformer blocks) recentres/rescales activations per token or position so dot products do not drift orders of magnitude mid-training---pairs with residual paths to control gradient scale through depth.
   \item \textbf{Complexity source:} score matrix is $T\times T$, so interaction cost grows with sequence length.
-
-  \item \textbf{Positional encodings --- three families.}
-
-  \emph{Sinusoidal (absolute).} Add a fixed vector $\mathbf{p}_t \in \mathbb{R}^{d_{\text{model}}}$ to each token embedding before the first layer:
-  \[
-    p_{t,2i}   = \sin\!\left(\frac{t}{10000^{2i/d_{\text{model}}}}\right),\quad
-    p_{t,2i+1} = \cos\!\left(\frac{t}{10000^{2i/d_{\text{model}}}}\right).
-  \]
-  Different dimensions oscillate at different frequencies, giving each position a unique fingerprint. The key property: $\mathbf{p}_t \cdot \mathbf{p}_s$ depends only on the offset $t - s$, so relative distance is encoded implicitly.
-
-  \emph{ALiBi (relative bias).} Instead of modifying embeddings, subtract a head-specific linear bias from attention logits before softmax:
-  \[
-    \mathrm{score}_{t,s} = \frac{\mathbf{q}_t \cdot \mathbf{k}_s}{\sqrt{d_k}} - m \cdot |t - s|,
-  \]
-  where $m > 0$ is a per-head slope. Distant tokens receive larger penalties; the model learns to prefer local context without any positional vector in the embedding.
-
-  \emph{RoPE (rotary position embedding).} Encode position by \emph{rotating} query and key vectors before the dot product. For a pair of scalar dimensions $(x_{2i}, x_{2i+1})$ at position $t$, apply a 2D rotation by angle $t\,\theta_i$:
-  \[
-    \mathbf{R}_{t\theta_i}
-    = \begin{pmatrix} \cos t\theta_i & -\sin t\theta_i \\
-                      \sin t\theta_i &  \cos t\theta_i \end{pmatrix},
-    \qquad \theta_i = 10000^{-2i/d_k}.
-  \]
-  The critical property follows from the rotation group: for any two positions $m$ and $n$,
-  \[
-    (\mathbf{R}_{m\theta_i}\,\mathbf{x})^\top
-    (\mathbf{R}_{n\theta_i}\,\mathbf{y})
-    = \mathbf{x}^\top \mathbf{R}_{(n-m)\theta_i}\,\mathbf{y}.
-  \]
-  The dot product of a rotated query at position $m$ with a rotated key at position $n$ depends only on the \emph{relative} offset $n - m$, not on the absolute positions. This is the algebraic reason RoPE gives length-generalisation properties that absolute encodings lack.
-
-  \textbf{Why this matters for Chapter~5.} The reader derives all three families. RoPE is the default in Llama, Mistral, and most open-weight models released since 2023; understanding the rotation-matrix identity is the prerequisite for following that derivation.
 \end{itemize}
 
 \section*{How These Results Build on Each Other}
@@ -113,9 +73,6 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item \textbf{Mask:} hard structural restriction on allowable dependencies.
   \item \textbf{Head:} one parallel attention subspace.
   \item \textbf{KV cache:} stored keys/values for efficient autoregressive decoding.
-  \item \textbf{Rotation matrix $\mathbf{R}_\theta$:} a $2\times2$ matrix that rotates a 2D vector by angle $\theta$; its transpose is its inverse ($\mathbf{R}_\theta^\top = \mathbf{R}_{-\theta}$), so $\mathbf{R}_\theta^\top \mathbf{R}_\phi = \mathbf{R}_{\phi-\theta}$.
-  \item \textbf{RoPE:} rotary position embedding; encodes absolute position as a rotation so that dot products yield relative-position information.
-  \item \textbf{ALiBi:} attention with linear biases; penalises long-range attention logits with a linear distance term, no positional vectors needed.
 \end{itemize}
 
 \section*{Worked Mini Example (Shape Sanity)}
@@ -131,33 +88,11 @@ In row 3 of $QK^\top$, mask sets column 4 score to $-\infty$ before softmax.
 Result: attention weight at $(3,4)$ is exactly 0.  
 Interpretation: causality is enforced at score level, not corrected later at output level.
 
-\section*{Worked Mini Example (RoPE relative-position identity)}
-Let $d_k = 2$ (one dimension pair), positions $m = 1$, $n = 3$, angle $\theta = \pi/6$.
-\[
-  \mathbf{R}_{m\theta} = \mathbf{R}_{\pi/6} =
-  \begin{pmatrix} \cos(\pi/6) & -\sin(\pi/6) \\ \sin(\pi/6) & \cos(\pi/6) \end{pmatrix}
-  = \begin{pmatrix} \sqrt{3}/2 & -1/2 \\ 1/2 & \sqrt{3}/2 \end{pmatrix}.
-\]
-\[
-  \mathbf{R}_{n\theta} = \mathbf{R}_{\pi/2} =
-  \begin{pmatrix} 0 & -1 \\ 1 & 0 \end{pmatrix}.
-\]
-For arbitrary $\mathbf{x}, \mathbf{y} \in \mathbb{R}^2$:
-\[
-  (\mathbf{R}_{\pi/6}\,\mathbf{x})^\top (\mathbf{R}_{\pi/2}\,\mathbf{y})
-  = \mathbf{x}^\top \mathbf{R}_{\pi/6}^\top \mathbf{R}_{\pi/2}\,\mathbf{y}
-  = \mathbf{x}^\top \mathbf{R}_{(\pi/2 - \pi/6)}\,\mathbf{y}
-  = \mathbf{x}^\top \mathbf{R}_{\pi/3}\,\mathbf{y}.
-\]
-The result depends only on the offset $n - m = 2$ (encoded via angle $\pi/3 = 2 \times \pi/6$), not on the absolute positions 1 and 3. This is the key property in full $d_k$-dimensional RoPE: decompose into $d_k/2$ independent 2D rotation pairs, apply the same argument in each pair.
-
 \section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item ``Masking'' is a constraint on attention scores, not a post-hoc output edit.
   \item Quadratic attention cost refers to score interactions, not all block components equally.
   \item KV cache changes decoding-time behavior, not pretraining-time complexity class.
-  \item RoPE encodes absolute position but the dot product reads only relative position --- the rotation group guarantees this algebraically; it is not an approximation.
-  \item ALiBi requires no positional vectors and generalises well to lengths longer than seen in training; sinusoidal PE does not generalise as cleanly beyond the training context window.
 \end{itemize}
 
 \section*{Further Refresh}

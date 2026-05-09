@@ -5,9 +5,9 @@ Deployment freezes most of \(\theta\) learned via Preface Step~8-style objective
 
 \paragraph{Step A --- Low-rank hypothesis.}
 \textbf{Problem.} Full matrices encode redundancy; updating all entries per task is wasteful.
-\textbf{Insight.} SVD decomposes any matrix into a sum of rank-1 outer products ordered by singular value magnitude. Restrict \(\Delta W\) to rank-\(r\) manifolds---implicit claim task signals concentrate in few directions (Preface Step~6 thinks about singular values informally).
-\textbf{Lineage.} Eckart--Young (1936) best low-rank approximation theorem; Hu et al.\ LoRA (2021) popularised modern adapter lore.
-\textbf{Mental model.} Monitor singular spectrum drift when skeptics question rank budgets---a fast-decaying spectrum justifies small $r$; a flat spectrum does not.
+\textbf{Insight.} Restrict \(\Delta W\) to rank-\(r\) manifolds---implicit claim task signals concentrate in few directions (Preface Step~6 thinks about singular values informally).
+\textbf{Lineage.} Hu et al.\ LoRA (2021) popularised modern adapter lore.
+\textbf{Mental model.} Monitor singular spectrum drift when skeptics question rank budgets.
 
 \paragraph{Step B --- Quantisation as noisy channel.}
 \textbf{Problem.} Continuous weights exceed SRAM budgets.
@@ -29,35 +29,10 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
   \item $r$: LoRA rank.
   \item $\alpha$: LoRA scaling constant.
   \item $\rho$: trainable parameter fraction versus full fine-tuning.
-  \item $U,\Sigma,V$: left singular vectors, diagonal singular values, right singular vectors in SVD.
-  \item $\sigma_i$: the $i$-th singular value (conventionally $\sigma_1 \ge \sigma_2 \ge \cdots \ge 0$).
-  \item $\|M\|_F$: Frobenius norm, $\sqrt{\sum_{i,j}M_{ij}^2} = \sqrt{\sum_i \sigma_i^2}$.
 \end{itemize}
 
 \section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Singular Value Decomposition (SVD) and the low-rank approximation theorem.}
-
-  Every real matrix $M \in \mathbb{R}^{d \times k}$ factors as
-  \[
-    M = U\Sigma V^\top,
-  \]
-  where $U \in \mathbb{R}^{d\times d}$ and $V \in \mathbb{R}^{k\times k}$ are orthogonal, and $\Sigma$ is diagonal with non-negative entries $\sigma_1 \ge \sigma_2 \ge \cdots \ge 0$. Expanding the product gives a sum of rank-1 outer products:
-  \[
-    M = \sum_{i=1}^{\min(d,k)} \sigma_i\, \mathbf{u}_i \mathbf{v}_i^\top.
-  \]
-  \emph{Eckart--Young theorem.} For any target rank $r$, the best rank-$r$ approximation in Frobenius norm (and in spectral norm) is obtained by keeping the top $r$ terms:
-  \[
-    M_r = \sum_{i=1}^{r} \sigma_i\, \mathbf{u}_i \mathbf{v}_i^\top,
-    \qquad
-    \|M - M_r\|_F = \sqrt{\sigma_{r+1}^2 + \cdots + \sigma_{\min(d,k)}^2}.
-  \]
-  No other rank-$r$ matrix is closer to $M$ in Frobenius norm. This is the theoretical foundation for using low-rank matrices as approximations.
-
-  \emph{Connection to LoRA.} The LoRA hypothesis is that the task-relevant update $\Delta W$ has a rapidly decaying singular spectrum---most of its ``signal'' lives in a low-dimensional subspace. Restricting $\Delta W = \frac{\alpha}{r}BA$ (with $B \in \mathbb{R}^{d\times r}$, $A \in \mathbb{R}^{r\times k}$) is equivalent to parameterising the rank-$r$ subspace directly. Eckart--Young justifies this when the true update's singular values drop off quickly; when the spectrum is flat, a small $r$ will miss significant directions and underfitting follows.
-
-  \emph{Diagnosing rank budget.} Inspect the singular value spectrum of $\Delta W$ after a full fine-tuning run (if affordable as a baseline). Rapid decay --- first few $\sigma_i$ capturing $\ge 90\%$ of $\|{\Delta W}\|_F$ --- supports a small LoRA rank. Slow decay flags either a hard task shift or a dataset with diverse sub-distributions, both arguing for larger $r$ or continued pretraining.
-
   \item \textbf{LoRA update form and intuition.}
   \[
     \Delta W = \frac{\alpha}{r}BA,\quad B\in\mathbb{R}^{d\times r},\ A\in\mathbb{R}^{r\times k}.
@@ -75,40 +50,21 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
 
 \section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
-  \item SVD decomposes any matrix into rank-1 components ordered by importance.
-  \item Eckart--Young establishes that truncating to rank $r$ is the optimal approximation under Frobenius/spectral norm.
-  \item The low-rank hypothesis applies this to weight updates: restrict $\Delta W$ to rank $r$ if task signal concentrates in few directions.
-  \item LoRA parameterises the rank-$r$ subspace explicitly with factors $B, A$.
-  \item Quantization adds a second approximation layer (bit-width reduction) with independent noise characteristics.
-  \item Deployment gating measures drift from both approximations before release.
+  \item Choose adaptation parameterization (full vs low-rank).
+  \item Compute trainable parameter and memory deltas.
+  \item Apply numeric approximation (quantization).
+  \item Measure quality drift and failure concentration.
+  \item Decide deployment gate from explicit thresholds.
 \end{enumerate}
 
 \section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Singular value decomposition (SVD):} factorisation $M = U\Sigma V^\top$ into orthogonal factors and a diagonal matrix of singular values; every real matrix has one.
-  \item \textbf{Singular value ($\sigma_i$):} non-negative scalar measuring the ``size'' of the $i$-th rank-1 component; $\sigma_1 \ge \sigma_2 \ge \cdots$.
-  \item \textbf{Singular spectrum:} the sequence $(\sigma_1, \sigma_2, \ldots)$; fast decay supports low-rank approximation, flat spectrum does not.
-  \item \textbf{Eckart--Young theorem:} the best rank-$r$ approximation in Frobenius (or spectral) norm is the truncated SVD $M_r$; there is no better rank-$r$ matrix.
-  \item \textbf{Frobenius norm:} $\|M\|_F = \sqrt{\sum_{i,j}M_{ij}^2} = \sqrt{\sum_i \sigma_i^2}$; natural measure of total approximation error.
-  \item \textbf{Rank:} dimensionality of adaptation subspace; in LoRA, the number of singular directions parameterised explicitly.
+  \item \textbf{Rank:} dimensionality of adaptation subspace.
   \item \textbf{LoRA scaling factor:} controls update magnitude relative to rank.
   \item \textbf{Quantizer:} mapping from continuous values to discrete levels.
   \item \textbf{Calibration set:} data used to estimate quantization scales.
   \item \textbf{Drift threshold:} maximum acceptable quality loss for deployment.
 \end{itemize}
-
-\section*{Worked Mini Example (SVD and Eckart--Young)}
-Let $M = \begin{pmatrix}3&0\\0&1\\0&0\end{pmatrix}$. The SVD is $M = U\Sigma V^\top$ with
-\[
-  U = I_3,\quad \Sigma = \begin{pmatrix}3&0\\0&1\\0&0\end{pmatrix},\quad V = I_2,
-\]
-giving singular values $\sigma_1=3$, $\sigma_2=1$. The best rank-1 approximation keeps only $\sigma_1$:
-\[
-  M_1 = \begin{pmatrix}3\\0\\0\end{pmatrix}(1\ 0) = \begin{pmatrix}3&0\\0&0\\0&0\end{pmatrix},
-  \qquad
-  \|M - M_1\|_F = \sigma_2 = 1.
-\]
-No other rank-1 matrix achieves Frobenius error below 1. The ratio $\sigma_1^2/(\sigma_1^2+\sigma_2^2) = 9/10 = 90\%$ of total squared norm is captured by rank 1---a fast-decaying spectrum that supports the low-rank approximation.
 
 \section*{Worked Mini Example (Parameter Fraction)}
 Let $d=k=4096$ and $r=16$:
@@ -130,9 +86,7 @@ Decision: reject current quantization profile or introduce subgroup-aware gate.
 
 \section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
-  \item SVD always exists and is unique (up to sign); it is not an approximation --- it is an exact factorisation. The approximation step is the truncation to rank $r$.
-  \item Eckart--Young gives a lower bound on approximation error: $\|M-M_r\|_F \ge \sigma_{r+1}$. No representation trick can do better for a given rank.
-  \item A low-rank update is a hypothesis about task-adaptation dimensionality, not a theorem. Inspect the singular spectrum to validate it.
+  \item A low-rank update is a hypothesis about task-adaptation dimensionality, not a theorem.
   \item Quantization quality is distribution-dependent; outlier channels can dominate failure.
   \item ``Near parity'' must be defined metric-by-metric, not as a vague label.
 \end{itemize}

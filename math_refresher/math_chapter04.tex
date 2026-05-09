@@ -6,8 +6,7 @@ What mathematical object is a ``token'' once computation begins? Preface Steps~1
 \paragraph{Step A --- Segmentation as design.}
 \textbf{Problem.} Raw Unicode is awkward as \(\Omega\); engineers carve strings into token sequences \(x_{1:T}\).
 \textbf{Insight.} Tokenisation defines which conditional events \(p(x_t\mid x_{<t})\) even exist---it relocates probability mass.
-BPE greedily merges frequent pairs (deterministic, compression-motivated); Unigram-LM assigns a probability to every candidate segmentation and uses EM to prune the vocabulary iteratively (probabilistic, likelihood-motivated).
-\textbf{Lineage.} BPE (Sennrich et al., 2016) inherits Shannon coding intuitions; Unigram-LM (Kudo 2018) frames tokenization as a latent variable model and applies the Expectation--Maximisation principle.
+\textbf{Lineage.} BPE (Sennrich et al., 2016) and cousins inherit compression-game intuitions from Shannon's coding worldview (Preface Step~9).
 \textbf{Mental model.} Freeze tokenizer settings before comparing perplexities---otherwise you compare different \(\Omega\) projections.
 
 \paragraph{Step B --- One-hot linear algebra.}
@@ -32,10 +31,6 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item $E$: embedding matrix.
   \item $e_i$: embedding vector for token $i$.
   \item $u,v,q,d$: generic vectors used in similarity comparisons.
-  \item $p(t)$: Unigram-LM unigram probability of token $t \in V$.
-  \item $S(X)$: set of all valid segmentations of a string $X$ from the current vocabulary.
-  \item $p(\mathbf{x})$: probability of a segmentation $\mathbf{x} = (t_1,\dots,t_k)$, equal to $\prod_i p(t_i)$.
-  \item $c(t)$: expected count of token $t$ across the training corpus under the current probability model.
 \end{itemize}
 
 \section*{What You Need To Recall Precisely}
@@ -51,33 +46,6 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \]
   If rows of $E$ index vocabulary elements, multiplying $E^\top$ against the one-hot vector selects row $i$: $e_i$ is the $i$-th embedding row treated as a column vector. Implementations skip sparse multiplication entirely and index directly into an embedding table.
   \item \textbf{Segmentation criteria.} BPE, WordPiece, and Unigram optimize different objectives (merge frequency, likelihood-style score, probabilistic segmentation).
-
-  \item \textbf{Unigram-LM tokenizer: EM algorithm sketch.}
-
-  The Unigram-LM tokenizer (Kudo 2018, used in SentencePiece and LLaMA-family models) treats segmentation as a latent variable: the same string $X$ can be split in many ways, and each segmentation $\mathbf{x}=(t_1,\dots,t_k)$ has probability
-  \[
-    p(\mathbf{x}) = \prod_{i=1}^{k} p(t_i).
-  \]
-  The marginal probability of the string $X$ sums over all valid segmentations:
-  \[
-    p(X) = \sum_{\mathbf{x} \in S(X)} p(\mathbf{x}).
-  \]
-  Training maximises $\sum_X \log p(X)$ over a large vocabulary initialised from all substrings; the parameters are the unigram probabilities $\{p(t)\}$.
-
-  \emph{E-step (Viterbi segmentation).} For each training string, compute the most probable segmentation using the Viterbi algorithm (dynamic programming over character positions). This gives a set of ``responsible'' segmentations from which expected token counts $c(t)$ are accumulated:
-  \[
-    c(t) = \sum_{X} \frac{\text{(expected uses of } t \text{ in } X)}{1}.
-  \]
-  In practice, the single most probable segmentation (Viterbi decode) is used as a hard assignment rather than soft expectations, making the step tractable.
-
-  \emph{M-step (re-estimation).} Given counts $c(t)$, normalise to obtain updated unigram probabilities:
-  \[
-    p(t) \leftarrow \frac{c(t)}{\sum_{t'} c(t')}.
-  \]
-
-  \emph{Pruning step.} After each M-step, tokens whose removal decreases the total corpus log-likelihood by less than a threshold $\eta$ are pruned from the vocabulary. This iteratively shrinks the vocabulary to the target size $|V|$.
-
-  \emph{Why this matters for the reader.} The SentencePiece library (default tokenizer for many open-weight models) can run Unigram-LM mode. Understanding the EM framing explains: (a) why the same string may have multiple valid tokenisations (used during training via subword regularisation); (b) why the vocabulary selection is likelihood-based rather than frequency-based; and (c) why adding private-corpus tokens requires re-running or initialising the EM loop, not just appending to the merge table as in BPE.
   \item \textbf{Similarity metrics.}
   \[
     u^\top v \quad \text{vs} \quad \cos(u,v)=\frac{u^\top v}{\|u\|\|v\|}.
@@ -88,8 +56,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
 
 \section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
-  \item Tokenization defines discrete symbols; BPE via greedy merges, Unigram-LM via EM on a probabilistic segmentation model.
-  \item Unigram-LM iterates: E-step (Viterbi best segmentation) → M-step (re-estimate probabilities) → pruning (shrink vocabulary).
+  \item Tokenization defines discrete symbols.
   \item Symbol IDs become one-hot basis vectors.
   \item Embedding matrix maps one-hot vectors into continuous space.
   \item Similarity metric defines neighborhood structure.
@@ -105,31 +72,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item \textbf{Dot product:} magnitude-sensitive alignment score.
   \item \textbf{Cosine similarity:} direction-only alignment score.
   \item \textbf{Anisotropy:} directional imbalance in vector space.
-  \item \textbf{Unigram-LM tokenizer:} tokenizer algorithm that maximises marginal log-likelihood over all segmentations via EM; used in SentencePiece (LLaMA, T5, Gemma).
-  \item \textbf{E-step (tokenization):} Viterbi decoding to find the most probable segmentation under current $p(t)$ estimates.
-  \item \textbf{M-step (tokenization):} normalise accumulated token counts to obtain new $p(t)$ probabilities.
-  \item \textbf{Pruning (tokenization):} iterative vocabulary reduction by removing tokens whose absence causes the smallest log-likelihood drop.
-  \item \textbf{Subword regularisation:} training with sampled (non-Viterbi) segmentations to expose the model to ambiguous boundaries, improving robustness.
-  \item \textbf{Viterbi algorithm:} dynamic programming algorithm for finding the most probable path through a sequence model in $O(T \cdot |V|)$ time.
 \end{itemize}
-
-\section*{Worked Mini Example (Unigram-LM EM Iteration)}
-Suppose the training corpus is the single string ``\texttt{low}'' with vocabulary $V = \{\texttt{l},\texttt{o},\texttt{w},\texttt{lo},\texttt{ow},\texttt{low}\}$ and initial uniform probabilities $p(t) = 1/6$ for all $t$.
-
-\emph{E-step.} The valid segmentations of ``\texttt{low}'' and their probabilities are:
-\[
-  \underbrace{(\texttt{l},\texttt{o},\texttt{w})}_{(1/6)^3 \approx 0.0046},\quad
-  \underbrace{(\texttt{lo},\texttt{w})}_{(1/6)^2 \approx 0.028},\quad
-  \underbrace{(\texttt{l},\texttt{ow})}_{(1/6)^2 \approx 0.028},\quad
-  \underbrace{(\texttt{low})}_{1/6 \approx 0.167}.
-\]
-Viterbi picks \((\texttt{low})\) as most probable. Hard-assign counts: $c(\texttt{low})=1$, all others $0$.
-
-\emph{M-step.} Normalise: $p(\texttt{low}) \leftarrow 1$, all other probabilities $\leftarrow 0$.
-
-\emph{Pruning.} Tokens not used in any Viterbi segmentation contribute zero to corpus likelihood; prune them. Vocabulary collapses to $\{\texttt{low}\}$.
-
-Key takeaway: with a single training example, the algorithm converges to the single-token vocabulary in one iteration. In practice, diverse corpora prevent this collapse, but the mechanics are identical.
 
 \section*{Worked Example (Why Metric Choice Changes Outcomes)}
 Let query vector be $q=(10,0)$ and two candidates:
@@ -153,9 +96,6 @@ Reasoning implication: if your retrieval objective is semantic direction, cosine
   \item Keep sequence-position indices separate from vocabulary indices.
   \item Tokenization choice changes sequence length and therefore perplexity comparability.
   \item Static-word-vector intuitions transfer only partially to contextual embeddings.
-  \item BPE and Unigram-LM produce different vocabularies for the same corpus; neither is universally better --- BPE is deterministic and fast; Unigram-LM is probabilistic and supports subword regularisation.
-  \item The Viterbi algorithm is not specific to tokenization; it is a general DP trick for argmax over sequential latent structure. Seeing it here prepares you for HMM and CRF contexts.
-  \item Unigram-LM pruning is irreversible: once a token is removed from the vocabulary, it cannot reappear. This means private-corpus token extension requires restarting or fine-tuning the full EM procedure, not appending merge rules.
 \end{itemize}
 
 \section*{Pointers}
