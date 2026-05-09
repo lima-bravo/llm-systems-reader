@@ -835,6 +835,7 @@ When building multilingual applications, measure the token-to-codepoint
 ratio for each target language and plan context budgets accordingly.
 
 \section{Human Factors and Failure Modes}
+\label{sec:ch4_oov}
 
 \begin{itemize}
   \item \textbf{Assuming token = word}. Users who reason in words are
@@ -852,6 +853,33 @@ ratio for each target language and plan context budgets accordingly.
   \item \textbf{Unicode trickery and prompt-injection}. Homoglyphs and
         invisible code-points can be used adversarially to smuggle
         instructions into a prompt. Normalize and log at ingress.
+  \item \textbf{Private corpus fragmentation.}
+        When deploying against a private corpus --- internal
+        communications, proprietary documentation, enterprise
+        knowledge bases --- the BPE vocabulary trained on public
+        data will not contain the private terms that dominate that
+        corpus. Each unknown private term is fragmented into
+        sub-tokens whose composite representation encodes nothing
+        about the private meaning (see the discussion at
+        \S\ref{sec:private-corpus-vocab-gap} in Chapter~10). The
+        consequence is that the model's understanding of those
+        terms is derived from their sub-parts' public-domain
+        associations, which may be entirely unrelated.
+
+        \Emp\ Measure the \emph{fragmentation rate} before
+        deployment: tokenize a representative sample of the private
+        corpus and compute, for each unique word-type, the number
+        of BPE sub-tokens assigned. A word tokenized as a single
+        token has a learned first-class representation; one
+        fragmented into four or more sub-tokens likely does not.
+        A practical deployment gate: if more than 15\% of unique
+        word-types in the private corpus fragment into three or more
+        sub-tokens, treat vocabulary gap as a deployment risk.
+        The same tokenizer that encodes the model is used for this
+        measurement; the computation requires no model calls and
+        can be run as part of a pre-deployment checklist. Chapter~8
+        (\S\ref{sec:ch8_private_vocab}) covers vocabulary expansion
+        and domain embedding fine-tuning as remedies.
 \end{itemize}
 
 \section{Bridges to Later Chapters}
@@ -870,10 +898,15 @@ ratio for each target language and plan context budgets accordingly.
   \item \textbf{Chapter 8 (Adaptation, LoRA, Quantization)}: embedding
         tables are quantization hot-spots because of their outsized
         parameter share; LoRA adaptation typically freezes them.
+        Vocabulary expansion for private corpora requires unfreezing
+        and initializing new embedding rows
+        (\S\ref{sec:ch8_private_vocab}).
   \item \textbf{Chapter 10 (LLM Systems: RAG, Tools)}: retrieval uses
         sentence- or document-level embeddings distinct from token
         embeddings; anisotropy correction matters for cosine-based
-        retrieval.
+        retrieval. The private corpus vocabulary gap and its
+        mitigation stack are treated in full at
+        \S\ref{sec:private-corpus-vocab-gap}.
   \item \textbf{Chapter 11 (Governance \& Assurance)}: tokenizer and
         embedding provenance are artefacts in a model card /
         datasheet~\citep{mitchell2019modelcards,gebru2021datasheets}.

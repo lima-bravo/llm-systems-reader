@@ -239,6 +239,7 @@ tasks. This is the engineering argument behind the RA-DIT line of
 work \citep{lin2024radit}.
 
 \subsection{Retrievers: sparse, dense, and hybrid}
+\label{sec:hybrid-retrieval}
 
 The retriever answers: given a query $q$, return the top-$k_R$
 chunks from $\mathcal{C}$ ranked by a scoring function
@@ -590,6 +591,188 @@ the production norm.
 of A9.1 drifts while the corpus grows; define and monitor a
 staleness metric and treat exceeding $\Delta_\mathrm{idx}$ as a
 release-blocking incident.
+
+\subsection{Private Corpus Deployment: The Vocabulary Gap}
+\label{sec:private-corpus-vocab-gap}
+
+All RAG failure modes above assume the embedding model and the
+generative model share a working vocabulary with the corpus being
+indexed. That assumption holds when the corpus is drawn from the
+same broad distribution as the models' training data --- web text,
+books, code, academic papers. It fails, silently and
+systematically, when the corpus is a \emph{private body of work}:
+internal communications, proprietary research notes, operational
+runbooks, enterprise documentation. This subsection names the
+four failure layers and the mitigation stack for each.
+
+\textbf{Layer 1: Tokenization fragmentation.}
+A BPE vocabulary compiled from public internet text will not
+contain the private terms a company uses: project codenames,
+product identifiers, internal abbreviations, person names in
+their local forms. The tokenizer fragments these terms into
+sub-tokens whose combination encodes nothing about the private
+meaning. A project code such as \texttt{PYMT-core} becomes
+\texttt{[P][YM][T][-][core]}; the representation the model
+builds from this sequence is derived from those sub-parts ---
+\texttt{P} from payment-unrelated contexts, \texttt{YM} from
+year-month patterns, \texttt{core} from its many public uses.
+The model has a token sequence but no concept.
+
+This is not a hypothetical concern. The motivation for
+BioBERT \citep{biobertlee2020}, LegalBERT
+\citep{legalbert2020}, and PubMedBERT is precisely that general
+BPE vocabularies fragment biomedical and legal terms at rates
+high enough to degrade task performance measurably. Private
+enterprise corpora present the same problem without the benefit
+of a published remedy.
+
+\Emp\ A practical pre-deployment diagnostic is to compute the
+\emph{fragmentation rate} of the private corpus against the
+model's vocabulary: the mean number of sub-tokens per
+word-type in the private vocabulary. A word tokenized as a
+single token has a first-class representation; one fragmented
+into four or more sub-tokens probably does not. If more than
+15\% of unique word-types in the private corpus fragment into
+three or more sub-tokens, treat vocabulary gap as a deployment
+risk and apply the mitigations below. The measurement requires
+only the tokenizer, not the model; it can be run as a
+pre-deployment gate. Chapter~4 (\S\ref{sec:ch4_oov}) discusses
+the fragmentation mechanism in more detail.
+
+\textbf{Layer 2: The embedding retrieval gap.}
+Dense retrieval works by embedding both the query and each
+chunk into the same semantic space, then retrieving by cosine
+similarity. That space was learned from public data. If a
+private term appears rarely or never in the embedding model's
+training corpus, it occupies a poorly-defined region of the
+space --- nearby vectors reflect surface similarity to
+sub-tokens, not semantic similarity to the private concept.
+
+The consequence is \emph{silent retrieval failure}: the system
+retrieves chunks that score well under the learned embedding
+but are not semantically relevant to the private query. Two
+shapes of failure are common. In the first, the relevant
+chunk and the query use the same private term verbatim (e.g.,
+both say ``Project Athena'') --- sparse BM25 retrieval
+recovers this case, but dense retrieval maps both to a region
+associated with the public meaning of ``Athena.'' In the
+second, the query and the relevant chunk use different private
+terms for the same concept (e.g., the query says ``payments
+module'' and the chunk says ``PYMT-core'') --- both sparse
+and dense retrieval fail, because neither string-match nor
+semantic similarity bridges the private synonym gap.
+
+\textbf{Layer 3: Semantic collision --- the false-familiar problem.}
+Private corpora routinely assign specific meanings to common
+words: \emph{approval} names a workflow step, \emph{sprint}
+names a quarterly planning cycle, \emph{platform} names one
+specific internal system. The model's representation of these
+terms is anchored to their public-domain distributions. When
+the generative model uses \emph{approval} in its output, it is
+reasoning from the public meaning. When the embedding model
+computes similarity for a query containing \emph{platform}, it
+weights chunks about the internal platform against all the
+other senses of the word it has learned.
+
+This failure is harder to detect than a gap because it
+produces coherent, fluent output. The model is not confused; it
+is confidently applying the wrong knowledge. The grounding axis
+of the Chapter~13 diagnostic ladder is the correct place to
+assign this failure: the model has produced a contextually
+appropriate, internally coherent, structurally valid answer
+that is wrong because its representation of a key term does
+not match its private meaning.
+
+\textbf{Layer 4: Confident confabulation of private entities.}
+When the model encounters a private entity for which it has
+no representation at all --- a project codename it has never
+seen, a person referenced only internally, a product not yet
+released publicly --- it pattern-completes from the nearest
+public-domain associations. A query about the outcome of
+``the Minerva review'' will produce a fluent answer drawing
+on whatever ``Minerva'' activates in the training distribution
+(mythology, a university, a historical warship) rather than
+on the internal review the user intended. No uncertainty
+signal is emitted; the answer reads as confidently as any
+other. This is a grounding failure of the type described in
+Chapter~1's treatment of hallucination: the model produces the
+most plausible token sequence given its training distribution,
+and that distribution does not contain the private entity.
+
+\textbf{Mitigation stack.} The four layers require different
+responses, applied in order of deployment cost:
+
+\emph{(i) Vocabulary overlap audit (pre-deployment, zero cost).}
+Run the fragmentation-rate diagnostic above. List the top-$N$
+private terms by frequency in the corpus. These are the terms
+the model is most likely to encounter and most likely to
+misrepresent. Use this list to calibrate the interventions
+below.
+
+\emph{(ii) Glossary injection (low cost, high immediate impact).}
+Construct a structured glossary mapping private terms to their
+definitions and place it in the system prompt. A table of the
+form ``[TERM]: [private definition]'' for the top 50--100
+high-frequency private terms directly repairs the
+false-familiar failure for those terms and gives the model
+an explicit representation to draw on. This does not fix the
+embedding gap but significantly reduces confabulation and
+semantic collision.
+
+\emph{(iii) Hybrid retrieval (medium cost, directly fixes Layer 2).}
+Combine BM25 sparse retrieval with dense retrieval using
+reciprocal rank fusion (RRF). BM25 handles exact-match
+retrieval on private terms regardless of embedding quality;
+dense retrieval handles semantic bridging where the vocabulary
+does overlap. Hybrid retrieval does not require any model
+fine-tuning and is the single highest-leverage fix for Layer 2.
+The RRF score for a chunk $c$ given query $q$ is:
+\begin{equation}
+  \mathrm{RRF}(c, q)
+  = \frac{1}{k + r_{\mathrm{bm25}}(c,q)}
+  + \frac{1}{k + r_{\mathrm{dense}}(c,q)},
+  \label{eq:ch10-rrf}
+\end{equation}
+where $r_{\mathrm{bm25}}$ and $r_{\mathrm{dense}}$ are the
+BM25 and dense rank of $c$ for query $q$ respectively, and
+$k = 60$ is a standard constant that dampens the influence of
+high-ranked documents. Hybrid retrieval is already discussed
+in \S\ref{sec:hybrid-retrieval}; this note connects it
+explicitly to the private-vocabulary failure mode.
+
+\emph{(iv) Domain embedding fine-tuning (higher cost, fixes Layer 2
+systematically).} Fine-tune the bi-encoder used for dense
+retrieval on (query, relevant chunk, irrelevant chunk) triplets
+drawn from the private corpus. This directly reshapes the
+embedding space to reflect private semantic relationships and
+is the cleanest fix for Layers 1 and 2. It requires labelled
+retrieval pairs, which can be generated synthetically
+(ask the generative model to write queries for each chunk)
+with human spot-check. The fine-tuned embedding model is then
+used to rebuild the index; the generative model is unchanged.
+
+\emph{(v) Vocabulary expansion and continued pretraining (highest
+cost, addresses all layers).} Add private terms to the
+tokenizer vocabulary, initialise their embedding rows from the
+mean of their sub-token embeddings, then run a round of
+next-token pretraining on the private corpus. This is the
+approach taken by BioBERT and LegalBERT and is the most
+thorough fix, but it produces a modified model that must be
+versioned, evaluated, and maintained separately. Chapter~8
+(\S\ref{sec:ch8_private_vocab}) covers the mechanics.
+
+\Cons\ Deploy mitigations (i) through (iii) before any private
+corpus goes into production; they are cheap and address the
+most common failure shapes. Mitigations (iv) and (v) are
+appropriate when retrieval quality remains low after (i)--(iii)
+or when the corpus is linguistically distant enough from public
+web text that general-purpose embeddings cannot be calibrated
+by injection alone. Measure retrieval quality (context recall
+and precision, Eqs.~\eqref{eq:context-recall}--\eqref{eq:context-precision})
+on a sample of private-corpus queries before and after each
+mitigation; do not assume that a mitigation that helps on
+public benchmarks will help by the same margin on a private
+corpus.
 
 \section{Tool Use: Structured I/O, Not ``Reasoning''}
 

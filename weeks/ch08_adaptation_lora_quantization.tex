@@ -795,6 +795,70 @@ pretraining on a narrow corpus can cause the model to lose its
 general-English fluency. Mixing $\sim 10\%$ of general-domain text
 into the continued-pretraining corpus mitigates this.
 
+\paragraph{Adaptation for private corpora.}
+\label{sec:ch8_private_vocab}
+Private corpora --- internal communications, proprietary
+research, enterprise documentation --- present a specific
+variant of the domain-distance problem. The issue is not only
+that the prose style differs from web text; it is that the
+\emph{vocabulary} contains terms the model has never seen:
+project codenames, product identifiers, internal abbreviations,
+and person names used in their local forms. Three adaptation
+strategies address this in increasing order of cost and
+thoroughness.
+
+\emph{Vocabulary expansion.} Add the top-$N$ private terms to
+the tokenizer as new vocabulary entries. Each new entry requires
+a corresponding row in the embedding matrix and the unembedding
+matrix. Standard initialisation: set the new embedding row to
+the mean of the sub-token embedding rows that the tokenizer
+would otherwise assign (e.g., the mean of \texttt{[P]},
+\texttt{[YM]}, \texttt{[T]}, \texttt{[-]}, \texttt{[core]} for
+a new entry \texttt{PYMT-core}). Then run a short round of
+next-token pretraining on the private corpus with only the
+embedding and unembedding matrices unfrozen; this calibrates
+the new representations against their actual usage contexts
+without touching the main weights. The result is a model that
+encodes private terms as first-class tokens rather than
+fragmented sub-sequences.
+
+\emph{Domain embedding model fine-tuning.} For RAG deployments,
+fine-tuning the generative model is often unnecessary if the
+retrieval failure is the bottleneck. The bi-encoder used for
+dense retrieval can be fine-tuned separately on
+(query, relevant chunk, irrelevant chunk) triplets drawn from
+the private corpus. This reshapes the retrieval space to reflect
+private semantic relationships and is substantially cheaper than
+adapting the generative model. Triplets can be generated
+synthetically by prompting the generative model to write queries
+for each chunk, then spot-checked by a domain expert. The
+fine-tuned bi-encoder is used to rebuild the index; no change
+to the generative model is required. Chapter~10
+(\S\ref{sec:private-corpus-vocab-gap}) details the retrieval-
+gap failure modes this addresses.
+
+\emph{Data quality for private corpora.} Internal communications
+are written for speed, not clarity: they contain abbreviations
+without context, implied references, and idiosyncratic styles
+that vary by author and team. The standard data-quality rule
+(garbage in, garbage entrenched) applies with higher urgency for
+private corpora, because the dataset is small enough that a
+single noisy document can have measurable effect on the trained
+adapter. Clean the corpus before training: remove automated
+notifications and calendar invitations, deduplicate threads,
+resolve pronouns where the referent is clear from context.
+Signal-to-noise ratio matters more than raw volume at private-
+corpus scale.
+
+\emph{Privacy implications.} Fine-tuning encodes private
+vocabulary and private knowledge into model weights. A fine-tuned
+adapter trained on confidential internal communications may
+surface that knowledge to users who query the model in contexts
+where the information should not be accessible. Model access
+controls become, in effect, data access controls. This is a
+first-class security consideration: the adapter should be treated
+with the same access classification as the training corpus.
+
 \paragraph{Preference fine-tuning on (prompt, chosen, rejected)
 triples.} The subject of Chapter~9. DPO \citep{rafailov2023direct} and
 related algorithms can be run as LoRA adapters on top of a
