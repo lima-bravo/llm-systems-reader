@@ -127,10 +127,16 @@
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SECTION STYLING
+% CHAPTER AND SECTION STYLING (book class)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \usepackage{titlesec}
+
+% Chapter heading: number on its own line, title below, ruled separator
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries}
+  {\chaptertitlename\ \thechapter}{16pt}{\Huge}
+\titlespacing*{\chapter}{0pt}{30pt}{20pt}
 
 \titleformat{\section}
   {\normalfont\Large\bfseries}

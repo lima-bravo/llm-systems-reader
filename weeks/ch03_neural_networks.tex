@@ -2,11 +2,11 @@
 %% CHAPTER 3 -- NEURAL NETWORKS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Neural Networks}
+\chapter{Neural Networks}
 \label{sec:neural-networks}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 You have, by this point, two of the three things you need to train
@@ -132,7 +132,7 @@ that has, for now, eaten the field.
 
 % --- END Setting the Scene ---
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -159,7 +159,7 @@ By the end of this chapter, you should be able to:
         Transformer's feed-forward sublayer.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Foundational primitives}
 \begin{itemize}
@@ -190,7 +190,7 @@ By the end of this chapter, you should be able to:
         transform.
 \end{itemize}
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:nn-notation}
 
 \begin{notationbox}
@@ -259,10 +259,10 @@ chain rule'' explicitly.
 
 % --- END Scaffolding ---
 
-\subsection{The Neural Network as a Function Class}
+\section{The Neural Network as a Function Class}
 \label{sec:nn-function-class}
 
-\subsubsection{The Perceptron}
+\subsection{The Perceptron}
 
 The earliest trainable neural unit is the \emph{perceptron},
 introduced by \citet{rosenblatt1958perceptron}. A perceptron with
@@ -285,7 +285,7 @@ separating hyperplane in finitely many updates. The perceptron
 established that adjusting weights in proportion to errors was a
 viable mechanism for learning.
 
-\subsubsection{The Minsky--Papert Observation}
+\subsection{The Minsky--Papert Observation}
 
 The perceptron's strength is also its limit. \citet{minsky1969perceptrons}
 proved that a single perceptron cannot represent the
@@ -315,7 +315,7 @@ accordingly. The decade that followed is sometimes called the AI
 winter; the multilayer response that ended it is the subject of
 the next subsection.
 
-\subsubsection{The Multilayer Response}
+\subsection{The Multilayer Response}
 
 Adding a layer of nonlinear units \emph{between} the input and the
 output produces a function class that can represent XOR (and much
@@ -343,7 +343,7 @@ $\varphi$ matters; for now it suffices to know that any
 non-polynomial $\varphi$ that is nonlinear gives the function
 class real expressive reach.
 
-\subsubsection{Universal Approximation, in One Paragraph}
+\subsection{Universal Approximation, in One Paragraph}
 
 The classical existence theorems make the expressive reach
 precise. \citet{cybenko1989approximation} proved that an MLP with
@@ -364,7 +364,7 @@ profoundly insufficient. The remainder of this chapter is about
 the operational machinery that turns the existence theorem into a
 trainable network.
 
-\subsubsection{What This Chapter Will and Will Not Derive}
+\subsection{What This Chapter Will and Will Not Derive}
 
 The function class of \eqref{eq:nn-mlp} is the object of study.
 The chapter's job is to give the reader the operational machinery
@@ -382,10 +382,10 @@ acknowledged. Trainability is the working subject.
 
 % --- END §1 ---
 
-\subsection{Backpropagation}
+\section{Backpropagation}
 \label{sec:nn-backprop}
 
-\subsubsection{The Problem}
+\subsection{The Problem}
 
 Chapter~2 told us how to update parameters once we have a
 gradient: stochastic gradient descent and its momentum-and-Adam
@@ -410,7 +410,7 @@ recognisable version of the method in his Harvard PhD thesis;
 with a Nature paper that triggered the modern revival of neural
 networks. The mechanics have not changed since.
 
-\subsubsection{The Calculus Chain Rule, Briefly}
+\subsection{The Calculus Chain Rule, Briefly}
 
 The calculus chain rule states that if a real-valued scalar
 $\mathcal{L}$ is a function of an intermediate vector $z$ which
@@ -432,7 +432,7 @@ This is the calculus chain rule, distinct from (though sharing a
 name with) the probability chain rule of Chapter~1, as flagged in
 the notation block above.
 
-\subsubsection{A Two-Layer Derivation, by Hand}
+\subsection{A Two-Layer Derivation, by Hand}
 
 Concrete first; general second. Take a two-layer MLP with scalar
 input $x \in \R^{d_0}$, hidden width $d_1$, scalar output, and
@@ -504,7 +504,7 @@ all the $h^{(\ell)}$ and $z^{(\ell)}$; the backward pass walks
 from $\delta^{(L)}$ down to $\delta^{(1)}$, computing parameter
 gradients as it goes.
 
-\subsubsection{The General Multi-Layer Pattern}
+\subsection{The General Multi-Layer Pattern}
 
 The two-layer derivation generalises directly. For an $L$-layer
 MLP with the composition of \eqref{eq:nn-mlp}, fix the loss
@@ -544,7 +544,7 @@ computes the layer-$L{-}1$ parameter gradients, and so on until
 all layers have been visited. Each parameter is touched exactly
 once on the backward pass, mirroring the forward pass.
 
-\subsubsection{Forward / Backward FLOP Equivalence}
+\subsection{Forward / Backward FLOP Equivalence}
 
 Counting FLOPs makes the cost structure explicit. Each layer's
 forward pass is dominated by the matrix multiply $W^{(\ell)}
@@ -575,10 +575,10 @@ makes the rule cheap enough to be worth applying.
 
 % --- END §2 ---
 
-\subsection{Activations}
+\section{Activations}
 \label{sec:nn-activations}
 
-\subsubsection{Why We Need Nonlinearity at All}
+\subsection{Why We Need Nonlinearity at All}
 
 The activation function $\varphi$ in \eqref{eq:nn-mlp} is not a
 decoration. Without it, the network collapses to a single linear
@@ -603,7 +603,7 @@ choices from the sigmoid of the 1980s to the SwiGLU of today's
 Transformers. The progression is not arbitrary: each newer choice
 was a response to a specific failure of the one before it.
 
-\subsubsection{Sigmoid and Tanh: the Vanishing-Gradient Origin Story}
+\subsection{Sigmoid and Tanh: the Vanishing-Gradient Origin Story}
 
 The activations of the connectionist era of the 1980s were the
 logistic sigmoid and the hyperbolic tangent:
@@ -633,7 +633,7 @@ layers stop learning. This is the \emph{vanishing-gradient
 problem}, and it kept neural networks effectively shallow for
 the better part of two decades.
 
-\subsubsection{ReLU: the Breakthrough}
+\subsection{ReLU: the Breakthrough}
 
 The Rectified Linear Unit, advocated for deep networks by
 \citet{nair2010rectified}, is brutally simple:
@@ -673,7 +673,7 @@ $\alpha \approx 0.01$, so the gradient is small but nonzero. The
 exponential curve. These are useful, never universal. The next
 move was to smooth the kink itself.
 
-\subsubsection{GeLU: Smoothed ReLU}
+\subsection{GeLU: Smoothed ReLU}
 
 The Gaussian Error Linear Unit, due to
 \citet{hendrycks2016gelu}, replaces ReLU's hard threshold with a
@@ -697,7 +697,7 @@ recover. GeLU is the default activation in BERT, the GPT line
 through GPT-4, and most decoder-only Transformers released
 through 2023.
 
-\subsubsection{GLU and SwiGLU: Gated Variants (Preview)}
+\subsection{GLU and SwiGLU: Gated Variants (Preview)}
 
 Modern Transformers do not stop at GeLU. Following
 \citet{shazeer2020glu}, the feed-forward block now typically uses
@@ -718,7 +718,7 @@ $d_f$ rescaling that SwiGLU implies; here we simply name the
 form so that Chapter~4 has the primitive ready when it composes
 the FFN.
 
-\subsubsection{A Practitioner's Table}
+\subsection{A Practitioner's Table}
 
 The choice of activation is not a derivation; it is a design
 decision informed by the depth, the data, and the surrounding
@@ -750,10 +750,10 @@ defaults.
 
 % --- END §3 ---
 
-\subsection{Weight Initialization}
+\section{Weight Initialization}
 \label{sec:nn-init}
 
-\subsubsection{Why Initialisation Matters}
+\subsection{Why Initialisation Matters}
 
 A neural network with the wrong initial weights does not train.
 Two failure modes show up at depth, and they are mirror images of
@@ -779,7 +779,7 @@ activation variance is preserved layer-to-layer at initialisation
 \citet{he2015delving} formalised. Their derivations are short and
 worth working through.
 
-\subsubsection{The Variance-Preservation Argument}
+\subsection{The Variance-Preservation Argument}
 
 We want, at initialisation, $\Var(h^{(\ell)}) \approx
 \Var(h^{(\ell-1)})$ across all layers. Consider a single linear
@@ -810,7 +810,7 @@ input variance times $d_{\mathrm{in}}$ times the weight variance,
 so to keep variance constant across the layer we set the weight
 variance to $1/d_{\mathrm{in}}$.
 
-\subsubsection{Xavier / Glorot Initialisation}
+\subsection{Xavier / Glorot Initialisation}
 
 \citet{glorot2010understanding} observed that
 \eqref{eq:nn-var-preserve} preserves variance on the
@@ -832,7 +832,7 @@ initialiser to make plain feed-forward depth (without
 pre-training) work reliably; it ended the layer-wise pre-training
 era documented in §\ref{sec:nn-function-class}.
 
-\subsubsection{He / Kaiming Initialisation}
+\subsection{He / Kaiming Initialisation}
 
 The Glorot derivation breaks for ReLU activations. ReLU zeros
 half of the input distribution in expectation, which halves the
@@ -855,7 +855,7 @@ difference from a naive $1/d_{\mathrm{in}}$; the larger lesson is
 that the right init depends on the activation, not just the
 linear layer.
 
-\subsubsection{Bridge to Chapter 4: the $1/\sqrt{d_k}$ Attention Scale}
+\subsection{Bridge to Chapter 4: the $1/\sqrt{d_k}$ Attention Scale}
 
 The variance-preservation argument used here will reappear in
 Chapter~4 in the context of attention. The dot product $q^\top k$
@@ -872,10 +872,10 @@ Chapter~4, return here.
 
 % --- END §4 ---
 
-\subsection{Normalization}
+\section{Normalization}
 \label{sec:nn-norm}
 
-\subsubsection{Why Normalize at All}
+\subsection{Why Normalize at All}
 
 A network with sensible initialisation (\S\ref{sec:nn-init})
 starts with activations whose variance is roughly preserved
@@ -903,7 +903,7 @@ are still moving fast. The result, in practice, is that deeper
 networks are trainable with larger learning rates and less
 hyperparameter babysitting.
 
-\subsubsection{BatchNorm, Briefly}
+\subsection{BatchNorm, Briefly}
 
 The first widely-adopted normalisation layer was \emph{batch
 normalisation} \citep{ioffe2015batchnorm}. It normalises each
@@ -933,7 +933,7 @@ the scale and decoding regimes used in production. The field
 moved away from BatchNorm in language modelling and has not
 returned.
 
-\subsubsection{LayerNorm}
+\subsection{LayerNorm}
 
 \citet{ba2016layernorm} replaced the batch dimension with the
 feature dimension. \emph{Layer normalisation} normalises each
@@ -958,7 +958,7 @@ and no packing-friendliness penalty. It became the default in
 sequence models and has been the workhorse normaliser of the
 Transformer era.
 
-\subsubsection{RMSNorm}
+\subsection{RMSNorm}
 
 \citet{zhang2019rmsnorm} observed that the mean-centering term in
 \eqref{eq:nn-layernorm} contributes little empirically: removing
@@ -982,7 +982,7 @@ book: the chapters that follow refer to ``the normaliser'' when
 either choice is acceptable, and to LayerNorm or RMSNorm
 specifically when the distinction matters.
 
-\subsubsection{Bridge to Chapter 4}
+\subsection{Bridge to Chapter 4}
 
 This section has established the normalisers themselves.
 Chapter~4 takes them up in two further directions. First,
@@ -1004,10 +1004,10 @@ section has provided is what they sit on.
 
 % --- END §5 ---
 
-\subsection{Residual Connections}
+\section{Residual Connections}
 \label{sec:nn-residual}
 
-\subsubsection{The Depth Problem}
+\subsection{The Depth Problem}
 
 A plain MLP, even with the right activation
 (\S\ref{sec:nn-activations}) and the right initialisation
@@ -1027,7 +1027,7 @@ losing the gradient signal somewhere in the intervening layers,
 and no amount of init or normalisation tweaking entirely
 recovered it.
 
-\subsubsection{The Residual Response}
+\subsection{The Residual Response}
 
 The fix \citet{he2016resnet} proposed has a minimal-shock-to-the-system
 character. Replace each layer's transformation
@@ -1049,7 +1049,7 @@ have already learned something useful. The optimiser is free to
 learn \emph{small perturbations} on top of the identity rather
 than learning the full transformation outright.
 
-\subsubsection{Why This Makes Depth Trainable}
+\subsection{Why This Makes Depth Trainable}
 
 Two arguments, one about the gradient and one about the
 optimisation landscape, explain why the change was decisive.
@@ -1086,7 +1086,7 @@ theorems of §\ref{sec:nn-function-class} had always said the
 deep networks \emph{could} compute these functions, but plain
 stacks were unable to find the parameters in practice.
 
-\subsubsection{The Continuous-Depth View, in One Paragraph}
+\subsection{The Continuous-Depth View, in One Paragraph}
 
 There is a clean limit to take. Treat the depth index $\ell$ as a
 continuous variable $t$ and let the per-layer transformation
@@ -1107,7 +1107,7 @@ solving an ODE numerically is well-conditioned in a way that
 composing arbitrary layers is not --- not because the next ten
 chapters require it.
 
-\subsubsection{Bridge to Chapter 4: the Residual Stream}
+\subsection{Bridge to Chapter 4: the Residual Stream}
 
 The Transformer of Chapter~4 is built around residual connections
 of the form \eqref{eq:nn-residual}. A Transformer block is two
@@ -1127,7 +1127,7 @@ makes that view possible.
 
 % --- END §6 ---
 
-\subsection{The MLP Block as a Transformer Primitive}
+\section{The MLP Block as a Transformer Primitive}
 \label{sec:nn-mlp-block}
 
 The pieces this chapter has assembled --- linear layers, an
@@ -1138,7 +1138,7 @@ Transformer layer. We will not derive the composition here;
 that is Chapter~4's job. We will name it, so the reader knows
 what is coming.
 
-\subsubsection{The FFN}
+\subsection{The FFN}
 
 Inside a Transformer block, between two attention sublayers, each
 token is processed independently by a small two-layer MLP. The
@@ -1162,7 +1162,7 @@ $(W_1, W_2, b_1, b_2)$ shared across positions. The block is
 just a two-layer MLP of \eqref{eq:nn-mlp}, instantiated at every
 position with shared weights.
 
-\subsubsection{Why the FFN Dominates the Parameter Count}
+\subsection{Why the FFN Dominates the Parameter Count}
 
 A rough accounting tells the story. The attention sublayer has
 four projection matrices $W_Q, W_K, W_V, W_O$, each of shape
@@ -1179,7 +1179,7 @@ the FLOP and parameter accounting in full; this section flags the
 result so that adaptation discussions later in the book (LoRA in
 Chapter~7, MoE in Chapter~6) make sense in advance.
 
-\subsubsection{The Handoff to Chapter 4}
+\subsection{The Handoff to Chapter 4}
 
 By the end of this chapter you have:
 
@@ -1221,7 +1221,7 @@ bench.
 
 % --- END §7 ---
 
-\subsection{Worked Examples}
+\section{Worked Examples}
 \label{sec:nn-worked-examples}
 
 The chapter's two worked examples are paired. The first
@@ -1232,7 +1232,7 @@ demonstrates why that machinery is necessary: the same forward /
 backward step on the canonical Minsky--Papert problem, where the
 two-layer network can represent what a one-layer network cannot.
 
-\subsubsection{Worked Example A: 1-D Regression (Mechanics)}
+\subsection{Worked Example A: 1-D Regression (Mechanics)}
 
 \begin{workedexample}[A: One forward pass, one backward pass, one SGD step]
 
@@ -1346,7 +1346,7 @@ careful bookkeeping. A network with a million parameters
 and a hundred layers does the same thing, only at scale.
 \end{workedexample}
 
-\subsubsection{Worked Example B: XOR via 2-Layer MLP (Necessity)}
+\subsection{Worked Example B: XOR via 2-Layer MLP (Necessity)}
 
 \begin{workedexample}[B: Why we need the hidden layer]
 
@@ -1499,7 +1499,7 @@ worked examples occasionally use squared error for regression
 illustrations).
 \end{provedassumed}
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 The chapter's seven primitives feed almost every chapter that
 follows. The table below indexes the cross-references.
@@ -1540,7 +1540,7 @@ The MLP block (\S\ref{sec:nn-mlp-block}) &
 \end{tabular}
 \end{center}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{rosenblatt1958perceptron} --- the perceptron and
@@ -1565,7 +1565,7 @@ The MLP block (\S\ref{sec:nn-mlp-block}) &
         nod only).
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS231n --- the canonical undergraduate-friendly
@@ -1580,7 +1580,7 @@ The MLP block (\S\ref{sec:nn-mlp-block}) &
         backprop derivation.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{XOR from scratch.} Implement the 2-layer ReLU
@@ -1618,7 +1618,7 @@ The MLP block (\S\ref{sec:nn-mlp-block}) &
         within run-to-run noise, with RMSNorm faster per step.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 3)}
+\section*{Derivation Ledger (Ch. 3)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -1670,7 +1670,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 3 Takeaway}
+\section{Chapter 3 Takeaway}
 
 Modern neural networks are not exotic. They are compositions of
 linear layers, nonlinear activations, normalisations, and

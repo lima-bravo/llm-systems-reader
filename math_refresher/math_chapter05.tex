@@ -1,6 +1,6 @@
-\section{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
+\chapter{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish.
 
 \paragraph{Step A --- bilinear compatibility.}
@@ -29,7 +29,7 @@ Attention replaces recurrence's sequential bottleneck with explicit pairwise com
 
 If shapes align, attention is honest matrix cookbookery---when shapes drift, bugs hide silently.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $T$: sequence length.
   \item $d_{\text{model}}$: model hidden width.
@@ -39,7 +39,7 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item $M$: additive mask matrix applied before softmax.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Scaled attention:}
   \[
@@ -56,7 +56,7 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item \textbf{Complexity source:} score matrix is $T\times T$, so interaction cost grows with sequence length.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Project input vectors into $Q,K,V$.
   \item Form pairwise compatibility scores via $QK^\top$.
@@ -65,7 +65,7 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item Aggregate values and return contextualized representations.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Query:} representation of what current position is asking for.
   \item \textbf{Key:} representation of what each position offers.
@@ -75,27 +75,27 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \item \textbf{KV cache:} stored keys/values for efficient autoregressive decoding.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Shape Sanity)}
+\section*{Worked Mini Example (Shape Sanity)}
 Let $T=4$, $d_{\text{model}}=8$, heads $H=2$, so $d_k=4$.
 \[
 Q,K,V \in \mathbb{R}^{4\times 4}\ \text{per head},\quad QK^\top \in \mathbb{R}^{4\times 4}.
 \]
 After softmax over rows, multiply by $V$ to return $\mathbb{R}^{4\times 4}$ per head, concatenate to $\mathbb{R}^{4\times 8}$.
 
-\subsection*{Worked Example (Reasoning Chain with Causal Mask)}
+\section*{Worked Example (Reasoning Chain with Causal Mask)}
 For token position $t=3$ in a length-4 causal sequence, allowed keys are positions $\{1,2,3\}$ only.  
 In row 3 of $QK^\top$, mask sets column 4 score to $-\infty$ before softmax.  
 Result: attention weight at $(3,4)$ is exactly 0.  
 Interpretation: causality is enforced at score level, not corrected later at output level.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item ``Masking'' is a constraint on attention scores, not a post-hoc output edit.
   \item Quadratic attention cost refers to score interactions, not all block components equally.
   \item KV cache changes decoding-time behavior, not pretraining-time complexity class.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Shape and vector geometry reminders: see Chapter 4 refresher.
   \item Softmax stability reminders: see Chapter 1 refresher.

@@ -1,8 +1,8 @@
-\section{A Human-Centric Model for Understanding LLM Errors}
+\chapter{A Human-Centric Model for Understanding LLM Errors}
 \label{sec:ch13-error-model}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 The thirteen chapters of this book have given you the vocabulary of
@@ -116,7 +116,7 @@ rather than as a diagnostic vocabulary. The model does not, by
 itself, fix anything. It tells you which earlier chapter to
 consult.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -135,7 +135,7 @@ By the end of this chapter, you should be able to:
         --- about LLM errors in language they can act on.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Diagnostic framework}
 \begin{itemize}
@@ -161,7 +161,7 @@ By the end of this chapter, you should be able to:
         drift failures that escape the five axes.
 \end{itemize}
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch13-notation}
 
 \begin{notationbox}
@@ -208,14 +208,14 @@ system-level interventions (Chapter~10, Chapter~12) layered on top
 of the model rather than properties internal to it.
 \end{notationbox}
 
-\subsection{The Five Axes}
+\section{The Five Axes}
 
 We treat each axis in turn. For each, we give a definition, an
 illustrative failure, the technical mechanism in earlier chapters
 that produces or remedies the failure, and a note on what diagnosis
 along that axis looks like in practice.
 
-\subsubsection{Structure: is the output well-formed?}
+\subsection{Structure: is the output well-formed?}
 
 A model's output is structurally correct if it satisfies the formal
 constraints of the format being requested. A JSON object that
@@ -253,7 +253,7 @@ thing, and refer to a thing that does not exist. A practitioner
 who confirms structure and stops has confirmed the least
 interesting property of the output.
 
-\subsubsection{Meaning: is the output internally coherent?}
+\subsection{Meaning: is the output internally coherent?}
 
 A structurally correct output can still fail at the level of
 meaning. The model produces a paragraph whose first sentence
@@ -308,7 +308,7 @@ compute, engage the appropriate inference-time mitigation from the
 list above. These are, in the language of Chapter~6, ways of
 trading inference compute against meaning reliability.
 
-\subsubsection{Context: is the output appropriate for the situation?}
+\subsection{Context: is the output appropriate for the situation?}
 
 The third axis is whether the output is appropriate for its
 situation, purpose, and audience. A model can produce a
@@ -349,7 +349,7 @@ you need the answer, what would count as a good one. The asymmetry
 between the ease of recognition and the difficulty of fix is the
 diagnostic signature of a context failure.
 
-\subsubsection{Grounding: does the output connect to reality?}
+\subsection{Grounding: does the output connect to reality?}
 
 The fourth axis is whether the output connects to verifiable
 reality or has drifted into plausible-sounding fabrication. The
@@ -400,7 +400,7 @@ careful practitioner builds workflows that make verification cheap
 (retrieval, citations, linked sources) so that grounding failures
 are catchable by construction.
 
-\subsubsection{Environment: did the prompt encode the situation?}
+\subsection{Environment: did the prompt encode the situation?}
 
 The fifth axis sits at the human end of the ladder, and is the
 hardest to see because, by construction, it is invisible. An
@@ -443,7 +443,7 @@ model needed to see. Practitioners who become good at LLMs are
 practitioners who have learned which parts of their environment
 need importing for which kinds of question.
 
-\subsection{The Diagnostic Ladder}
+\section{The Diagnostic Ladder}
 
 The five axes form a ladder because they are arranged in roughly
 increasing distance from what the LLM can reliably do on its own.
@@ -501,7 +501,7 @@ grounded answer in the wrong tone can be fixed by the user, but
 a fluent answer about a fact that does not exist cannot. The
 limiting axis is the one to pay first.
 
-\subsection{Connections to Earlier Chapters}
+\section{Connections to Earlier Chapters}
 
 The five axes connect to the technical mechanisms of earlier
 chapters in ways that are worth making explicit. Engineers who
@@ -550,7 +550,7 @@ work on retrieval; a team that wants to improve environment will
 work on their prompt-construction discipline. The ladder makes the
 locus of intervention explicit.
 
-\subsection{What the Model Does Not Capture}
+\section{What the Model Does Not Capture}
 
 The taxonomy is useful because it is simple. It is also incomplete.
 A few classes of failure deserve mention as cases where the model
@@ -583,7 +583,7 @@ single output is in front of you and you want to know what to do.
 For everything else, the earlier chapters remain the authoritative
 reference.
 
-\subsection{Worked Example: Diagnosing a Wrong Code Suggestion}
+\section{Worked Example: Diagnosing a Wrong Code Suggestion}
 
 Suppose a user asks an LLM coding assistant to write a function
 that filters a list of customer records by region and returns the
@@ -630,7 +630,7 @@ The walk shows the discipline: we did not stop at the first axis
 that passed; we did not jump to the most exotic explanation; we
 located the failure at the level where the remedy lives.
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 \begin{itemize}
   \item \textbf{Chapter~1 (Statistical Foundations).} The
@@ -669,7 +669,7 @@ located the failure at the level where the remedy lives.
         higher-axis failures dominate the production failure mix.
 \end{itemize}
 
-\subsection{Chapter 13 Takeaway}
+\section{Chapter 13 Takeaway}
 
 The five-axis model is not a theory. It is a vocabulary for
 talking about LLM failures across the gap between the engineer's

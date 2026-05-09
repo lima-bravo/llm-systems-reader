@@ -1,7 +1,7 @@
-\section{Governance, Assurance, and the Future of AI Systems}
+\chapter{Governance, Assurance, and the Future of AI Systems}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 Suppose you have built and deployed everything in the first nine
@@ -98,7 +98,7 @@ system to recover gracefully when it fails is being honest about the
 problem. The math, the standards, and the assurance cases in this
 chapter exist to support that honesty.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -128,7 +128,7 @@ By the end of this chapter, you should be able to:
         requirements that can be tested and monitored.
 \end{itemize}
 
-\subsection{Notation and Governance-Layer Assumptions}
+\section{Notation and Governance-Layer Assumptions}
 \label{sec:wk10_notation}
 
 \begin{notationbox}
@@ -229,7 +229,7 @@ We make three standing assumptions unless otherwise noted.
 \end{description}
 \end{notationbox}
 
-\subsection{LLMs as Socio-Technical Systems}
+\section{LLMs as Socio-Technical Systems}
 
 Treat the following as the system under consideration: not the
 model, not even the model-plus-retrieval-and-tools, but
@@ -268,7 +268,7 @@ governance is not the job of a compliance team handed the model
 over the wall; it is an engineering concern owned by the team
 that deploys the system.
 
-\subsection{From Model Evaluation to System Assurance}
+\section{From Model Evaluation to System Assurance}
 
 Evaluation scores (Chapter~10) are necessary for assurance but not
 sufficient. Assurance is a structured \emph{argument} that a
@@ -430,7 +430,7 @@ to the hazard register $\mathcal{H}$, which is an assumption about
 organisational diligence, not a theorem.
 \end{provedassumed}
 
-\subsection{Hazard Analysis for LLM Systems}
+\section{Hazard Analysis for LLM Systems}
 
 Before a control can be designed, the hazard must be named. The
 safety-critical tradition offers several structured methods;
@@ -475,7 +475,7 @@ granular taxonomy organised around the sociotechnical
 framing; for regulated deployments, the applicable regulation's
 own taxonomy will usually dominate.
 
-\subsection{Controls and Defence in Depth}
+\section{Controls and Defence in Depth}
 
 Once hazards are named, controls are designed against them. The
 engineering tradition distinguishes preventive (stop the
@@ -498,7 +498,7 @@ stack.
   \label{fig:controls-layers}
 \end{figure}
 
-\subsubsection{Layer-by-layer review}
+\subsection{Layer-by-layer review}
 
 \paragraph{Layer 1 (pre-model data governance).} Licensing
 compliance, contamination checks against known evaluation sets,
@@ -566,7 +566,7 @@ periodic algorithmic impact assessment
 \citep{metcalf2021algorithmic}, third-party audit, submission
 to the AI Incident Database \citep{aiid}.
 
-\subsubsection{The defence-in-depth argument}
+\subsection{The defence-in-depth argument}
 
 \Cons\ No single layer is assumed to be perfect. A system
 designed around ``our alignment is strong enough that we don't
@@ -583,7 +583,7 @@ This is the formal content of defence in depth and the reason
 safety-critical literature treats it as a structural property,
 not an optional enhancement.
 
-\subsubsection{A quantitative control matrix template}
+\subsection{A quantitative control matrix template}
 \label{sec:wk10_control_matrix}
 
 Tabulating controls against hazards is how the abstract
@@ -640,7 +640,7 @@ represent the live distribution. Matrices whose L2 $\eta$ values
 are graded $H$ without explicit out-of-distribution evidence are a
 common audit finding.
 
-\subsection{The Regulatory Landscape}
+\section{The Regulatory Landscape}
 
 A deployed LLM system today is subject to a rapidly evolving
 regulatory context. An engineer does not need to be a lawyer, but
@@ -702,7 +702,7 @@ consensus on responsible AI. \citet{ieee_7000} codifies an
 ethics-by-design process. Both are useful scaffolding even where
 not legally binding.
 
-\subsubsection{Governance-as-code}
+\subsection{Governance-as-code}
 
 \Norm\ A modern compliance approach does not treat regulation as
 a separate stream; it translates regulatory requirements into
@@ -740,7 +740,7 @@ hazards of Eq.~\eqref{eq:wk10-risk} have been mitigated, only
 that the specified controls have been implemented.
 \end{provedassumed}
 
-\subsection{Documentation Artefacts}
+\section{Documentation Artefacts}
 
 Governance rests on documents. A minimum viable set for a
 production LLM deployment:
@@ -788,7 +788,7 @@ deploying foundation models from third parties should expect to
 be asked these questions, and should be able to answer the
 downstream version of them about their own deployments.
 
-\subsection{Audits and Independent Evaluation}
+\section{Audits and Independent Evaluation}
 
 An internal team cannot plausibly be its own assurance. Three
 levels of audit are distinguished:
@@ -821,7 +821,7 @@ red-team engagement at least annually for production-grade
 systems; submission of serious incidents to the AI Incident
 Database \citep{aiid}.
 
-\subsubsection{An audit-readiness scoring rubric}
+\subsection{An audit-readiness scoring rubric}
 \label{sec:wk10_audit_rubric}
 
 \Def\ For an operationally useful rubric, score each of nine
@@ -883,7 +883,7 @@ quantitative columns of Table~\ref{tab:wk10_control_matrix} and
 documenting Eq.~\eqref{eq:wk10-escalate} rather than in
 rewriting the model card.
 
-\subsection{Responsible Scaling and Frontier-Risk Evaluation}
+\section{Responsible Scaling and Frontier-Risk Evaluation}
 
 For frontier-capability models, governance extends to
 capability-gated deployment --- evaluating for specific
@@ -900,7 +900,7 @@ the model's permitted uses. For teams \emph{training} frontier
 models, frontier-risk evaluation is a first-order governance
 obligation, not an add-on.
 
-\subsection{Human Factors Across the Deployment}
+\section{Human Factors Across the Deployment}
 
 Governance fails most often at the seam between engineering
 and operators.
@@ -930,7 +930,7 @@ clear path to escalate concerns and (in high-stakes settings)
 override the model's recommendation. The escalation path must
 be instrumented: escalation rates are a core metric.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \textbf{Requirements.}
 Traceable accountability. Documented risk assessment. Evidenced
@@ -958,7 +958,7 @@ subscription. Quarterly governance review. Adversarial-probe
 monitoring. Post-incident root cause analysis feeding back into
 training, evaluation, and documentation.
 
-\subsection{Human Factors and Organizational Failure Modes}
+\section{Human Factors and Organizational Failure Modes}
 
 Organizational failure dominates model failure at scale. A small
 catalogue of modes that recur:
@@ -990,7 +990,7 @@ behaviour; the downstream system inherits the change silently.
 The fix is explicit contract-level monitoring and a
 ``model-provider change'' incident class.
 
-\subsection{Limits of the Current Paradigm}
+\section{Limits of the Current Paradigm}
 
 Honesty about limits is a governance function. A partial list
 of things current LLM systems cannot do:
@@ -1028,7 +1028,7 @@ capability-gated deployment for frontier models. None of these
 eliminate governance; all of them enrich the toolkit within which
 governance operates.
 
-\subsection{V-Model View: Governance Lifecycle}
+\section{V-Model View: Governance Lifecycle}
 
 \begin{center}
 \small
@@ -1046,7 +1046,7 @@ Retirement & Wind-down plan; data retention / deletion & Verify obligations to u
 \end{tabular}
 \end{center}
 
-\subsection{Key References}
+\section{Key References}
 
 The safety-engineering tradition: Leveson's STPA
 \citep{leveson2011engineering}, Perrow's \emph{Normal Accidents}
@@ -1078,7 +1078,7 @@ Regulation and standards: \citet{nist2023airmf} and
 notation: \citet{gsn2021}. Safety benchmarking:
 \citet{mlcommons_ailuminate}.
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS324 --- Governance and foundation models.
@@ -1093,7 +1093,7 @@ notation: \citet{gsn2021}. Safety benchmarking:
         \url{https://www.cmu.edu/block-center/}
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 A governance-oriented lab for a realistic deployment scenario:
 
@@ -1132,7 +1132,7 @@ A governance-oriented lab for a realistic deployment scenario:
         the deployment's first year. Budget accordingly.
 \end{enumerate}
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 Chapter~11 is the integrator of everything that came before.
 Evaluation (Chapter~10) produces evidence for the assurance case.
@@ -1151,7 +1151,7 @@ SDKs, agents, MCP). Much of that chapter's engineering ---
 credential management, scope control, audit logging,
 tool-schema validation --- is governance made concrete.
 
-\subsection*{Derivation Ledger (Ch. 10)}
+\section*{Derivation Ledger (Ch. 10)}
 
 \begin{derivledger}
 Compact index of the chapter's central definitions and quantitative
@@ -1175,7 +1175,7 @@ mathematical claims.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 11 Takeaway}
+\section{Chapter 11 Takeaway}
 
 \begin{quote}
 Safety is not a property of a model; it is a property of a

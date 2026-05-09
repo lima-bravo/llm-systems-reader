@@ -1,8 +1,8 @@
-\section{Pretraining, GPT-Style Models, and In-Context Learning}
+\chapter{Pretraining, GPT-Style Models, and In-Context Learning}
 \label{sec:ch6-pretrain}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 Picture an engineer in 2018, holding a fresh Transformer
@@ -98,7 +98,7 @@ the recipe does not work. It means the recipe works in a way that
 is harder to characterize than its champions sometimes admit, and
 the math in this chapter exists to help you tell the difference.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -129,7 +129,7 @@ By the end of this chapter, you should be able to:
         connect the results to governance controls.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Training paradigm}
 \begin{itemize}
@@ -154,7 +154,7 @@ By the end of this chapter, you should be able to:
   \item Memorization / extraction risk as an operational hazard.
 \end{itemize}
 
-\subsection{Conceptual Core: Pretraining as Representation Learning}
+\section{Conceptual Core: Pretraining as Representation Learning}
 
 GPT-style pretraining optimizes a single objective: maximize the
 autoregressive log-likelihood of text under the causal factorization
@@ -179,7 +179,7 @@ downstream deployment (Weeks 7--11) is, at bottom, a mechanism for
 constructing the right prompts and constraining the outputs of this
 engine.
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch6-notation}
 
 \begin{notationbox}
@@ -216,13 +216,13 @@ methodology, and the functional form is not derived from first
 principles.
 \end{notationbox}
 
-\subsection{Autoregressive, Masked, and Prefix Language Modeling}
+\section{Autoregressive, Masked, and Prefix Language Modeling}
 
 Three objectives have competed for the LLM crown; the decoder-only
 autoregressive objective has won for capability reasons that are
 worth understanding.
 
-\subsubsection{Autoregressive (Causal) LM}
+\subsection{Autoregressive (Causal) LM}
 
 Eq.~\eqref{eq:ch6-pretrain-obj}, with a causal mask (Chapter~5).
 Every position is both a training \emph{context} and a training
@@ -230,7 +230,7 @@ Every position is both a training \emph{context} and a training
 single forward pass. Architectures: GPT family, Llama, Mistral,
 Claude, Gemini, PaLM (with minor variants).
 
-\subsubsection{Masked LM (MLM)}
+\subsection{Masked LM (MLM)}
 
 Used in BERT~\citep{devlin2019bert}. Replace a fraction $p$ (typically
 15\%) of input tokens with a \texttt{[MASK]} sentinel and predict the
@@ -239,7 +239,7 @@ for representation learning -- BERT embeddings powered the 2018-2020
 NLP ecosystem -- but the model cannot \emph{generate} without
 auxiliary machinery.
 
-\subsubsection{Prefix LM / Span Corruption}
+\subsection{Prefix LM / Span Corruption}
 
 T5~\citep{raffel2020t5} and UL2 train an encoder-decoder with
 \emph{span corruption}: contiguous spans of the input are replaced
@@ -247,7 +247,7 @@ with sentinel tokens, and the decoder reconstructs them. This
 unifies MLM and autoregressive LM in a single objective. Gemini and
 some multilingual models retain a prefix-LM component.
 
-\subsubsection{Why Autoregressive Won}
+\subsection{Why Autoregressive Won}
 
 Three practical reasons:
 (i)~it generalizes to arbitrary prompt $\to$ completion tasks at
@@ -273,9 +273,9 @@ operating on the same sentence.
   \label{fig:pretraining_objectives}
 \end{figure}
 
-\subsection{The Pretraining Data Pipeline}
+\section{The Pretraining Data Pipeline}
 
-\subsubsection{Acquisition}
+\subsection{Acquisition}
 
 The dominant starting point is \emph{Common Crawl}, a monthly
 snapshot of the public Web currently totalling $\sim\!400$\,TB of
@@ -287,7 +287,7 @@ dialogue corpora. Open-source reference pipelines: the
 Pile~\citep{gao2020pile} at 825\,GB; RedPajama~\citep{redpajama2023} as
 a 1.2\,T-token Llama-style mix.
 
-\subsubsection{Filtering}
+\subsection{Filtering}
 
 Raw Common Crawl is approximately $3\%$ usable text by volume. A
 typical filter cascade:
@@ -309,7 +309,7 @@ low-resource languages, minority dialects, and specialized domains.
 Filter choices are a primary driver of the cultural biases an LLM
 inherits.
 
-\subsubsection{Deduplication}
+\subsection{Deduplication}
 
 \citet{lee2022deduplicating} showed that near-duplicate training
 examples cause disproportionate memorization and, counterintuitively,
@@ -324,7 +324,7 @@ examples cause disproportionate memorization and, counterintuitively,
         removal.
 \end{itemize}
 
-\subsubsection{Licensing and Provenance}
+\subsection{Licensing and Provenance}
 
 A major operational issue in 2024--2026: much Common-Crawl content is
 copyrighted; some jurisdictions permit text-and-data mining, others
@@ -335,15 +335,15 @@ individual suits) is rapidly evolving. This becomes a Chapter~11
 governance input: your assurance case requires a defensible data
 provenance record.
 
-\subsubsection{Red-Flag Detection}
+\subsection{Red-Flag Detection}
 
 Production pipelines also scan for: CSAM signatures, known PII
 corpuses, adversarial data-poisoning signatures, and data engineered
 to bypass filters. This is a moving adversarial front.
 
-\subsection{Batch Packing and Sequence-Length Schedules}
+\section{Batch Packing and Sequence-Length Schedules}
 
-\subsubsection{Packing}
+\subsection{Packing}
 
 Documents have variable lengths but Transformers operate on
 fixed-length batches. Padding wastes FLOPs. The canonical solution is
@@ -354,7 +354,7 @@ sequence of length $T$, separated by the end-of-document token
 across documents within the same packed sequence, preserving the
 per-document autoregressive factorization.
 
-\subsubsection{Sequence-Length Schedules}
+\subsection{Sequence-Length Schedules}
 
 Training at the full context length throughout pretraining is
 wasteful: short-context phases are cheap and establish the base
@@ -372,7 +372,7 @@ Llama and Code Llama families and several other open-weight models
 released through 2024, achieving extended context at a fraction of
 the compute a uniform full-length pretrain would cost.
 
-\subsection{Scaling Laws Revisited: Compute-Optimal Training}
+\section{Scaling Laws Revisited: Compute-Optimal Training}
 
 From Chapter~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
 is
@@ -427,9 +427,9 @@ inference. Production choices (Llama-3 at 15T tokens for the 8B
 model) explicitly overtrain to optimize serving economics. This is a
 cost-engineering decision, not a scientific one.
 
-\subsection{In-Context Learning}
+\section{In-Context Learning}
 
-\subsubsection{The Empirical Result}
+\subsection{The Empirical Result}
 
 \citet{brown2020language} showed that a 175\,B-parameter
 autoregressive LM, given a prompt of the form
@@ -455,7 +455,7 @@ empirical properties:
         pairings \citep{min2022rethinking}.
 \end{itemize}
 
-\subsubsection{Mechanistic Hypotheses}
+\subsection{Mechanistic Hypotheses}
 
 Three research lines explain ICL at different levels of abstraction.
 
@@ -521,7 +521,7 @@ by 20~points~\citep{lu2022fantastically}, so the ``ICL accuracy'' of
 a given model is itself a distribution over prompts, not a scalar.
 \end{provedassumed}
 
-\subsection{Few-Shot Format Sensitivity}
+\section{Few-Shot Format Sensitivity}
 
 Lu et al.~\citep{lu2022fantastically} showed that simply
 \emph{reordering} the in-context examples can move accuracy by 20
@@ -540,7 +540,7 @@ Operational countermeasures:
 (iii)~for critical paths, run self-consistency or majority-voting
 across several paraphrases of the same prompt.
 
-\subsection{Sampling and Decoding}
+\section{Sampling and Decoding}
 
 Recall from \S\ref{sec:ch6-notation} the decoding parameter set
 $(T_s, k, p, \alpha, \rho, B)$: temperature, top-$k$ cutoff, nucleus
@@ -559,7 +559,7 @@ $T$ is temperature; sequence length from
 Eq.~\eqref{eq:ch6-pretrain-obj} does not appear in the decoding
 formulas.)
 
-\subsubsection{Greedy and Beam}
+\subsection{Greedy and Beam}
 
 \textbf{Greedy} takes the argmax each step. Deterministic, cheap, and
 frequently degenerate on open-ended generation (loops, repetition)
@@ -571,7 +571,7 @@ finite correct answer) but produces bland, generic text on open-ended
 tasks because the joint log-probability it maximizes is a poor
 proxy for human-preferred output.
 
-\subsubsection{\texorpdfstring{Top-$k$ and Top-$p$ (Nucleus)}{Top-k and Top-p (Nucleus)}}
+\subsection{\texorpdfstring{Top-$k$ and Top-$p$ (Nucleus)}{Top-k and Top-p (Nucleus)}}
 
 \textbf{Top-$k$} \citep{fan2018hierarchical}: restrict the softmax to
 the $k$ highest-probability tokens, renormalize, sample.
@@ -589,7 +589,7 @@ concentration: sharp distributions (confident contexts) have small
 $|\mathcal{V}^{(p)}|$; flat distributions (ambiguous contexts) have
 large $|\mathcal{V}^{(p)}|$.
 
-\subsubsection{\texorpdfstring{Min-$p$}{Min-p}}
+\subsection{\texorpdfstring{Min-$p$}{Min-p}}
 
 \citet{nguyen2024minp} introduced \emph{min-$p$} sampling: keep any
 token whose probability is at least $\alpha \cdot p_{\max}$, where
@@ -639,7 +639,7 @@ $k$ stays constant regardless of entropy, which is why pure top-$k$
 is a poor default.
 \end{workedexample}
 
-\subsubsection{Repetition Penalty}
+\subsection{Repetition Penalty}
 
 A post-hoc logit modification:
 \begin{equation}
@@ -654,7 +654,7 @@ include \emph{frequency} and \emph{presence penalties} (OpenAI API)
 and \emph{DRY} (don't repeat yourself) penalty scoped to recent
 context.
 
-\subsubsection{Decoding Decision Matrix}
+\subsection{Decoding Decision Matrix}
 
 \begin{center}
 \begin{tabular}{|l|l|l|}
@@ -691,7 +691,7 @@ rescales the whole distribution without changing the argmax.
   \label{fig:decoding_strategies}
 \end{figure}
 
-\subsection{Emergence: Real or Metric Artefact?}
+\section{Emergence: Real or Metric Artefact?}
 
 \Emp\ \citet{wei2022emergent} reported that several LLM capabilities
 exhibit sharp, unpredictable jumps as model scale increases, which
@@ -750,7 +750,7 @@ metric. Governance (Chapter~11) should require that any
 under at least one continuous metric; a single-metric
 non-capability claim is not evidence.
 
-\subsection{Memorization and Extraction}
+\section{Memorization and Extraction}
 
 \citet{carlini2021extracting} demonstrated that a 1.5\,B-parameter
 GPT-2 could be induced to emit verbatim strings from its training
@@ -798,7 +798,7 @@ probe regime without new measurement.
 Chapter~11 (Governance) returns to memorization as a residual risk in
 the assurance case.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \begin{center}
 \begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
@@ -838,7 +838,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
 \end{tabular}
 \end{center}
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 \begin{itemize}
   \item \textbf{Anthropomorphizing ICL}. Users perceive the model as
@@ -858,7 +858,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         strings as disclosed; the training loop is a ratchet.
 \end{itemize}
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 \begin{itemize}
   \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: Chinchilla-optimal
@@ -879,7 +879,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         are the direct UI over the sampling math above.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{radford2018improving}, \citet{radford2019language},
@@ -903,7 +903,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         --- memorization and extraction.
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS224N --- language models and pretraining,
@@ -914,7 +914,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
   \item Berkeley CS182 --- language modeling, \citet{berkeley_cs182}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{Mini-pipeline}. Download a 100\,MB Common Crawl WARC
@@ -946,7 +946,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         strings. Plot recall rate vs duplication count.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 5)}
+\section*{Derivation Ledger (Ch. 5)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -975,7 +975,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 6 Takeaway}
+\section{Chapter 6 Takeaway}
 
 \begin{quote}
 Pretraining creates a powerful statistical engine; prompting steers

@@ -1,8 +1,8 @@
-\section{The Transformer --- Attention as the Core Computational Primitive}
+\chapter{The Transformer --- Attention as the Core Computational Primitive}
 \label{sec:ch5-transformer}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 A sentence is a sequence in which almost any word can, in principle,
@@ -107,7 +107,7 @@ softmax denominator, the RoPE rotation, the KV-cache budget ---
 will give you the tools to predict where each of these failure modes
 comes from and which architectural choice each one is the price of.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -133,7 +133,7 @@ By the end of this chapter, you should be able to:
         heatmaps.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Core architecture}
 \begin{itemize}
@@ -153,7 +153,7 @@ By the end of this chapter, you should be able to:
   \item Attention interpretability limits.
 \end{itemize}
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch5-notation}
 
 \begin{notationbox}
@@ -195,7 +195,7 @@ architectural guarantees. They are training-outcome dependent and
 can regress under recipe changes.
 \end{notationbox}
 
-\subsection{Conceptual Core: Why Attention Replaced Recurrence}
+\section{Conceptual Core: Why Attention Replaced Recurrence}
 
 Prior sequence models (RNNs, LSTMs, GRUs) compute each hidden state
 $h_t$ from $h_{t-1}$. This imposes three structural limits:
@@ -220,9 +220,9 @@ empirical question --- the lost-in-the-middle phenomenon
 (\citealt{liu2024lost}, Chapter~10) shows that addressability and
 reliable recall come apart in practice.
 
-\subsection{Scaled Dot-Product Self-Attention}
+\section{Scaled Dot-Product Self-Attention}
 
-\subsubsection{Setup}
+\subsection{Setup}
 
 Let the Transformer see a contextualized input
 $X \in \mathbb{R}^{T\times d}$ (one row per token, $T$ tokens in the
@@ -260,7 +260,7 @@ for $j \le i$ and $M_{ij} = -\infty$ for $j > i$. Figure
 \label{fig:week4-attn-scores}
 \end{figure}
 
-\subsubsection{\texorpdfstring{Why $\sqrt{d_k}$?}{Why sqrt(d\_k)?}}
+\subsection{\texorpdfstring{Why $\sqrt{d_k}$?}{Why sqrt(d\_k)?}}
 
 \begin{derivation}[Variance-preserving score scaling]
 \Assum\ (A4.1): $Q_{im}, K_{jm}$ are random variables with
@@ -303,7 +303,7 @@ but the dimensional-analysis argument survives: the $\sqrt{d_k}$ scale
 is empirically robust across head sizes because it is the only
 dimensionally correct way to decouple logit magnitude from $d_k$.
 
-\subsubsection{Interpretation: Differentiable Lookup}
+\subsection{Interpretation: Differentiable Lookup}
 
 Row $i$ of $A$ is a probability distribution over context positions;
 row $i$ of the output is the convex combination of value rows weighted
@@ -316,7 +316,7 @@ by that distribution. Pedagogically:
 Attention is therefore a differentiable, content-addressable read
 against a key-value store of size $T$.
 
-\subsubsection{Compute and Memory}
+\subsection{Compute and Memory}
 
 For a single attention head the forward pass costs (counting one
 multiply--add as $2$ FLOPs, the convention used throughout this
@@ -361,7 +361,7 @@ of training FLOPs. \Ident\ FFN dominates the FLOP budget
 longer $T$ because of the $T^2$ scaling.
 \end{workedexample}
 
-\subsection{Causal Masking}
+\section{Causal Masking}
 
 For autoregressive language modeling, token $i$ must not attend to
 tokens at position $j > i$, otherwise training leaks the target.
@@ -391,7 +391,7 @@ Incorrect masking is an insidious failure mode: training loss looks
 fine for a while but generalization collapses. Mask correctness is
 worth a unit test.
 
-\subsection{Multi-Head Attention}
+\section{Multi-Head Attention}
 
 A single attention head can only attend through one learned
 $(Q, K, V)$ decomposition at a time. Multi-head attention
@@ -426,7 +426,7 @@ specialization is not engineered in; it \emph{emerges} from training
 (A4.3) and can regress under recipe changes --- it is an observation,
 not a guarantee.
 
-\subsubsection{Multi-Query and Grouped-Query Attention}
+\subsection{Multi-Query and Grouped-Query Attention}
 
 At inference time, multi-head attention keeps a separate key/value
 cache per head (see \S\,KV Cache), which dominates memory. Two
@@ -469,7 +469,7 @@ A4.3: head specialization is training-outcome dependent and should
 not be treated as an architectural contract.
 \end{provedassumed}
 
-\subsection{Feed-Forward Blocks}
+\section{Feed-Forward Blocks}
 
 Between attention layers each position is transformed independently
 by a two-layer feed-forward network (FFN):
@@ -482,7 +482,7 @@ and typically $d_f = 4d$. The activation $\sigma$ started as ReLU and
 has been superseded by smoother variants (GeLU, Swish/SiLU) for
 training stability.
 
-\subsubsection{GLU Variants and SwiGLU}
+\subsection{GLU Variants and SwiGLU}
 
 \citet{shazeer2020glu} showed that \emph{gated} linear units improve
 quality with no extra parameters if the hidden size is rescaled
@@ -507,9 +507,9 @@ the first matrix's rows act as ``keys'' matched against the
 residual-stream activation, and the second matrix's columns act as
 ``values'' written back.
 
-\subsection{The Transformer Block, Pre-Norm vs Post-Norm}
+\section{The Transformer Block, Pre-Norm vs Post-Norm}
 
-\subsubsection{Pre-Norm is the Modern Default}
+\subsection{Pre-Norm is the Modern Default}
 
 The original Transformer used post-norm (normalize after the residual
 add):
@@ -542,7 +542,7 @@ modern LLMs. Figure \ref{fig:week4-block} shows a pre-norm block.
 \label{fig:week4-block}
 \end{figure}
 
-\subsubsection{LayerNorm and RMSNorm}
+\subsection{LayerNorm and RMSNorm}
 
 Layer normalization \citep{ba2016layernorm} normalizes each token's
 activation along the feature dimension:
@@ -560,7 +560,7 @@ with $\mu, \sigma$ the per-token mean and std. RMSNorm
 saving $\sim\!7\%$ of the normalization compute with no quality loss
 in practice. Llama family models use RMSNorm.
 
-\subsubsection{The Residual Stream}
+\subsection{The Residual Stream}
 
 A useful mental model, crystallized in
 \citet{elhage2021mathematical}: the residual stream is a
@@ -571,14 +571,14 @@ add). This additive structure is what makes Transformers
 interpretable-ish: circuits are built by decomposing writes into the
 residual stream.
 
-\subsection{Positional Encoding}
+\section{Positional Encoding}
 
 Attention is permutation-equivariant: a permutation of rows of $X$
 permutes the rows of $\mathrm{Attn}(Q, K, V)$ identically. Without
 positional information the model cannot tell ``dog bites man'' from
 ``man bites dog''. There are four common approaches.
 
-\subsubsection{Sinusoidal (Absolute)}
+\subsection{Sinusoidal (Absolute)}
 
 The original Transformer \citep{vaswani2017attention} adds a fixed
 sinusoid to the token embedding:
@@ -596,14 +596,14 @@ relative offsets by linear operations on the encoding. Sinusoidal
 encodings support extrapolation (a form never seen at training time
 is still a valid sinusoid), but only weakly.
 
-\subsubsection{Learned Absolute}
+\subsection{Learned Absolute}
 
 BERT \citep{devlin2019bert} and early GPT models use a learned
 $T_{\max} \times d$ table of positional vectors, looked up like an
 embedding. Simple and effective up to the training $T_{\max}$, but
 cannot extrapolate beyond it.
 
-\subsubsection{ALiBi}
+\subsection{ALiBi}
 
 Attention with Linear Biases \citep{press2022alibi} adds a
 \emph{fixed} linear penalty to the attention scores based on relative
@@ -617,7 +617,7 @@ with a head-specific slope $m_h > 0$. ALiBi adds \emph{no} extra
 parameters and extrapolates naturally to sequences longer than
 training.
 
-\subsubsection{Rotary Position Embedding (RoPE)}
+\subsection{Rotary Position Embedding (RoPE)}
 
 RoPE \citep{su2021rope}, the default in Llama, Mistral, and many
 contemporary LLMs, encodes position by \emph{rotating} the query and
@@ -665,7 +665,7 @@ parameters. RoPE interacts cleanly with FlashAttention (the rotation
 is applied to $q$ and $k$ before the score, so the kernel does not
 see it) and has become the de facto standard.
 
-\subsubsection{Positional Encoding Decision Matrix}
+\subsection{Positional Encoding Decision Matrix}
 
 \begin{center}
 \begin{tabular}{|l|l|l|l|}
@@ -701,7 +701,7 @@ long-context RoPE deployments must evaluate at target context
 length, not rely on the identity alone.
 \end{provedassumed}
 
-\subsection{The KV Cache}
+\section{The KV Cache}
 
 Autoregressive generation produces one token at a time. At step $t+1$
 the model needs to compute $Q_{t+1} K_{1:t+1}^{\top}$ and
@@ -718,7 +718,7 @@ V_{1:t} \;\leftarrow\; \begin{bmatrix} V_{1:t-1} \\ v_t \end{bmatrix}.
 Per-token inference then costs $O(T d_k)$ for attention (one row of
 $Q$ against a $T$-row $K$), down from $O(T^2 d_k)$.
 
-\subsubsection{KV Cache Memory Math}
+\subsection{KV Cache Memory Math}
 
 The cache stores $K$ and $V$ for every position and layer. Under
 MHA there are $H$ independent K/V tensors per layer; under GQA with
@@ -760,7 +760,7 @@ This is why GQA, KV quantization, and KV eviction policies
 (e.g., StreamingLLM, attention-sink attention) have become
 first-order engineering concerns.
 
-\subsection{FlashAttention}
+\section{FlashAttention}
 
 A naive attention implementation materializes the full
 $T \times T$ score matrix $A$ in HBM (GPU global memory) and reads it
@@ -790,7 +790,7 @@ engineering: no change to the mathematical model, a large change in
 performance, achieved by matching computation to the memory
 hierarchy.
 
-\subsection{Attention Patterns and Interpretability Pitfalls}
+\section{Attention Patterns and Interpretability Pitfalls}
 
 Visualizing the attention matrix $A$ is a common interpretability
 practice: plot attention weights on a heatmap, highlight what each
@@ -823,7 +823,7 @@ engineering telemetry (are heads degenerate? do heads attend to
 \texttt{<bos>} excessively -- a known ``attention sink'' phenomenon?),
 not as causal claims.
 
-\subsection{Shape Inventory for One Block}
+\section{Shape Inventory for One Block}
 
 Taking $T = 2048$, $d = 4096$, $H = 32$, $d_k = d_v = 128$,
 $d_f = 11008$ (Llama-2-7B):
@@ -849,7 +849,7 @@ $4 (4096)^2 + 3 (4096)(11008) \approx 2.02 \times 10^{8}$ parameters
 per block; with 32 blocks plus embeddings, we hit $\sim\!7\times 10^9$
 total -- matching the model name.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \begin{center}
 \begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
@@ -884,7 +884,7 @@ Operations & Prompt length vs cache size
 \end{tabular}
 \end{center}
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 \begin{itemize}
   \item \textbf{``Attention is explanation''}. As discussed, it is
@@ -904,7 +904,7 @@ Operations & Prompt length vs cache size
         tricks (NTK-aware, YaRN) -- quality is not automatic.
 \end{itemize}
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 \begin{itemize}
   \item \textbf{Chapter 6 (Pretraining \& In-Context)}: induction heads
@@ -921,7 +921,7 @@ Operations & Prompt length vs cache size
         attention structure derived here.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{vaswani2017attention} --- the Transformer.
@@ -941,7 +941,7 @@ Operations & Prompt length vs cache size
         Transformer.
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS224N --- Transformers and attention,
@@ -953,7 +953,7 @@ Operations & Prompt length vs cache size
         \citet{berkeley_cs182}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{Minimal attention implementation}. Code Eq.\,
@@ -984,7 +984,7 @@ Operations & Prompt length vs cache size
         loss curves and observe divergence under post-norm.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 4)}
+\section*{Derivation Ledger (Ch. 4)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -1021,7 +1021,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 5 Takeaway}
+\section{Chapter 5 Takeaway}
 
 \begin{quote}
 The Transformer turns sequence modeling into parallel, differentiable

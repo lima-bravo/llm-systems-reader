@@ -1,7 +1,7 @@
-\section{Model Adaptation, LoRA, Quantization, and Deployment Reality}
+\chapter{Model Adaptation, LoRA, Quantization, and Deployment Reality}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 Picture a small product team that has just pulled down an
@@ -96,7 +96,7 @@ quantization error bounds, the QLoRA gradient flow --- exists to
 let you predict which of these failures your particular setup is
 asking for.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -117,7 +117,7 @@ By the end of this chapter, you should be able to:
         model that behaves non-trivially differently from its base.
 \end{itemize}
 
-\subsection{Conceptual Core: Why Full Fine-Tuning Breaks Down}
+\section{Conceptual Core: Why Full Fine-Tuning Breaks Down}
 
 Full fine-tuning updates \emph{all} the parameters of a pretrained model on
 a new task or corpus. For a 70B-parameter model at bfloat16, this means
@@ -175,7 +175,7 @@ inspectable delta.
 The whole of this chapter can be read as a formalization of that
 separation.
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch8-notation}
 
 \begin{notationbox}
@@ -230,7 +230,7 @@ generalization theorems. Far-domain, long-context, and hard-reasoning
 regimes may show larger gaps.
 \end{notationbox}
 
-\subsection{Parameter-Efficient Fine-Tuning (PEFT)}
+\section{Parameter-Efficient Fine-Tuning (PEFT)}
 
 PEFT is the umbrella term for techniques that freeze the pretrained
 model $W_0$ and train a small set of \emph{additional} parameters,
@@ -291,7 +291,7 @@ The rest of the chapter concentrates on LoRA, because it is the
 method that most engineers will actually deploy, and because its
 mathematics illuminate the rest of the space.
 
-\subsection{Low-Rank Adaptation (LoRA)}
+\section{Low-Rank Adaptation (LoRA)}
 
 LoRA \citep{hu2021lora} modifies a linear layer $W_0 x$ in a
 pretrained model by adding a trainable low-rank update:
@@ -330,7 +330,7 @@ diverges gradually under gradient descent. The asymmetry is deliberate:
 if both were random, the initial output would be perturbed and the
 model would need to ``un-learn'' the noise before learning the task.
 
-\subsubsection{Parameter and memory budgets}
+\subsection{Parameter and memory budgets}
 
 \begin{derivation}[LoRA parameter compression]
 For a single linear layer $W_0 \in \R^{d\times k}$ with
@@ -403,7 +403,7 @@ FLOPs stay $\approx 6N$ for forward+backward on LoRA
 large}. This asymmetry is the whole point.
 \end{workedexample}
 
-\subsubsection{\texorpdfstring{Why low rank? The intrinsic-dimensionality hypothesis}{Why low rank? The intrinsic-dimensionality hypothesis}}
+\subsection{\texorpdfstring{Why low rank? The intrinsic-dimensionality hypothesis}{Why low rank? The intrinsic-dimensionality hypothesis}}
 
 The empirical licence for a low-rank update comes from
 \citet{aghajanyan2021intrinsic}, who showed that pretrained language
@@ -435,7 +435,7 @@ $r=64$, the task is not low-intrinsic-dimensional and LoRA is the
 wrong tool. Full fine-tuning or continued pretraining is then
 indicated, despite its cost.
 
-\subsubsection{Which layers to adapt?}
+\subsection{Which layers to adapt?}
 
 \citet{hu2021lora} reported that applying LoRA to \emph{only the
 attention projections} $W_Q$ and $W_V$ is competitive with full
@@ -446,7 +446,7 @@ as well, because the MLP layers contain the majority of the
 parameter count in a transformer (roughly two thirds for the
 Llama-family geometry).
 
-\subsubsection{\label{subsec:lora-merge}Merging at deployment}
+\subsection{\label{subsec:lora-merge}Merging at deployment}
 
 A critical operational property of LoRA is that it is a
 \emph{linear} update. At serving time one can compute once:
@@ -466,7 +466,7 @@ per-request adapter on demand. This is the pattern implemented by
 S-LoRA-style serving stacks, at the cost of a small per-token overhead
 for the low-rank matmul.
 
-\subsubsection{Variants}
+\subsection{Variants}
 
 \paragraph{QLoRA} \citep{dettmers2023qlora} is the most important
 variant. The base is quantized to 4-bit NF4 (see \S\ref{subsec:nf4}
@@ -493,7 +493,7 @@ budget and reallocates it during training.
 
 These are incremental; the LoRA mainline is not going anywhere.
 
-\subsubsection{Failure modes}
+\subsection{Failure modes}
 
 LoRA is not a panacea. Three failure modes recur in practice.
 
@@ -531,7 +531,7 @@ adaptation and fails measurably for far-domain and
 hard-reasoning targets.
 \end{provedassumed}
 
-\subsection{Quantization: The Other Half of Cheap Adaptation}
+\section{Quantization: The Other Half of Cheap Adaptation}
 
 Quantization reduces the numerical precision with which a model's
 weights (and sometimes activations) are stored and computed. It is
@@ -555,7 +555,7 @@ the format distinguish nearby values?).
   \label{fig:quantization-precision}
 \end{figure}
 
-\subsubsection{FP32, FP16, BF16, and the rise of mixed precision}
+\subsection{FP32, FP16, BF16, and the rise of mixed precision}
 
 Neural networks were trained in IEEE-754 FP32 for most of the deep
 learning era. Two facts about modern LLMs have made FP32 training
@@ -583,7 +583,7 @@ magnitudes that overflow FP16 but survive BF16
 \citep{kalamkar2019bfloat16}. Most modern training pipelines default
 to BF16 for this reason; FP16 survives on older hardware.
 
-\subsubsection{Post-training integer quantization}
+\subsection{Post-training integer quantization}
 
 Training at FP16/BF16 is one thing; \emph{serving} at INT8 or below
 is a different problem. The model was trained assuming continuous
@@ -669,7 +669,7 @@ labs; it is more forgiving than INT8 because the floating-point
 format already concentrates precision near zero, and is increasingly
 the default for training-time quantization of optimizer state.
 
-\subsubsection{What can go wrong}
+\subsection{What can go wrong}
 
 Quantization is \emph{not} safe-by-default. Production teams
 have observed all of the following in real systems.
@@ -707,7 +707,7 @@ have produced, because low-probability tokens get boosted above the
 nucleus threshold. This is an argument for fixing sampling
 parameters \emph{after} quantization, not before.
 
-\subsection{QLoRA: The Production Default}
+\section{QLoRA: The Production Default}
 
 QLoRA \citep{dettmers2023qlora} combines the two halves. The recipe
 is:
@@ -766,7 +766,7 @@ production evaluation must cover the actual deployed task
 distribution.
 \end{provedassumed}
 
-\subsection{Adaptation Data and the Instruction-Tuning Overlap}
+\section{Adaptation Data and the Instruction-Tuning Overlap}
 
 A recurring engineering question is: what data do I train my adapter
 on? This chapter deliberately leaves full RLHF, DPO, and
@@ -807,7 +807,7 @@ redistribute a large model's knowledge; they can only tune its
 output distribution. Bad data fine-tunes a model into bad habits
 with disturbing efficiency.
 
-\subsection{The Adaptation-and-Serving System}
+\section{The Adaptation-and-Serving System}
 
 Beyond the per-adapter mathematics lies a system design problem.
 Most organizations that adapt LLMs do not do so once; they do so
@@ -861,7 +861,7 @@ feedback signals, and (crucially) \emph{distribution-shift
 detection} on the input side: a new adapter that is wonderful on
 yesterday's traffic may be disastrous on today's.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \textbf{Requirements.}
 The systems requirement is composability and reversibility. A
@@ -889,7 +889,7 @@ reversible. The runtime monitors for output-drift alerts
 for cost anomalies (quantization regressions that change FLOPs
 indirectly through longer generations).
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 Adaptation attracts distinctive misunderstandings that the engineer
 should be prepared to correct.
@@ -926,7 +926,7 @@ for far-domain transfer. An engineer pushing the edge of what an
 adapted model can do should always benchmark against a full-FT
 baseline, even if the production recipe is QLoRA.
 
-\subsection{V-Model View: Adaptation Lifecycle}
+\section{V-Model View: Adaptation Lifecycle}
 
 \begin{center}
 \small
@@ -942,7 +942,7 @@ Operations & Rollout, metrics, rollback & Output drift monitor; cost anomaly mon
 \end{tabular}
 \end{center}
 
-\subsection{Key References}
+\section{Key References}
 
 The LoRA and QLoRA papers \citep{hu2021lora, dettmers2023qlora} are
 mandatory primary reading for any engineer deploying adapter-based
@@ -965,7 +965,7 @@ LoRA dispatch. The Hugging Face PEFT library
 \citep{mangrulkar2023peft} is the dominant open-source
 implementation.
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS324 --- Lectures on model adaptation and
@@ -978,7 +978,7 @@ implementation.
         (Song Han).  \url{https://hanlab.mit.edu/courses}
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 A concrete lab that mirrors this chapter's progression, runnable on
 a single 24~GB consumer GPU:
@@ -1009,7 +1009,7 @@ a single 24~GB consumer GPU:
         refusal rate) and decide on a rollout or rollback.
 \end{enumerate}
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 Chapter~8 sits between pretraining (Chapter~6) and alignment (Chapter~9).
 Everything in this chapter presupposes a competent base model and
@@ -1027,7 +1027,7 @@ between ``adapt vs.\ retrieve'' will be a central engineering tradeoff.
 Chapter~11's governance framework will treat adapters as the primary
 unit of change-control audit.
 
-\subsection*{Derivation Ledger (Ch. 7)}
+\section*{Derivation Ledger (Ch. 7)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -1056,7 +1056,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 8 Takeaway}
+\section{Chapter 8 Takeaway}
 
 \begin{quote}
 Most real-world LLM value comes from safely \emph{adapting} a

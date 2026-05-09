@@ -1,6 +1,6 @@
-\section{Chapter 1 Refresher: Statistical Learning Foundations for Large Language Models --- Probability, Likelihood, and Calibration}
+\chapter{Chapter 1 Refresher: Statistical Learning Foundations for Large Language Models --- Probability, Likelihood, and Calibration}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Chapter~1 of the reader applies the probability spine summarised in the \emph{Preface: Probability Building Blocks}: Steps~2--4 turn sequential text into products of conditionals; Steps~8--10 justify cross-entropy training as likelihood plus coding intuition; Step~7 motivates interpreting finite corpora as imperfect proxies for expectations.
 
 \paragraph{Reasoning cadence (Strang-style).}
@@ -18,7 +18,7 @@ The critical insight for Chapter~1 is that language modeling does not invent pro
 
 This refresher chapter specialises the preface steps into LM notation; reread the preface whenever conditioning identities feel unmotivated.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $x_t$: token at position $t$ in a sequence; $x_{<t}$ denotes all preceding tokens (the context).
   \item $V$: vocabulary; $|V|$ is vocabulary size.
@@ -26,7 +26,7 @@ This refresher chapter specialises the preface steps into LM notation; reread th
   \item $z_t\in\mathbb{R}^{|V|}$: vector of logits before softmax at position $t$.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Conditional probability as prediction primitive.} If $A$ and $B$ are events with $P(B)>0$, then
   \[
@@ -117,7 +117,7 @@ This refresher chapter specialises the preface steps into LM notation; reread th
   \textit{Mental model.} Deploy metrics conditional on confidence bins---aggregate accuracy hides structured lies about uncertainty.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Conditional probability defines next-token prediction.
   \item Chain rule extends next-token predictions to full-sequence probabilities.
@@ -129,7 +129,7 @@ This refresher chapter specialises the preface steps into LM notation; reread th
   \item Calibration analysis audits whether confidence values are trustworthy after fitting.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Random variable:} a map from outcomes to numerical values.
   \item \textbf{Conditional probability:} probability under restricted information.
@@ -146,7 +146,7 @@ This refresher chapter specialises the preface steps into LM notation; reread th
   \item \textbf{ECE:} binned estimate of calibration gap.
 \end{itemize}
 
-\subsection*{Worked Example (Non-Toy, End-to-End Reasoning)}
+\section*{Worked Example (Non-Toy, End-to-End Reasoning)}
 Assume a validation slice with $N=1000$ predicted tokens. We observe:
 \begin{itemize}[leftmargin=1.5em]
   \item Mean NLL $=1.10$ nats.
@@ -181,7 +181,7 @@ Therefore the distinction between fit quality and confidence quality is operatio
   \item Re-check both loss and calibration after scaling.
 \end{enumerate}
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item A lower NLL does \emph{not} guarantee calibrated confidence.
   \item KL is a divergence, not a metric; direction matters.
@@ -189,14 +189,14 @@ Therefore the distinction between fit quality and confidence quality is operatio
   \item ECE is a binned approximation and depends on binning and sample size.
 \end{itemize}
 
-\subsection*{If You Get Stuck}
+\section*{If You Get Stuck}
 \begin{itemize}[leftmargin=1.5em]
   \item Rewrite every probability expression in words before manipulating symbols.
   \item Track whether each quantity is theoretical, empirical estimate, or model output.
   \item Check if the reasoning step is algebraic (identity) or statistical (estimation).
 \end{itemize}
 
-\subsection*{References and What To Use Them For}
+\section*{References and What To Use Them For}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Murphy, \emph{Probabilistic Machine Learning}} --- conditional probability, expectation, estimation viewpoint.
   \item \textbf{Bishop, \emph{Pattern Recognition and Machine Learning}} --- likelihood-based learning, cross-entropy objectives.

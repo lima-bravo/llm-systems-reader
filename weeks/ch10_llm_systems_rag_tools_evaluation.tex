@@ -1,7 +1,7 @@
-\section{LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses}
+\chapter{LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 Imagine your support engineer's internal chatbot, asked at 9~a.m.\
@@ -103,7 +103,7 @@ them, review them, test them, audit them. The single most common
 cause of silent regressions in LLM deployments is treating a prompt
 as ``just a string.''
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -132,7 +132,7 @@ By the end of this chapter, you should be able to:
         distribution drift).
 \end{itemize}
 
-\subsection{Notation and System Assumptions}
+\section{Notation and System Assumptions}
 
 \begin{notationbox}
 Throughout this chapter we fix the following objects. A
@@ -172,7 +172,7 @@ We make three standing assumptions.
 \end{description}
 \end{notationbox}
 
-\subsection{Retrieval-Augmented Generation (RAG)}
+\section{Retrieval-Augmented Generation (RAG)}
 
 \Def\ A \emph{retrieval-augmented generator} is a pair $(R_{k_R},
 P_\theta)$ whose induced conditional distribution over answers is
@@ -209,7 +209,7 @@ labelled stage corresponds to one of those choices.
   \label{fig:rag-pipeline}
 \end{figure}
 
-\subsubsection{Why RAG}
+\subsection{Why RAG}
 
 RAG was introduced by \citet{lewis2020retrieval} and its conceptual
 precursor REALM \citep{guu2020realm}, in both cases as an end-to-end
@@ -238,7 +238,7 @@ matches a much larger non-retrieval model on knowledge-heavy
 tasks. This is the engineering argument behind the RA-DIT line of
 work \citep{lin2024radit}.
 
-\subsubsection{Retrievers: sparse, dense, and hybrid}
+\subsection{Retrievers: sparse, dense, and hybrid}
 
 The retriever answers: given a query $q$, return the top-$k_R$
 chunks from $\mathcal{C}$ ranked by a scoring function
@@ -337,7 +337,7 @@ with $k_\mathrm{RRF}=60$ as a common default. The hybrid is almost
 always better than either alone, especially on queries the dense
 retriever has not seen.
 
-\subsubsection{Indexing with approximate nearest neighbours}
+\subsection{Indexing with approximate nearest neighbours}
 
 For dense retrieval over millions of vectors, exact kNN is too
 slow. The production default is an approximate nearest-neighbour
@@ -367,7 +367,7 @@ tuned for speed can silently drop to 70\% recall and degrade
 downstream answer quality in ways that look like a model
 regression.
 
-\subsubsection{Chunking: the underrated design decision}
+\subsection{Chunking: the underrated design decision}
 
 Retrievers operate on chunks, not documents: $s(q, \cdot)$ in
 Eqs.~\eqref{eq:bm25}--\eqref{eq:colbert-maxsim} takes a chunk $c$
@@ -398,7 +398,7 @@ for retrieval and a larger context window (the parent section or
 page) that the retrieved chunk unlocks. This keeps retrieval
 precise and generation well-contextualized.
 
-\subsubsection{Reranking}
+\subsection{Reranking}
 
 \Def\ A \emph{reranker} is a second-stage scorer $s_R(q, c)$, run
 only on the top-$k_1$ candidates from the first-stage retriever,
@@ -445,7 +445,7 @@ compared with the generation cost of the downstream LLM, and the
 precision gain propagates directly into context precision and
 answer quality.
 
-\subsubsection{Context packing and the ``lost in the middle'' problem}
+\subsection{Context packing and the ``lost in the middle'' problem}
 
 Once $R_{k_R}(q)$ is fixed, the prompt-construction function
 $x(\cdot)$ must choose a \emph{position mapping}
@@ -486,7 +486,7 @@ whether the model claims to support long context.
         model can address them individually in the answer.
 \end{enumerate}
 
-\subsubsection{Query transformation}
+\subsection{Query transformation}
 
 The user query is not always the best retrieval query. Useful
 transformations include: \emph{query expansion} (add synonyms,
@@ -498,7 +498,7 @@ history into a self-contained retrieval query). Each of these
 costs an extra LLM call, so each should be justified against a
 held-out eval.
 
-\subsubsection{Self-RAG and adaptive retrieval}
+\subsection{Self-RAG and adaptive retrieval}
 
 Naive RAG retrieves always, even on queries where the model
 knows the answer better than the corpus. Self-RAG
@@ -509,7 +509,7 @@ engineering version is cheaper and almost as effective: a binary
 classifier on the query that decides whether to hit the RAG path
 at all.
 
-\subsubsection{GraphRAG and structured retrieval}
+\subsection{GraphRAG and structured retrieval}
 
 For corpora where the global structure matters (document graphs,
 knowledge graphs, code bases), purely vector-based retrieval leaves
@@ -519,7 +519,7 @@ summaries for query-focused summarization. For code bases, the
 structure is the call graph plus the file hierarchy; retrieval that
 respects this structure is reliably better than flat chunking.
 
-\subsubsection{RAG failure modes}
+\subsection{RAG failure modes}
 \label{sec:rag-failure-modes}
 
 \paragraph{Retrieval miss.} $\mathcal{G}(q) \not\subseteq R_{k_R}(q)$: the
@@ -591,7 +591,7 @@ of A9.1 drifts while the corpus grows; define and monitor a
 staleness metric and treat exceeding $\Delta_\mathrm{idx}$ as a
 release-blocking incident.
 
-\subsection{Tool Use: Structured I/O, Not ``Reasoning''}
+\section{Tool Use: Structured I/O, Not ``Reasoning''}
 
 Tool use --- letting the model call external functions,
 calculators, databases, or APIs --- is often described in the
@@ -629,7 +629,7 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
   \label{fig:react-loop}
 \end{figure}
 
-\subsubsection{Tool schemas}
+\subsection{Tool schemas}
 
 Modern tool-use APIs (OpenAI function calling, Anthropic tool use,
 and the MCP standard introduced in Chapter~12) all require a
@@ -652,7 +652,7 @@ hallucinate.
 single JSON string and parses it server-side is asking for
 schema-agnostic bugs. Use structured fields.
 
-\subsubsection{Orchestration}
+\subsection{Orchestration}
 
 In simple agents, orchestration is the ReAct loop. In more
 complex systems, it is a state machine or a directed graph: the
@@ -663,7 +663,7 @@ hand off to a human for high-stakes decisions. DSPy
 letting developers describe the orchestration declaratively and
 compile it to prompts.
 
-\subsubsection{Tool-use failure modes}
+\subsection{Tool-use failure modes}
 
 \paragraph{Hallucinated calls.} The model emits a message whose
 name field does not match any $\sigma_i \in \mathcal{T}$, or whose
@@ -699,7 +699,7 @@ $\bigcup_t o_t$. An attacker who controls any tool endpoint can
 inject instructions into $o_t$; defenses are identical to the
 prompt-injection defences above.
 
-\subsubsection{Tool use and retrieval as a unified view}
+\subsection{Tool use and retrieval as a unified view}
 
 Retrieval \emph{is} a tool call, albeit a standardized one. A
 well-designed system treats the RAG path as one entry in the tool
@@ -708,7 +708,7 @@ framing under which modern agentic systems operate: the model is a
 policy whose actions are drawn from a tool library, one of which
 is called \texttt{search}.
 
-\subsection{Prompt Construction as a System Artefact}
+\section{Prompt Construction as a System Artefact}
 
 A prompt is a configuration file that runs inside a neural
 network. It must be treated with the same engineering discipline
@@ -734,14 +734,14 @@ the full rendered prompt, the retrieved documents, the model
 output, and any tool calls. Without this, debugging is impossible
 and regulatory audit is impossible.
 
-\subsection{Evaluation Harnesses}
+\section{Evaluation Harnesses}
 
 An LLM system has no ground truth for most of its outputs. Quality
 is known only through the evaluation suite; a poor suite makes a
 model look good while it is quietly getting worse. This section
 lays out the discipline.
 
-\subsubsection{The three-layer evaluation stack}
+\subsection{The three-layer evaluation stack}
 
 \paragraph{Layer 1: unit-level metrics.} Per-component, automated,
 cheap, high-volume. Examples: BM25 recall@$k$, cross-encoder
@@ -765,7 +765,7 @@ pairwise human preference (Chatbot Arena
 still the best option for evaluating style, helpfulness, and
 subjective quality.
 
-\subsubsection{Reference-based metrics and their limits}
+\subsection{Reference-based metrics and their limits}
 
 BLEU \citep{papineni2002bleu} and ROUGE \citep{lin2004rouge} were
 designed for machine translation and summarization respectively,
@@ -781,7 +781,7 @@ signal. They are dangerous across tasks: claiming that ``our
 model is better because ROUGE went up'' without a paired human
 eval is a common and expensive error.
 
-\subsubsection{LLM-as-judge and its biases}
+\subsection{LLM-as-judge and its biases}
 
 LLM-as-judge scales to thousands of pairwise comparisons per
 dollar, but it has well-documented biases \citep{zheng2023llmjudge}.
@@ -802,7 +802,7 @@ evaluation or human calibration is required.
 \paragraph{Self-preference bias.} LLM judges prefer their own
 outputs. Never evaluate a model with itself as the sole judge.
 
-\subsubsection{RAG-specific evaluation}
+\subsection{RAG-specific evaluation}
 \label{sec:rag-eval}
 
 RAG has its own metrics beyond end-to-end accuracy. Each is a
@@ -873,7 +873,7 @@ Eq.~\eqref{eq:context-recall} and the generator can still produce
 a low-$\mathrm{Faith}$ answer, so all four must be reported
 jointly.
 
-\subsubsection{Evaluation hygiene}
+\subsection{Evaluation hygiene}
 
 \paragraph{Held-out sets, refreshed.}
 Eval sets leak. A well-run program rotates held-out prompts
@@ -894,7 +894,7 @@ measure the behaviour users care about in September. Evaluation is
 a continuous process, with drift alerts on token distributions,
 refusal rates, and task-specific metrics.
 
-\subsubsection{Evaluation-capture and the eval/incentive split}
+\subsection{Evaluation-capture and the eval/incentive split}
 
 Teams under pressure to ship optimize what they measure. If the
 eval team and the training team are the same team, the eval suite
@@ -936,7 +936,7 @@ an inductive generalisation from deployed RAGAS pipelines, not a
 theorem.
 \end{provedassumed}
 
-\subsection{Augmented LLMs: A Survey Lens}
+\section{Augmented LLMs: A Survey Lens}
 
 \citet{mialon2023augmented} offer a general framing for LLM
 systems as language models augmented with reasoning (chain-of-
@@ -946,7 +946,7 @@ every augmentation is a system component, every system component
 has its own failure modes, and every deployment is a choice of
 which components to include.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \textbf{Requirements.} Correctness under distribution shift.
 Bounded latency under worst-case retrieval. Explicit traceability
@@ -969,7 +969,7 @@ Incident runbooks for retrieval failures, tool failures, and
 alignment regressions. Prompt and retrieval logs retained long
 enough to reproduce any reported failure.
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 \paragraph{Automation bias.} Users trust a confident system more
 than a hesitant one, even when the confident one is wrong.
@@ -992,7 +992,7 @@ engineering team must have the diagnostic power to separate these,
 and the product team must be empowered to explain which was the
 cause.
 
-\subsection{V-Model View: LLM System Lifecycle}
+\section{V-Model View: LLM System Lifecycle}
 
 \begin{center}
 \small
@@ -1008,7 +1008,7 @@ Operations & Monitoring, alerts, runbooks & Drift alerts, incident review, eval-
 \end{tabular}
 \end{center}
 
-\subsection{Key References}
+\section{Key References}
 
 Foundational RAG: \citet{lewis2020retrieval} and \citet{guu2020realm}.
 Retrievers: BM25 \citep{robertson2009bm25}, DPR
@@ -1033,7 +1033,7 @@ ARC \citep{chollet2019arc}, Chatbot Arena \citep{chiang2024arena},
 MT-Bench/LLM-as-judge \citep{zheng2023llmjudge},
 RAGAS \citep{es2024ragas}.
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS324 --- LLM systems and evaluation.
@@ -1046,7 +1046,7 @@ RAGAS \citep{es2024ragas}.
         \url{https://rdi.berkeley.edu/llm-agents/}
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 A concrete end-to-end RAG + evaluation lab:
 
@@ -1079,7 +1079,7 @@ A concrete end-to-end RAG + evaluation lab:
         Document the fix.
 \end{enumerate}
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 Chapter~10 connects back to almost every prior chapter. Retrieval
 substitutes for some of the knowledge alignment (Chapter~9) or
@@ -1096,7 +1096,7 @@ standardizes the tool-use schema of this chapter across clients
 and servers and turns the ``integrate against my API'' problem
 into a declarative one.
 
-\subsection*{Derivation Ledger (Ch. 9)}
+\section*{Derivation Ledger (Ch. 9)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities. RAG / retrieval
@@ -1137,7 +1137,7 @@ $R_k(q)$, gold-span set $G$.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 10 Takeaway}
+\section{Chapter 10 Takeaway}
 
 \begin{quote}
 In production deployments built around RAG, tool use, and

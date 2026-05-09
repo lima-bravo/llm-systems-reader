@@ -1,6 +1,6 @@
-\section{Chapter 7 Refresher: Efficiency, Scaling, and Mixture-of-Experts --- Systems Arithmetic and Sparse Routing}
+\chapter{Chapter 7 Refresher: Efficiency, Scaling, and Mixture-of-Experts --- Systems Arithmetic and Sparse Routing}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Once probabilities and networks are defined, training becomes physics on silicon: bytes move, joules dissipate, routers stall. Preface Step~6 (variance of sums) quietly lurks behind contention noise.
 
 \paragraph{Step A --- Roofline worldview.}
@@ -23,7 +23,7 @@ Once probabilities and networks are defined, training becomes physics on silicon
 
 Systems graphs reinterpret probability routines as throughput limits; migrating bottlenecks obey no moral ranking beyond measurement.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $I$: arithmetic intensity (FLOPs per byte).
   \item $k$: number of selected experts per token in top-$k$ routing.
@@ -32,7 +32,7 @@ Systems graphs reinterpret probability routines as throughput limits; migrating 
   \item CF: capacity factor (expert slot overprovision multiplier).
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Bottleneck triad:} compute, memory bandwidth, and interconnect communication.
   \item \textbf{MoE routing:} compute gate logits per token (router network); softmax yields mixture weights; keep top-$k$ experts, zero or mask others, renormalise weights on the surviving experts so each token still mixes convexly over experts it dispatches to; aggregate expert outputs with those weights. Routing induces sparse activation patterns separate from parameter residency.
@@ -41,7 +41,7 @@ Systems graphs reinterpret probability routines as throughput limits; migrating 
   \item \textbf{Active vs total parameters:} sparse models can have large total memory footprint while using small active compute per token.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Compute workload demand (FLOPs and bytes/token).
   \item Compare with device and interconnect limits.
@@ -50,7 +50,7 @@ Systems graphs reinterpret probability routines as throughput limits; migrating 
   \item Validate with throughput/latency measurements.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Arithmetic intensity:} FLOPs per byte transferred.
   \item \textbf{Dispatch/combine:} route tokens to experts and gather outputs.
@@ -59,27 +59,27 @@ Systems graphs reinterpret probability routines as throughput limits; migrating 
   \item \textbf{All-to-all:} communication primitive central to MoE scaling.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Intensity Intuition)}
+\section*{Worked Mini Example (Intensity Intuition)}
 Assume a kernel performs $2\times10^{12}$ FLOPs and moves $8\times10^{11}$ bytes.
 \[
 I=\frac{2\times10^{12}}{8\times10^{11}}=2.5\ \text{FLOPs/byte}.
 \]
 If hardware requires much higher intensity for compute saturation, this kernel is memory-bound.
 
-\subsection*{Worked Example (MoE Bottleneck Migration)}
+\section*{Worked Example (MoE Bottleneck Migration)}
 Assume dense model requires 100 units compute and 40 units communication per batch.  
 After MoE sparsification, active compute drops to 45, but dispatch/combine communication rises to 80.  
 System shifts from compute-bound to communication-bound.  
 Interpretation: sparse compute improved one axis but exposed another, so optimization must target network scheduling or expert placement.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Sparse compute does not imply sparse communication.
   \item MoE can reduce compute/token while increasing routing complexity.
   \item High model parameter count can coexist with low active compute and high memory residency.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Optimization and memory accounting: see Chapter 2 refresher.
   \item Attention complexity and KV behavior: see Chapter 5 refresher.

@@ -1,6 +1,6 @@
-\section{Chapter 6 Refresher: Pretraining, GPT-Style Models, and In-Context Learning --- Pretraining Objective and Decoding Controls}
+\chapter{Chapter 6 Refresher: Pretraining, GPT-Style Models, and In-Context Learning --- Pretraining Objective and Decoding Controls}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Training optimises Preface Steps~8--10 on teacher-forced contexts; deployment samples from the learned conditional family under budgets and safety envelopes---same \(\theta\), different \emph{pushforward} map from logits to tokens.
 
 \paragraph{Step A --- Autoregressive likelihood reminder.}
@@ -23,7 +23,7 @@ Training optimises Preface Steps~8--10 on teacher-forced contexts; deployment sa
 
 Decoding is theatre lighting on the same actor (\(\theta\)); training chooses the script likelihood, decoding chooses spotlight intensity.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $z_i$: logit for candidate token $i$.
   \item $p_i$: probability of candidate token $i$ after normalization.
@@ -33,7 +33,7 @@ Decoding is theatre lighting on the same actor (\(\theta\)); training chooses th
   \item $N,D$: model/data scale variables in scaling discussions.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Autoregressive NLL objective.}
   For corpus sequences \(x_{1:T}\), training maximises \(\sum_t \log p_\theta(x_t\mid x_{<t})\), equivalently minimises per-token cross-entropy averaged over positions and documents. This is the Chapter~1 chain rule factorisation evaluated inside the transformer stack that produces conditional softmax parameters at each \(t\).
@@ -52,14 +52,14 @@ Decoding is theatre lighting on the same actor (\(\theta\)); training chooses th
   \item \textbf{Scaling fits:} compute/data/parameter fronts are empirical and objective-dependent.
 \end{itemize}
 
-\subsection*{Pointers}
+\section*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
   \item CE/KL/perplexity: see Chapter 1 refresher.
   \item Optimizer and scaling-law mechanics: see Chapter 2 refresher.
   \item Attention architecture assumptions: see Chapter 5 refresher.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Train model to minimize autoregressive NLL.
   \item Convert logits to probabilities at inference.
@@ -68,7 +68,7 @@ Decoding is theatre lighting on the same actor (\(\theta\)); training chooses th
   \item Evaluate behavior with metrics that may differ from training objective.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Autoregressive objective:} predict each token conditioned on prefix.
   \item \textbf{Decoding policy:} rule for turning model distribution into emitted tokens.
@@ -78,7 +78,7 @@ Decoding is theatre lighting on the same actor (\(\theta\)); training chooses th
   \item \textbf{Scaling law:} empirical relation between loss and resource axes.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Temperature)}
+\section*{Worked Mini Example (Temperature)}
 Take logits $z=(2,1,0)$.
 With $\tau=1$:
 \[
@@ -90,7 +90,7 @@ p\approx(0.506,0.307,0.186).
 \]
 Higher temperature flattens the distribution, increasing diversity and risk simultaneously.
 
-\subsection*{Worked Example (Decode Policy Choice for Same Model)}
+\section*{Worked Example (Decode Policy Choice for Same Model)}
 Suppose next-token distribution after softmax is:
 \[
 (0.52,0.24,0.12,0.07,0.05).
@@ -105,14 +105,14 @@ Under top-$p$ with $p=0.9$, first four tokens are retained (mass $0.95$), renorm
 \]
 Same trained model, different generation behavior due only to policy.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Decoding does not retrain the model; it samples from a transformed output distribution.
   \item Top-$k$ and top-$p$ can behave similarly in peaked distributions and very differently in flat distributions.
   \item Apparent ``emergence'' can be caused by metric discontinuities, not abrupt capability phase transitions.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Hoffmann et al. (2022)} --- compute-optimal scaling interpretation.
   \item \textbf{Holtzman et al.} --- nucleus sampling and degeneration analysis.

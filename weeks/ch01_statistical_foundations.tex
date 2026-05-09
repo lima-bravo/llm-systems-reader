@@ -2,11 +2,11 @@
 %% CHAPTER 1 -- STATISTICAL LEARNING FOUNDATIONS FOR LLMs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Statistical Learning Foundations for Large Language Models}
+\chapter{Statistical Learning Foundations for Large Language Models}
 \label{sec:ch1}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.} Consider for a moment what it means to
 predict the next word. You are reading this sentence. Your eye has
@@ -118,7 +118,7 @@ encodes a conditional distribution, and reading its outputs
 through that lens explains, in advance, most of the surprises the
 rest of the book will document.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -133,7 +133,7 @@ By the end of this chapter, you should be able to:
   \item Identify the human-factor risks that arise when probabilistic outputs are interpreted as authoritative assertions, and describe first-line mitigations.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 This chapter focuses on the statistical substrate underlying all LLM systems. Every concept introduced here will reappear in later chapters under increasingly engineering-heavy disguises, so the aim is to establish vocabulary and intuition that later chapters can take as given.
 
@@ -152,7 +152,7 @@ This chapter focuses on the statistical substrate underlying all LLM systems. Ev
   \item Implications of probabilistic behavior for downstream system design, monitoring, and human-in-the-loop review.
 \end{itemize}
 
-\subsection{Notation and Assumptions}
+\section{Notation and Assumptions}
 \label{sec:ch1_notation}
 
 \begin{notationbox}
@@ -196,7 +196,7 @@ $\bits$.
 \end{itemize}
 \end{notationbox}
 
-\subsection{Conceptual Core: What Kind of Object Is an LLM?}
+\section{Conceptual Core: What Kind of Object Is an LLM?}
 
 \Def\ A Large Language Model defines a probability distribution over
 sequences of discrete symbols drawn from the finite vocabulary $V$.
@@ -235,13 +235,13 @@ inconsistency under paraphrase---follow directly from reading the
 model's outputs through a probabilistic lens rather than a symbolic
 one.
 
-\subsubsection{Why Left-to-Right?}
+\subsection{Why Left-to-Right?}
 
 The chain rule in equation (\ref{eq:chain}) is written left-to-right, but it could just as well be written right-to-left, or in any other ordering. Any particular factorization is mathematically equivalent on the joint. Neural language models nonetheless commit to a canonical ordering---left-to-right for GPT-style autoregressive models, or a masked variant for BERT-style bidirectional encoders---because the \emph{parameter sharing} induced by that ordering is what makes the model tractable. We return to this choice in Chapter~6, where we contrast autoregressive, masked, and prefix-LM objectives.
 
-\subsection{Maximum Likelihood and Next-Token Prediction}
+\section{Maximum Likelihood and Next-Token Prediction}
 
-\subsubsection{Training Objective}
+\subsection{Training Objective}
 
 \Def\ The \emph{maximum-likelihood estimator} (MLE) under model
 $P_\theta$ and dataset $\mathcal{D}$ is
@@ -285,7 +285,7 @@ essentially every modern language model. Every innovation in the last
 decade---Transformers, sparse mixtures, alignment, retrieval---is
 layered on top of this one expression.
 
-\subsubsection{Equivalence with Cross-Entropy}
+\subsection{Equivalence with Cross-Entropy}
 
 \Def\ Let $\hat p$ denote the empirical measure on (context, token)
 pairs induced by $\mathcal{D}$ (a uniform distribution on the
@@ -347,7 +347,7 @@ errors or biases, a low-cross-entropy model faithfully reproduces them.
 This double edge reappears in every alignment and governance
 discussion downstream.
 
-\subsubsection{Softmax Parameterization and Numerical Stability}
+\subsection{Softmax Parameterization and Numerical Stability}
 
 \Def\ The conditional $q_\theta(\cdot \mid x_{<t})$ is realised by the
 model as a vector of real-valued \emph{logits}
@@ -396,7 +396,7 @@ $9{:}1$ under this parameterisation.'' The relative nature of softmax
 probabilities is the source of many calibration problems we examine
 below.
 
-\subsubsection{Worked Example: Softmax and LSE}
+\subsection{Worked Example: Softmax and LSE}
 
 \begin{workedexample}[: softmax and LSE on a toy vocabulary]
 Take $V = \{\text{\emph{yes}}, \text{\emph{no}}, \text{\emph{maybe}}\}$
@@ -421,7 +421,7 @@ Shift invariance is not a theoretical nicety; it is a daily
 engineering tool.
 \end{workedexample}
 
-\subsubsection{The Decomposition of Cross-Entropy Into Per-Position Losses}
+\subsection{The Decomposition of Cross-Entropy Into Per-Position Losses}
 
 \Cons\ Training divides cleanly along positions. Because equation
 (\ref{eq:mle}) sums over positions $t$ as well as over sequences, the
@@ -452,11 +452,11 @@ parameterises $q_\theta$ via attention; Chapter~9 replaces $\hat p$ with
 a preference distribution.
 \end{provedassumed}
 
-\subsection{Information-Theoretic Foundations}
+\section{Information-Theoretic Foundations}
 
 To reason about training curves, perplexity benchmarks, and calibration, we need a modest amount of classical information theory. The canonical reference is \citet{cover2006elements}; the textbook treatment is \citet{bishop2006prml} or \citet{murphy2022pml}.
 
-\subsubsection{Entropy}
+\subsection{Entropy}
 
 \Def\ Let $p$ be a distribution on a discrete set $\mathcal{X}$. The
 \emph{entropy} of $p$ is
@@ -476,7 +476,7 @@ distribution, for which $H = \log |V|$.
 number of bits required to encode a random draw from $p$ under the
 optimal code (Shannon's source-coding theorem).
 
-\subsubsection{Cross-Entropy and KL Divergence}
+\subsection{Cross-Entropy and KL Divergence}
 
 \Def\ The \emph{cross-entropy} between $p$ and $q$ (both on the same
 finite support, with $q > 0$) is
@@ -502,7 +502,7 @@ derived as (\ref{eq:ce-kl})) expresses $H(p,q)$ as the sum of an
 irreducible part $H(p)$ and a \emph{coding-overhead} part
 $\KL(p\parallel q)$. Cross-entropy training minimises the overhead.
 
-\subsubsection{Mutual Information}
+\subsection{Mutual Information}
 
 \Def\ For random variables $X, Y$ with joint $p(x, y)$ and marginals
 $p(x), p(y)$, the mutual information is
@@ -517,7 +517,7 @@ the analysis of in-context learning (where the context tokens reduce
 uncertainty about the continuation), and in retrieval evaluation
 (where good retrieval increases $I(\text{answer}; \text{context})$).
 
-\subsubsection{Perplexity}
+\subsection{Perplexity}
 
 \Def\ The \emph{perplexity} of $q_\theta$ on $\mathcal{D}$ is the
 exponential of per-token cross-entropy:
@@ -574,9 +574,9 @@ only weakly correlated with downstream task accuracy.
 metric; Chapter~9 uses (\ref{eq:kl-def}) as the KL penalty in DPO.
 \end{provedassumed}
 
-\subsection{Uncertainty, Confidence, and Calibration}
+\section{Uncertainty, Confidence, and Calibration}
 
-\subsubsection{Three Quantities That Look the Same and Are Not}
+\subsection{Three Quantities That Look the Same and Are Not}
 
 \Def\ A common source of error in LLM engineering is the collapse of
 three distinct quantities into a single intuitive notion of ``the model
@@ -622,7 +622,7 @@ side.
   \label{fig:prob_conf_corr}
 \end{figure}
 
-\subsubsection{Calibration and Reliability Diagrams}
+\subsection{Calibration and Reliability Diagrams}
 
 \Def\ A probabilistic classifier is \emph{perfectly calibrated} if,
 for every $p^\star \in [0, 1]$,
@@ -671,7 +671,7 @@ overconfident in the high-probability regime
   \label{fig:reliability}
 \end{figure}
 
-\subsubsection{Expected Calibration Error}
+\subsection{Expected Calibration Error}
 
 \Def\ Let the \emph{calibration function} $c(p) := \Pr[\text{correct}
 \mid \hat q = p]$ denote the conditional accuracy of the predictor
@@ -817,7 +817,7 @@ Alternatives include the \emph{Brier score}
 and the marginal log-loss (per-instance NLL). Both are proper scoring
 rules in the sense of the next subsection.
 
-\subsubsection{Temperature Scaling}
+\subsection{Temperature Scaling}
 
 \Def\ Let $\tau > 0$ be a scalar. \emph{Temperature scaling} divides
 logits by $\tau$ before the softmax:
@@ -846,7 +846,7 @@ inference stacks: the same operation that fixes calibration can be
 used to trade off diversity for determinism in generation. Temperature
 does not introduce new knowledge; it redistributes existing mass.
 
-\subsubsection{Proper Scoring Rules}
+\subsection{Proper Scoring Rules}
 
 \Def\ A \emph{scoring rule} $S(q, y)$ assigns a score to a predicted
 distribution $q$ in light of an observed outcome $y$. A scoring rule is
@@ -886,7 +886,7 @@ Chapter~9 tracks calibration drift after alignment; Chapter~10 uses
 calibration as part of abstention and tool-use policies.
 \end{provedassumed}
 
-\subsection{Sampling and Decoding as Probabilistic Objects}
+\section{Sampling and Decoding as Probabilistic Objects}
 
 \Def\ Once the model has computed $q_\theta(\cdot \mid x_{<t})$, a
 \emph{decoding strategy} selects a next token. Formally, a decoding
@@ -920,7 +920,7 @@ decoding strategy. Chapter~6 treats decoding more formally; here the
 point is that sampling is a first-class design choice with measurable
 effects on calibration, diversity, and downstream task performance.
 
-\subsection{Common Probabilistic Failure Modes}
+\section{Common Probabilistic Failure Modes}
 
 With the probabilistic framing in place, several characteristic LLM failure modes resolve into familiar statistical pathologies.
 
@@ -983,7 +983,7 @@ decision depends on a threshold on model probability, validate that the
 probability is calibrated on the operating distribution before
 deployment.}
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 From a systems engineering standpoint, an LLM should be treated as a stochastic subsystem with an opaque internal state and non-stationary performance. The following table summarizes the consequences of the statistical framing for each phase of a standard V-model:
 
@@ -1007,7 +1007,7 @@ Incident Response & Failures are rarely deterministic bugs. Root-cause analysis 
 
 These properties motivate the architectural patterns---verification layers, retrieval augmentation, structured output formats, and human-in-the-loop review---that Weeks 8 through 10 will develop in detail.
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 A common early failure mode in LLM systems is \emph{automation bias}:
 \begin{quote}
@@ -1017,7 +1017,7 @@ This arises from a mismatch between human epistemic intuitions---where confident
 
 Effective first-line mitigations include structured outputs with explicit confidence fields, uncertainty visualization in user interfaces, and source attribution (retrieval citations, tool-call traces). We return to these in Chapter~10 in the context of system design and in Chapter~11 in the context of assurance cases.
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 The statistical machinery of this chapter is revisited, refined, or challenged in every subsequent chapter. Explicit bridges worth keeping in mind:
 \begin{itemize}
@@ -1030,7 +1030,7 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
   \item \textbf{Chapter 11 (Governance \& Assurance)} treats probabilistic performance as an assurance-case claim and asks what evidence is needed to justify it.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{bishop2006prml} --- \emph{Pattern Recognition and Machine Learning}; definitive treatment of probabilistic modelling and calibration.
@@ -1043,7 +1043,7 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
   \item \citet{holtzman2020curious} --- shows that maximum-likelihood decoding fails in open-ended generation; motivates the decoding toolkit.
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Caltech CS156 --- \emph{Learning From Data} \citep{caltech_cs156}.
@@ -1051,7 +1051,7 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
   \item Stanford CS229 --- \emph{Machine Learning}, particularly the probability and optimization sections \citep{stanford_cs229}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \textbf{Objective}: implement multinomial logistic regression for a toy next-token task and observe probabilistic behavior first-hand.
 
@@ -1069,7 +1069,7 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
 
 See \texttt{labs/week01/week01\_lab\_probabilistic\_foundations.ipynb}.
 
-\subsection*{Derivation Ledger (Ch. 1)}
+\section*{Derivation Ledger (Ch. 1)}
 
 \begin{derivledger}
 A compact index of the key identities established in this chapter.
@@ -1106,7 +1106,7 @@ new content.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 1 Takeaway}
+\section{Chapter 1 Takeaway}
 
 \begin{quote}
 An LLM is not a knowledge base or a reasoner; it is a probabilistic sequence model trained by minimizing cross-entropy against a corpus distribution. Cross-entropy is a proper scoring rule, which makes it a principled training target---but it measures distributional fidelity, not truth. Everything downstream, from hallucination to overconfidence to the surprising power of prompting, is a consequence of reading the model's outputs as probabilities and not as assertions.

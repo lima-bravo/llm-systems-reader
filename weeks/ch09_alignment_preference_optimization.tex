@@ -1,7 +1,7 @@
-\section{Alignment, Instruction Tuning, and Preference Optimization}
+\chapter{Alignment, Instruction Tuning, and Preference Optimization}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 Imagine sitting in front of a freshly pretrained base model and
@@ -110,7 +110,7 @@ Bradley-Terry likelihood, the PPO clipped objective, the DPO
 log-ratio --- is the bookkeeping for a problem that the math alone
 cannot solve.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -136,7 +136,7 @@ By the end of this chapter, you should be able to:
         alignment tax, hidden-value ambiguity).
 \end{itemize}
 
-\subsection{Conceptual Core: Capability vs.\ Alignment}
+\section{Conceptual Core: Capability vs.\ Alignment}
 
 Pretraining optimizes a single objective --- maximize the
 log-likelihood of the next token conditional on preceding tokens
@@ -178,7 +178,7 @@ its own gaming strategy. This is the central practical risk of
 alignment engineering and the reason Chapter~10's evaluation chapter is
 its natural companion.
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch9-notation}
 
 \begin{notationbox}
@@ -225,7 +225,7 @@ they do not generalize uniformly and must be re-measured on the
 production distribution.
 \end{notationbox}
 
-\subsection{Stage 1: Supervised Fine-Tuning (SFT)}
+\section{Stage 1: Supervised Fine-Tuning (SFT)}
 
 SFT is the simplest post-training stage. One curates a dataset of
 $(\text{instruction}, \text{response})$ pairs and fine-tunes the
@@ -235,7 +235,7 @@ is to teach the model the format and conventions of the assistant
 role: when to produce lists, when to ask clarifying questions, what
 a refusal looks like, what a code block looks like.
 
-\subsubsection{Data is the training algorithm}
+\subsection{Data is the training algorithm}
 
 The dominant consideration in SFT is the dataset. Three approaches
 are representative.
@@ -266,7 +266,7 @@ amplifies) the generator's biases; a common failure mode is that
 the trained student memorizes surface patterns of the teacher
 rather than learning the underlying behaviour.
 
-\subsubsection{Operational properties of SFT}
+\subsection{Operational properties of SFT}
 
 SFT is cheap: a 7B-parameter LoRA-SFT on 10k examples takes minutes
 on a single GPU. It is stable: the loss curves look like standard
@@ -281,7 +281,7 @@ easily teach the model what not to output, because there is no
 natural signal for ``this is a bad response.'' That is the gap
 preference optimization fills.
 
-\subsection{Stage 2: Preference Data and the Bradley-Terry Model}
+\section{Stage 2: Preference Data and the Bradley-Terry Model}
 
 Preference data comes in triples $(x, y^+, y^-)$: a prompt and two
 candidate responses, with $y^+$ preferred over $y^-$ by a human (or
@@ -378,7 +378,7 @@ preferences get encoded is an engineering responsibility: it must be
 documented in the model card and revisable under governance
 (Chapter~11).
 
-\subsection{Stage 3a: RLHF with PPO}
+\section{Stage 3a: RLHF with PPO}
 
 Classical RLHF \citep{christiano2017deep, ouyang2022training}
 optimizes the post-SFT policy $\pi_\theta$ with the reward model
@@ -417,7 +417,7 @@ and smaller teams; large frontier labs frequently still run PPO or
 hybrid pipelines (PPO with DPO warm-start, GRPO variants) where
 the additional reward signal is judged worth the extra compute.
 
-\subsection{Stage 3b: Direct Preference Optimization (DPO)}
+\section{Stage 3b: Direct Preference Optimization (DPO)}
 
 \citet{rafailov2023direct} observed that the RLHF optimum has a
 closed-form relationship to the preference data, and that one can
@@ -519,7 +519,7 @@ Hard-reasoning, long-horizon, and far-domain alignment
 generalization remain open.
 \end{provedassumed}
 
-\subsection{Preference-Optimization Variants}
+\section{Preference-Optimization Variants}
 
 A small zoo of post-DPO methods has appeared. A working engineer
 should be able to distinguish them on a few key axes.
@@ -557,7 +557,7 @@ synthetic preferences are cheap, millions of human preferences are
 not. Used carefully, CAI and RLAIF are the scaling strategy for
 alignment data; used carelessly, they propagate the judge's biases.
 
-\subsubsection{Variant summary: assumptions and operational cost}
+\subsection{Variant summary: assumptions and operational cost}
 
 \begin{center}
 \small
@@ -582,7 +582,7 @@ SimPO sit in the cheap corner on both; KTO sits in the cheap-data
 corner; PPO-RLHF is expensive on both but offers the richest
 optimization dynamics when the reward model is well-calibrated.
 
-\subsection{Alignment Failure Modes}
+\section{Alignment Failure Modes}
 
 Before discussing failure modes, it is worth reintroducing the
 notation used above: $\pi_\theta$ is the aligned policy,
@@ -652,7 +652,7 @@ be patched. \citet{anwar2024foundational} and
 \citet{casper2023open} provide extensive surveys of these open
 problems.
 
-\subsection{Instruction Tuning as a Product Engineering Discipline}
+\section{Instruction Tuning as a Product Engineering Discipline}
 
 Beyond the training recipes, alignment is also a \emph{data}
 engineering problem that most organizations solve badly. Five
@@ -696,7 +696,7 @@ An aligned model is never ``done''; it is a continuously updated
 artefact, and the supporting infrastructure must be built for
 incremental change.
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \textbf{Requirements.}
 Predictable behaviour under sensitive prompts. Clear and documented
@@ -723,7 +723,7 @@ response length, helpfulness scores). Incident response playbooks
 for newly discovered jailbreaks and for model-behaviour complaints.
 Adapter rollback within minutes, not hours.
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 Alignment does not eliminate human risks; it introduces new ones.
 
@@ -758,7 +758,7 @@ narrowly aligned. The suite must be owned by a separate team from
 the training team, and the cases must be refreshed faster than
 they can be memorised.
 
-\subsection{V-Model View: Alignment Lifecycle}
+\section{V-Model View: Alignment Lifecycle}
 
 \begin{center}
 \small
@@ -774,7 +774,7 @@ Operations & Live metrics, incident queue & Drift alerts, complaint triage, adve
 \end{tabular}
 \end{center}
 
-\subsection{Key References}
+\section{Key References}
 
 The three foundational papers are \citet{christiano2017deep}
 (preferences-to-reward, the origin of RLHF),
@@ -797,7 +797,7 @@ for anyone deploying aligned models. The open-problems surveys
 over-optimization paper \citep{gao2023scaling} ground the critical
 view.
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS324 --- Alignment lectures.
@@ -810,7 +810,7 @@ view.
         alignment and safety).  \url{https://agi.mit.edu}
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 A concrete lab for a team with modest resources:
 \begin{enumerate}
@@ -843,7 +843,7 @@ A concrete lab for a team with modest resources:
         differences and the cost delta.
 \end{enumerate}
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 Chapter~9 depends on pretraining (Chapter~6) for the base model and on
 adaptation (Chapter~8) for the LoRA machinery that runs all three
@@ -855,7 +855,7 @@ post-training lineage as a first-class audit artefact. RAG systems
 knowledge alignment might otherwise have to encode, and the decision
 of ``align vs.\ retrieve'' recurs throughout the rest of the book.
 
-\subsection*{Derivation Ledger (Ch. 8)}
+\section*{Derivation Ledger (Ch. 8)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -886,7 +886,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 9 Takeaway}
+\section{Chapter 9 Takeaway}
 
 \begin{quote}
 Alignment reshapes the output distribution of a base model to match

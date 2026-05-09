@@ -1,6 +1,6 @@
-\section{Chapter 10 Refresher: LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses --- Retrieval Metrics and Evaluation Arithmetic}
+\chapter{Chapter 10 Refresher: LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses --- Retrieval Metrics and Evaluation Arithmetic}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Retrieval-augmented answering concatenates two stochastic modules: recall relevant evidence (set-valued event), then condition generation on that evidence (Preface Step~2 again). One scalar cannot isolate which module failed.
 
 \paragraph{Step A --- Set-valued relevance.}
@@ -18,7 +18,7 @@ Retrieval-augmented answering concatenates two stochastic modules: recall releva
 
 Decomposition honors Preface Step~5 linearity instinct: diagnose components before averaging them blindly.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $k$: retrieval cutoff.
   \item $R_k$: top-$k$ retrieved set.
@@ -28,7 +28,7 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
   \item $d$: document/chunk embedding/vector.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Ranking metrics.}
   Let \(R_k\) be top-$k$ retrieved IDs and \(G\) gold relevant IDs with $|G|$ possibly larger than $k$.
@@ -43,7 +43,7 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
   \item \textbf{Grounding metrics:} answer support must be checked against retrieved evidence, not linguistic plausibility.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Define relevance and evidence assumptions.
   \item Measure retrieval coverage/precision.
@@ -52,7 +52,7 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
   \item Localize failure stage before proposing fix.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Gold relevance set:} trusted set of truly relevant items.
   \item \textbf{Precision@k:} fraction of top-$k$ retrieved items that are relevant.
@@ -61,7 +61,7 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
   \item \textbf{Faithfulness:} proportion of answer claims supported by context.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Precision and Recall@k)}
+\section*{Worked Mini Example (Precision and Recall@k)}
 Suppose the gold relevant set has 4 items. Top-5 retrieval returns 3 relevant items.
 \[
 \mathrm{Precision@5}=\frac{3}{5}=0.6,\qquad
@@ -69,7 +69,7 @@ Suppose the gold relevant set has 4 items. Top-5 retrieval returns 3 relevant it
 \]
 Interpretation: ranking quality and evidence coverage are both incomplete, but in different ways.
 
-\subsection*{Worked Example (Failure Localization)}
+\section*{Worked Example (Failure Localization)}
 Pipeline A improves final answer score from 68 to 72.  
 But decomposition reveals:
 \begin{itemize}[leftmargin=1.5em]
@@ -79,14 +79,14 @@ But decomposition reveals:
 Interpretation: generator improved, retriever regressed.  
 Action: fix retrieval stage rather than over-tuning generation prompts.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Better answer fluency can hide retrieval failures.
   \item High retrieval recall can coexist with poor final answers if synthesis is weak.
   \item Metric definitions require explicit edge-case conventions.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Embedding geometry: see Chapter 4 refresher.
   \item Calibration/uncertainty interpretation: see Chapter 1 refresher.

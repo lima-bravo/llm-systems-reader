@@ -1,8 +1,8 @@
-\section{Efficiency, Scaling, and Mixture-of-Experts}
+\chapter{Efficiency, Scaling, and Mixture-of-Experts}
 \label{sec:ch7-moe}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 A modern frontier model has hundreds of billions, sometimes trillions,
@@ -96,7 +96,7 @@ load-balancing-loss derivative --- is in the service of giving you
 enough algebra to predict where your particular system will break
 before you find out the expensive way.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -122,7 +122,7 @@ By the end of this chapter, you should be able to:
         design decisions.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Distributed training and serving}
 \begin{itemize}
@@ -145,7 +145,7 @@ By the end of this chapter, you should be able to:
   \item New failure modes from conditional compute.
 \end{itemize}
 
-\subsection{Conceptual Core: Three Axes of Scale}
+\section{Conceptual Core: Three Axes of Scale}
 
 A deployed LLM is constrained simultaneously by three resources:
 \begin{center}
@@ -187,7 +187,7 @@ model at the inference FLOPs cost of a 30B model -- \emph{but with the
 memory footprint of the 1T model}. This asymmetry drives most of what
 is interesting about MoE at the systems level.
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch7-notation}
 
 \begin{notationbox}
@@ -250,7 +250,7 @@ and architectural details, and extrapolation to unseen routing
 schemes or to $N_e \gg 64$ is not established.
 \end{notationbox}
 
-\subsection{Parallelism: The Five Axes}
+\section{Parallelism: The Five Axes}
 
 See Figure~\ref{fig:week6-parallelism-axes}. In modern training
 stacks these axes compose multiplicatively.
@@ -265,7 +265,7 @@ stacks these axes compose multiplicatively.
 \label{fig:week6-parallelism-axes}
 \end{figure}
 
-\subsubsection{Data Parallelism (DP)}
+\subsection{Data Parallelism (DP)}
 
 Each GPU holds a full copy of the model and processes a disjoint
 microbatch. After the backward pass, gradients are averaged across
@@ -275,7 +275,7 @@ for batch sizes under the noise threshold of
 replicates parameters, so memory cost is $O(N)$ per replica and does
 not benefit from cluster size.
 
-\subsubsection{Tensor (Model) Parallelism (TP)}
+\subsection{Tensor (Model) Parallelism (TP)}
 
 Introduced at scale by Megatron-LM
 \citep{shoeybi2019megatron,narayanan2021efficient}. Within a single
@@ -291,7 +291,7 @@ or NVSwitch) because every forward and backward pass must exchange
 activations; it is typically bounded to intra-node (8 GPUs on
 current H100/H200 nodes).
 
-\subsubsection{Pipeline Parallelism (PP)}
+\subsection{Pipeline Parallelism (PP)}
 
 Different \emph{layers} live on different GPUs. A microbatch flows
 forward through the stages, then backward.
@@ -302,7 +302,7 @@ concurrently at different stages. The residual idle time is the
 and $M$ microbatches; large $M$ (i.e., large effective batch) shrinks
 the bubble.
 
-\subsubsection{Sequence / Ring Parallelism (SP)}
+\subsection{Sequence / Ring Parallelism (SP)}
 
 For long contexts, even a single sequence may exceed per-GPU
 activation memory. Sequence
@@ -313,14 +313,14 @@ ring so that every query sees every key without materializing the
 full attention matrix anywhere. SP is what enables million-token
 context training.
 
-\subsubsection{Expert Parallelism (EP)}
+\subsection{Expert Parallelism (EP)}
 
 Specific to MoE. Different \emph{experts} live on different GPUs.
 When a token is routed to expert $i$, its activations must travel to
 the GPU that holds $E_i$ -- this is the all-to-all communication
 pattern (\S\,Expert Parallelism below).
 
-\subsubsection{Composing the Axes}
+\subsection{Composing the Axes}
 
 When the parallelism axes compose, the world size satisfies
 \begin{equation*}
@@ -341,7 +341,7 @@ engineering artifact that matters is the \emph{configuration file}
 listing this decomposition, because it determines throughput, the
 bubble size, and the blast radius of a single-GPU failure.
 
-\subsection{ZeRO and FSDP}
+\section{ZeRO and FSDP}
 
 Pure data parallelism replicates parameters, gradients, optimizer
 state, and activations on every GPU -- memory is $O(N)$ per device
@@ -369,7 +369,7 @@ parameter axis, but uses only DP-style all-gather communication
 ZeRO-3-style full sharding and has become the default for
 open-source LLM training.
 
-\subsubsection{Activation Recomputation}
+\subsection{Activation Recomputation}
 
 Even after sharding parameters and optimizer state, activation memory
 often dominates. Activation recomputation \citep{chen2016training}
@@ -380,9 +380,9 @@ compute-heavy blocks (attention, FFN) and recompute the cheap ones
 (normalizations, reshapes) -- recovering most of the memory savings
 at a $\sim 5\%$ compute overhead rather than the classical $\sim 33\%$.
 
-\subsection{MoE Forward Pass}
+\section{MoE Forward Pass}
 
-\subsubsection{Layer Structure}
+\subsection{Layer Structure}
 
 A dense Transformer block has an FFN:
 $\mathrm{FFN}(x) = W_2\,\sigma(W_1 x)$. An MoE block replaces this
@@ -415,7 +415,7 @@ operation.
 \label{fig:week6-moe-routing}
 \end{figure}
 
-\subsubsection{Capacity Factor}
+\subsection{Capacity Factor}
 
 In a distributed implementation, each expert has a fixed buffer size.
 The \emph{capacity} per expert is
@@ -461,7 +461,7 @@ This is the capacity--drop tradeoff: $f$ is the mechanism by which
 the operator trades training FLOPs for signal preservation.
 \end{workedexample}
 
-\subsubsection{Load-Balancing Auxiliary Loss}
+\subsection{Load-Balancing Auxiliary Loss}
 
 Routing is discrete and the router receives no direct gradient
 through $\mathrm{top}_k$; without an auxiliary signal, the router can
@@ -507,7 +507,7 @@ of the gradient and the unique constrained minimiser, not
 convergence under SGD.
 \end{derivation}
 
-\subsubsection{\texorpdfstring{Router $z$-Loss}{Router z-Loss}}
+\subsection{\texorpdfstring{Router $z$-Loss}{Router z-Loss}}
 
 \citet{zoph2022stmoe} introduced the router $z$-loss to stabilize
 router logits:
@@ -520,7 +520,7 @@ which penalizes the log-sum-exp of the router logits from growing
 unboundedly. Without it, router logits can diverge in bf16 and
 produce router NaNs in long training runs.
 
-\subsection{Expert Parallelism and All-to-All}
+\section{Expert Parallelism and All-to-All}
 
 In a distributed MoE, expert $i$ lives on GPU $\pi(i)$. When a token
 is routed to $E_i$, its hidden state must \emph{travel} to GPU
@@ -546,7 +546,7 @@ worst-case serial bound under A6.2 (iii); production measurements of
 effective all-to-all time are typically $0.3$--$0.7\times$ the bound
 depending on overlap and topology.
 
-\subsection{MoE in Inference: Buys FLOPs, Not Memory}
+\section{MoE in Inference: Buys FLOPs, Not Memory}
 
 At inference time, MoE still reduces FLOPs per token (only $k$
 experts fire) but \emph{all experts must remain resident in GPU
@@ -594,7 +594,7 @@ Consequences:
         large batch.
 \end{itemize}
 
-\subsection{Scaling Laws for MoE}
+\section{Scaling Laws for MoE}
 
 \Emp\ Under A6.3, \citet{clark2022unified} fit a unified scaling law
 across dense and routed models of the form
@@ -646,12 +646,12 @@ different optima when data mixture or serving constraints are
 varied~\citep{fedus2021switch,jiang2024mixtral}.
 \end{provedassumed}
 
-\subsection{MoE Failure Modes}
+\section{MoE Failure Modes}
 
 Conditional compute introduces failure modes invisible to dense
 training.
 
-\subsubsection{Expert Collapse}
+\subsection{Expert Collapse}
 
 The router concentrates all traffic on a small subset of experts
 despite the auxiliary loss. Symptom: $f_i \to 0$ for most $i$, with a
@@ -659,7 +659,7 @@ few ``celebrity'' experts absorbing all tokens. Causes: too small
 $\alpha$, router initialization, insufficient warmup on the aux loss,
 distribution shift mid-training.
 
-\subsubsection{Router Instability}
+\subsection{Router Instability}
 
 Router logits oscillate, sending a given token to expert 3 on one
 step and expert 7 on the next -- nominally equivalent if $E_3$ and
@@ -667,14 +667,14 @@ $E_7$ are well-balanced, but in practice training slows to a crawl.
 The $z$-loss (Eq.\ \eqref{eq:ch7-zloss}) was designed to address
 this; so was the switch to bf16 for router logits specifically.
 
-\subsubsection{Token Drop}
+\subsection{Token Drop}
 
 When an expert's capacity $C$ (Eq.\ \eqref{eq:ch7-capacity}) is
 exceeded, overflow tokens are dropped. Small drop rates (few percent)
 are benign; large drop rates starve the model of signal. Monitoring
 the drop rate per layer is essential.
 
-\subsubsection{Routing Brittleness at Inference}
+\subsection{Routing Brittleness at Inference}
 
 A token that was reliably routed to $E_3$ during training may, in a
 distribution-shifted inference context, route to an underfit expert.
@@ -706,7 +706,7 @@ bound is for worst-case reasoning about interconnect limits rather
 than for throughput forecasting.
 \end{provedassumed}
 
-\subsection{Hardware-Aware Design}
+\section{Hardware-Aware Design}
 
 GPU memory has a hierarchy: SRAM (L1/L2/shared, $\sim\!20$\,MB, TB/s),
 HBM (80\,GB, 3\,TB/s), NVLink/NVSwitch intra-node
@@ -727,7 +727,7 @@ Design consequences:
         dictates where to place which parallelism axis.
 \end{itemize}
 
-\subsubsection{The Arithmetic Intensity Lens}
+\subsection{The Arithmetic Intensity Lens}
 
 A useful planning tool is \emph{arithmetic intensity}: FLOPs per byte
 of memory traffic. An NVIDIA H100 has roughly $1000$ TFLOPs and
@@ -745,7 +745,7 @@ single prompt has $M = 1$ and is bandwidth-bound -- explaining why
 \emph{batching} is the single largest lever for inference throughput
 (Chapter~8).
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \begin{center}
 \begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
@@ -781,7 +781,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
 \end{tabular}
 \end{center}
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 \begin{itemize}
   \item \textbf{MoE hype}. Do not assume MoE always wins; for
@@ -799,7 +799,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         non-determinism that surprises new operators.
 \end{itemize}
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 \begin{itemize}
   \item \textbf{Chapter 8 (Adaptation, LoRA, Quantization)}: MoE
@@ -817,7 +817,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         should appear in the assurance case.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{shazeer2017outrageously} --- original top-$k$
@@ -841,7 +841,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         sequence and ring parallelism.
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS324 --- scaling, efficiency, and MoE,
@@ -852,7 +852,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         \citet{mit_6s191}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{Arithmetic intensity audit}. For one forward pass of
@@ -882,7 +882,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         total-parameter count.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 6)}
+\section*{Derivation Ledger (Ch. 6)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -917,7 +917,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 7 Takeaway}
+\section{Chapter 7 Takeaway}
 
 \begin{quote}
 Scaling LLMs is no longer a modeling problem alone -- it is a

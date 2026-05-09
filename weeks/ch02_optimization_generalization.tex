@@ -1,8 +1,8 @@
-\section{Optimization, Generalization, and Scaling Intuition}
+\chapter{Optimization, Generalization, and Scaling Intuition}
 \label{sec:ch2-optgen}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.} Chapter~1 told us \emph{what} we want a
 language model to do: assign a probability distribution to the next
@@ -106,7 +106,7 @@ together, let an engineer reason about the regimes in which the
 training they are running is likely to behave well, and the
 regimes in which it is not.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -126,7 +126,7 @@ By the end of this chapter, you should be able to:
         data ordering, regression gates) for production training pipelines.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Training dynamics}
 \begin{itemize}
@@ -152,7 +152,7 @@ By the end of this chapter, you should be able to:
   \item Cost / quality tradeoff under fixed compute budgets.
 \end{itemize}
 
-\subsection{Conceptual Core: Optimization Is Not Inference}
+\section{Conceptual Core: Optimization Is Not Inference}
 
 Training an LLM is, mechanically, a large-scale numerical optimization
 problem. The learner does not \emph{reason} about the target; it performs a
@@ -197,7 +197,7 @@ textbook setting are:
 That modern deep networks reliably converge under these conditions is an
 empirical observation about the loss landscape, not a theorem.
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch2-notation}
 
 \begin{notationbox}
@@ -230,9 +230,9 @@ layered on top in Chapter~7 and changes only the per-worker terms, not
 the total.
 \end{notationbox}
 
-\subsection{Stochastic Gradient Descent and Momentum}
+\section{Stochastic Gradient Descent and Momentum}
 
-\subsubsection{SGD as a Noisy Dynamical System}
+\subsection{SGD as a Noisy Dynamical System}
 
 Write the minibatch gradient as the true gradient plus noise,
 $g_t = \nabla \mathcal{L}(\theta_t) + \xi_t$, with
@@ -272,7 +272,7 @@ and language workloads; it is not a theorem and admits known
 counterexamples under reparameterization~\citep{dinh2017sharp}. Treat
 it as a design-time heuristic, not a guarantee.
 
-\subsubsection{Heavy-Ball and Nesterov Momentum}
+\subsection{Heavy-Ball and Nesterov Momentum}
 
 Momentum introduces an exponentially-weighted moving average of past
 gradients:
@@ -287,9 +287,9 @@ look-ahead variant evaluates the gradient at the extrapolated point
 $\theta_t - \eta \beta m_{t-1}$, which admits a stronger convergence
 rate on convex problems but offers modest gains on LLM objectives.
 
-\subsection{Adam and AdamW}
+\section{Adam and AdamW}
 
-\subsubsection{Why Adaptive Per-Parameter Rates}
+\subsection{Why Adaptive Per-Parameter Rates}
 
 In a Transformer, embedding vectors for frequent tokens see large,
 frequent gradients while embeddings for rare tokens see small, infrequent
@@ -299,7 +299,7 @@ conservative for rare ones (starvation). Adaptive methods scale the
 update for each parameter by an online estimate of its gradient
 magnitude~\citep{kingma2015adam}.
 
-\subsubsection{Adam Update Rule}
+\subsection{Adam Update Rule}
 
 Let $g_t = \nabla_\theta \mathcal{L}(\theta_t)$ be the minibatch
 gradient. Adam maintains two exponential moving averages:
@@ -357,7 +357,7 @@ $\epsilon = 10^{-8}$. For large Transformer training, practitioners
 commonly reduce $\beta_2$ to $0.95$ to make the second-moment estimator
 more responsive to nonstationarity.
 
-\subsubsection{AdamW: Decoupled Weight Decay}
+\subsection{AdamW: Decoupled Weight Decay}
 
 Classical L2 regularization adds $\tfrac{\lambda}{2}\|\theta\|^2$ to the
 loss, which introduces a $\lambda \theta$ term into $g_t$. In Adam this
@@ -389,7 +389,7 @@ Lion/Shampoo & Less memory, competitive & Less mature tooling \\
 \end{tabular}
 \end{center}
 
-\subsubsection{Memory Cost of Optimizer State}
+\subsection{Memory Cost of Optimizer State}
 
 AdamW stores $m_t$ and $v_t$ at full precision for every parameter, so
 optimizer state is roughly $2\times$ the size of the parameters (or
@@ -432,12 +432,12 @@ reduce $b_{\mathrm o}$; quantization at serving time (Chapter~8) reduces
 $b_{\mathrm p}$ further. Chapter~7 revisits the sharded form of
 Eq.~\eqref{eq:ch2-mem-budget}.
 
-\subsection{Learning Rate Schedules}
+\section{Learning Rate Schedules}
 
 The learning rate $\eta_t$ is the single most important hyperparameter
 for Transformer training. Three families dominate LLM practice.
 
-\subsubsection{Linear Warmup}
+\subsection{Linear Warmup}
 
 Start small and ramp up linearly over $T_w$ steps:
 \begin{equation}
@@ -449,7 +449,7 @@ gradients are dominated by unstructured initialization: a full-size step
 can drive parameters into a bad basin from which Adam's second-moment
 estimator cannot recover quickly.
 
-\subsubsection{Cosine Decay}
+\subsection{Cosine Decay}
 
 After warmup, the rate decays smoothly toward a minimum $\eta_{\min}$:
 \begin{equation}
@@ -463,7 +463,7 @@ pretraining~\citep{loshchilov2017sgdr}. A common variant holds
 $\eta_{\min} = 0.1\,\eta_{\max}$ so that training never truly stops making
 progress.
 
-\subsubsection{Inverse-Square-Root (Noam) Schedule}
+\subsection{Inverse-Square-Root (Noam) Schedule}
 
 The original Transformer~\citep{vaswani2017attention} used
 \begin{equation}
@@ -474,7 +474,7 @@ which combines linear warmup with an inverse-square-root decay.
 Although cosine has largely displaced it for pretraining, inverse-sqrt
 remains the default in many fine-tuning recipes.
 
-\subsubsection{Engineering Guidance}
+\subsection{Engineering Guidance}
 
 Choose schedules by matching the workload:
 pretraining runs that consume a fixed compute budget pair warmup+cosine;
@@ -504,7 +504,7 @@ constant baseline uses only $\eta_{\max}$.
   \label{fig:lr_schedule}
 \end{figure}
 
-\subsection{Gradient Clipping}
+\section{Gradient Clipping}
 
 Deep Transformer stacks can produce exploding-norm gradients when
 activations or attention logits grow during early training. Gradient
@@ -548,9 +548,9 @@ signal: under stable training it is stably small; under incipient
 divergence it rises sharply well before loss explodes.
 \end{workedexample}
 
-\subsection{Mixed Precision, Loss Scaling, and Accumulation}
+\section{Mixed Precision, Loss Scaling, and Accumulation}
 
-\subsubsection{Mixed-Precision Arithmetic}
+\subsection{Mixed-Precision Arithmetic}
 
 LLM training uses mixed precision to increase throughput and reduce
 memory~\citep{micikevicius2018mixed}: activations and gradients are held
@@ -566,7 +566,7 @@ The optimizer step is performed in fp32 to avoid accumulation error on
 $m_t$, $v_t$. Bf16 is preferred over fp16 on modern hardware because its
 wider exponent eliminates the need for loss scaling.
 
-\subsubsection{Loss Scaling}
+\subsection{Loss Scaling}
 
 When using fp16 (not bf16), small gradients underflow to zero. Loss
 scaling multiplies the loss by $s \in \{2^{10}, 2^{24}\}$ before
@@ -576,7 +576,7 @@ or $\mathrm{Inf}$ is detected and doubles it periodically otherwise.
 This is an instance of adaptive numerical conditioning at the systems
 layer, invisible to the mathematical model.
 
-\subsubsection{Gradient Accumulation}
+\subsection{Gradient Accumulation}
 
 When the desired effective batch size exceeds accelerator memory,
 gradients from $K$ micro-batches are summed in place before a single
@@ -589,7 +589,7 @@ the cost of $K$ extra forward/backward passes per update. It is the
 primary mechanism by which organizations match the effective batch
 sizes in published recipes while running on smaller clusters.
 
-\subsubsection{Activation Checkpointing}
+\subsection{Activation Checkpointing}
 
 Activation memory dominates GPU usage. Activation checkpointing
 \citep{chen2016training} trades compute for memory by discarding
@@ -598,7 +598,7 @@ during backprop, typically saving $\sqrt{L}$ activation memory for $L$
 layers at a $\sim 30\%$ compute overhead. This is how multi-hundred-billion
 parameter models fit on realistic hardware.
 
-\subsection{Overparameterization, Double Descent, and Benign Overfitting}
+\section{Overparameterization, Double Descent, and Benign Overfitting}
 
 Classical statistical learning
 theory~\citep{vapnik1998statistical,bishop2006prml} suggests that models
@@ -606,7 +606,7 @@ with more parameters than data should overfit catastrophically. Modern
 deep networks contradict this: with $d \gg N$, training loss goes to
 zero and test loss \emph{continues to improve}.
 
-\subsubsection{Double Descent}
+\subsection{Double Descent}
 
 \Emp\ Plotted as a function of model size, test error exhibits the
 classical U-curve up to the \emph{interpolation threshold} where
@@ -626,7 +626,7 @@ Three regimes:
 LLMs live deep in the third regime, which is why ``just train a bigger
 model'' has been such a reliable strategy.
 
-\subsubsection{Why Bigger Is Not Worse}
+\subsection{Why Bigger Is Not Worse}
 
 \Heur\ Several mechanisms are \emph{believed} to contribute to benign
 overfitting; each is an engineering heuristic supported by partial
@@ -644,9 +644,9 @@ theory, not a proof:
 None of these arguments is a full theory, but together they justify the
 engineering decision to scale up rather than regularize down.
 
-\subsection{Scaling Laws}
+\section{Scaling Laws}
 
-\subsubsection{Kaplan Scaling}
+\subsection{Kaplan Scaling}
 
 \citet{kaplan2020scaling} observed that cross-entropy loss follows
 smooth power laws in model size $N$, dataset size $D$, and compute $C$:
@@ -669,7 +669,7 @@ predictability is what gives LLM pretraining its engineering
 character; extrapolation outside the fitted compute range remains
 a research question, not a guarantee.
 
-\subsubsection{Chinchilla Scaling}
+\subsection{Chinchilla Scaling}
 
 \citet{hoffmann2022chinchilla} refitted the joint law with better
 hyperparameter tuning and reached a very different conclusion. Their
@@ -757,7 +757,7 @@ frontier is the envelope of the minima of those curves.
   \label{fig:scaling_laws}
 \end{figure}
 
-\subsubsection{What Scaling Laws Do and Do Not Tell You}
+\subsection{What Scaling Laws Do and Do Not Tell You}
 
 \Norm\ Scaling laws predict \emph{training loss} as a function of
 resources under A2.2; they do \emph{not} predict:
@@ -799,7 +799,7 @@ what Chapter~6 calls ``emergent capabilities'' and is \emph{not}
 governed by Eq.~\eqref{eq:ch2-chinchilla}.
 \end{provedassumed}
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \begin{center}
 \begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
@@ -827,7 +827,7 @@ Operations & Regressions between runs & Rerun on fixed seed + data; bisect. \\
 \end{tabular}
 \end{center}
 
-\subsection{Reproducibility in Distributed Training}
+\section{Reproducibility in Distributed Training}
 
 Deterministic training under data-parallel, tensor-parallel, and
 pipeline-parallel execution is substantially harder than it sounds.
@@ -849,7 +849,7 @@ Even then, \emph{bit-exact} reproducibility across hardware generations
 is rarely achievable; the practical goal is \emph{statistical}
 reproducibility, i.e., loss curves within noise bands across reruns.
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 A recurring failure mode is the attribution of \emph{training behavior}
 to \emph{model intelligence}. Loss plateaus, loss drops after restarts,
@@ -871,7 +871,7 @@ clip-rate, parameter norm, activation statistics, and token-ordering
 hash on every run. Most training ``mysteries'' resolve to an operator
 mistake that better instrumentation would have caught.
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 \begin{itemize}
   \item \textbf{Chapter 4 (Tokenization and Embeddings)}: embedding tables
@@ -897,7 +897,7 @@ mistake that better instrumentation would have caught.
         regression detection is an operational-safety control.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{goodfellow2016dl} — canonical treatment of optimization
@@ -924,7 +924,7 @@ mistake that better instrumentation would have caught.
         large-training instabilities.
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item MIT 6.S191 --- optimization and deep learning practice,
@@ -939,7 +939,7 @@ mistake that better instrumentation would have caught.
         \citet{caltech_cs156}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{Optimizer comparison.} Train a $\sim\!10$\,M-parameter
@@ -965,7 +965,7 @@ mistake that better instrumentation would have caught.
         within numerical tolerance.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 2)}
+\section*{Derivation Ledger (Ch. 2)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities; each cites the full
@@ -1001,7 +1001,7 @@ derivation already given in the text.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 2 Takeaway}
+\section{Chapter 2 Takeaway}
 
 \begin{quote}
 Training behavior in LLMs is governed less by ``intelligence'' than by

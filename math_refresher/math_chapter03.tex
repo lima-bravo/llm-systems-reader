@@ -1,7 +1,7 @@
-\section{Chapter 3 Refresher: Neural Networks}
+\chapter{Chapter 3 Refresher: Neural Networks}
 \label{sec:math-refresher-neural-networks}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Chapter~3 names the map \(f_\theta\) that converts contexts (embedded as vectors) into logits consumed by the softmax head from Chapter~1. Probability Preface Steps~2--3 built distributions over \emph{symbols}; here we build differentiable functions producing \emph{parameters} of those distributions.
 
 \paragraph{Step A --- Affine versus nonlinear composition.}
@@ -29,7 +29,7 @@ Chapter~3 names the map \(f_\theta\) that converts contexts (embedded as vectors
 
 This refresher installs calculus-chain-rule literacy distinct from the probability chain rule (Preface Step~3): same English phrase, different theorem---always label which you mean.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item \(x,h,z\): vectors (column vectors by default); \(h^{(\ell)}\) activations at layer \(\ell\).
   \item \(W^{(\ell)}\): weight matrix for layer \(\ell\); \(b^{(\ell)}\): bias vector.
@@ -41,7 +41,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \item \(\mathcal{L}\): scalar loss; \(\theta\): flattened parameters (as in Chapter~2 refresher).
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Affine layer.}
   \[
@@ -107,7 +107,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   Wide shallow nets can approximate continuous functions on compact sets under mild conditions on \(\varphi\); this is about \emph{existence of representation}, not whether SGD finds it quickly or with reasonable width---trainability is separate.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Chapter~1 fixes the probabilistic head (softmax, CE); gradients at logits land on \(p-e_k\).
   \item Chapter~2 consumes \(\nabla_\theta \mathcal{L}\) as an abstract vector; Chapter~3 explains how software obtains it through layered Jacobians.
@@ -117,7 +117,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \item Initialisation and normalisation keep forward magnitudes and backward factors in a trainable range; residuals add an identity path so optimisation can make small corrections around a stable baseline.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Pre-activation \(z\):} input to \(\varphi\) before nonlinearity.
   \item \textbf{Post-activation \(h\):} output \(\varphi(z)\).
@@ -129,7 +129,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \item \textbf{Residual / skip connection:} add input of a block to its output so layers learn deltas around identity.
 \end{itemize}
 
-\subsection*{Worked Example (XOR Geometry + One Composition Chain)}
+\section*{Worked Example (XOR Geometry + One Composition Chain)}
 \textbf{Part A (geometry).} XOR assigns label $+1$ to $(0,1)$ and $(1,0)$ and label $-1$ to $(0,0)$ and $(1,1)$. Suppose a linear scoring rule $\mathrm{sign}(w_1 x_1 + w_2 x_2 + b)$ separates the classes with nonzero margin along each labelled point (ideal separator---relax later). Evaluate linear score $s(x)=w_1 x_1 + w_2 x_2 + b$ on the four corners. XOR symmetry forces contradictory inequalities:
 \begin{itemize}[leftmargin=1.5em]
   \item Separating $(0,1)$ from $(0,0)$ implies $s(0,1)>s(0,0)$ hence $w_2>0$.
@@ -146,7 +146,7 @@ Each layer contributes a factor \(\varphi'(u)\, w\); depth multiplies many such 
 
 \textbf{Practical reading implication:} when Chapter~3 of the reader walks backpropagation, read each layer as supplying one Jacobian--vector product like the factors above; when it discusses Xavier/He, read \(\mathrm{Var}(z)\) reasoning like Part B scaled to fan-in \(n\).
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Say ``probability chain rule'' or ``calculus chain rule'' explicitly when both appear in one sitting.
   \item Depth without elementwise \(\varphi\) is equivalent to one affine map.
@@ -155,14 +155,14 @@ Each layer contributes a factor \(\varphi'(u)\, w\); depth multiplies many such 
   \item Representation theorems do not guarantee cheap optimisation; judge pipelines by trainability evidence, not approximation slogans alone.
 \end{itemize}
 
-\subsection*{Pointers}
+\section*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
   \item Probability, softmax, cross-entropy, logits: see Chapter 1 refresher.
   \item Gradients as vectors, SGD/Adam, clipping, scaling budgets: see Chapter 2 refresher.
   \item Embedding geometry and dot products reused inside attention: see Chapter 4 refresher.
 \end{itemize}
 
-\subsection*{References and What To Use Them For}
+\section*{References and What To Use Them For}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Goodfellow--Bengio--Courville, \emph{Deep Learning}} --- backpropagation as computational graphs, activations, initialisation practice.
   \item \textbf{Strang, \emph{Linear Algebra}} --- matrix multiplication, transpose, norms.

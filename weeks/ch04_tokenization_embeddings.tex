@@ -1,8 +1,8 @@
-\section{Tokenization and Embeddings — From Text to Vectors}
+\chapter{Tokenization and Embeddings — From Text to Vectors}
 \label{sec:ch4-tokemb}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.} Chapter~1 spoke of probabilities over
 tokens as if a token were an obvious thing. It is not. A computer
@@ -120,7 +120,7 @@ ingress and logging at every layer; the math in this chapter does
 not solve the problem, but the engineering vocabulary of token
 boundaries is the vocabulary in which the problem is named.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -143,7 +143,7 @@ By the end of this chapter, you should be able to:
         token-budget planning and vocabulary-drift detection.
 \end{itemize}
 
-\subsection{LLM Components Covered}
+\section{LLM Components Covered}
 
 \textbf{Input representation}
 \begin{itemize}
@@ -168,7 +168,7 @@ By the end of this chapter, you should be able to:
   \item Prompt brittleness at token boundaries.
 \end{itemize}
 
-\subsection{Notation and Standing Assumptions}
+\section{Notation and Standing Assumptions}
 \label{sec:ch4-notation}
 
 \begin{notationbox}
@@ -211,7 +211,7 @@ on specific corpora and models; they must be re-measured on the
 deployed tokenizer and distribution, not assumed.
 \end{notationbox}
 
-\subsection{Conceptual Core: Discrete Symbols to Vectors}
+\section{Conceptual Core: Discrete Symbols to Vectors}
 
 Neural networks operate on $\mathbb{R}^d$; natural language is discrete,
 hierarchical, and Unicode-encoded. Every LLM pipeline begins with a
@@ -255,7 +255,7 @@ Three engineering claims follow immediately:
         perplexity.
 \end{itemize}
 
-\subsection{Unicode, Bytes, and Normalization}
+\section{Unicode, Bytes, and Normalization}
 
 Natural-language text in modern systems is Unicode code-points, not
 bytes. The same visual string can have multiple code-point encodings
@@ -283,7 +283,7 @@ token counts by roughly $3\times$ for many scripts; byte-level BPE
 recovers much of this by \emph{merging} byte sequences into higher-level
 tokens while retaining the byte alphabet as a fallback.
 
-\subsection{Word-Level Tokenization and Its Failure Modes}
+\section{Word-Level Tokenization and Its Failure Modes}
 
 Word-level tokenization splits on whitespace and punctuation. It is
 intuitive but fails at scale for four reasons.
@@ -309,13 +309,13 @@ intuitive but fails at scale for four reasons.
 
 For these reasons, modern LLMs use subword tokenization.
 
-\subsection{Byte-Pair Encoding (BPE)}
+\section{Byte-Pair Encoding (BPE)}
 
 BPE was introduced for data compression \citep{sennrich2016bpe} and
 adapted to neural machine translation; it is the tokenizer underlying
 most modern LLMs.
 
-\subsubsection{Training Algorithm}
+\subsection{Training Algorithm}
 
 Given a training corpus:
 \begin{enumerate}
@@ -334,7 +334,7 @@ The output is (i)~a vocabulary (the set of symbols) and (ii)~an
 \emph{ordered} list of merge rules. Encoding a new string applies the
 merge rules in order, producing a deterministic segmentation.
 
-\subsubsection{Worked Example}
+\subsection{Worked Example}
 
 Consider the tiny corpus
 \begin{quote}\ttfamily
@@ -391,14 +391,14 @@ the vocabulary contains frequent subwords (\texttt{low}, \texttt{er\_},
 \texttt{s l o w er \_}, exercising both rare characters and learned
 subwords: open-vocabulary by construction.
 
-\subsubsection{Encoding Complexity}
+\subsection{Encoding Complexity}
 
 Naive BPE encoding is $O(T \log V)$ per input of length $T$ with a
 priority-queue implementation; the production variant used by
 \texttt{tiktoken}~\citep{openai_tiktoken} uses a precomputed merge
 priority table and runs at roughly $1$\,GB/s on a single core.
 
-\subsection{WordPiece}
+\section{WordPiece}
 
 WordPiece~\citep{devlin2019bert} replaces BPE's ``most frequent pair''
 criterion with a likelihood-maximization criterion. At each step it
@@ -441,7 +441,7 @@ Encoding uses greedy longest-prefix matching at inference time,
 annotated with the \texttt{\#\#} prefix to mark intra-word
 continuation (``playing'' $\to$ \texttt{play \#\#ing}).
 
-\subsection{Unigram LM and SentencePiece}
+\section{Unigram LM and SentencePiece}
 
 \citet{kudo2018unigram} introduced a fundamentally different approach:
 \emph{start} with a large seed vocabulary and \emph{prune} it down. The
@@ -498,7 +498,7 @@ optional \texttt{byte\_fallback} setting drops down to bytes for any
 characters outside the trained vocabulary. Both modes give
 reversibility guarantees that the original BPE formulation does not.
 
-\subsection{Comparison of Subword Tokenizers}
+\section{Comparison of Subword Tokenizers}
 
 \begin{center}
 \begin{tabular}{|p{2.5cm}|p{3.4cm}|p{3.0cm}|p{3.8cm}|}
@@ -523,7 +523,7 @@ useful for data augmentation during training~\citep{kudo2018unigram}.
 Byte-level BPE trades a slightly larger apparent vocabulary for robust
 handling of all Unicode input without special-casing.
 
-\subsubsection{Same sentence, different tokenizers}
+\subsection{Same sentence, different tokenizers}
 
 \begin{workedexample}[Tokenizing ``Let's tokenize this!''\ three ways]
 The twenty-character English string \texttt{Let's tokenize this!}
@@ -579,7 +579,7 @@ different tokenizers can produce measurably different perplexities
 on the same corpus without any change to the model.
 \end{provedassumed}
 
-\subsection{The GPT Whitespace Oddity and Other Quirks}
+\section{The GPT Whitespace Oddity and Other Quirks}
 
 GPT-2's tokenizer~\citep{radford2019language,openai_tiktoken} is
 byte-level BPE with one consequential detail: leading whitespace is
@@ -605,9 +605,9 @@ prompt as a single step, logging the resulting token IDs alongside the
 text, and writing assertions that critical prompt prefixes segment
 into a stable number of tokens.
 
-\subsection{Embeddings as Learned Geometry}
+\section{Embeddings as Learned Geometry}
 
-\subsubsection{The Embedding Layer is a Linear Map}
+\subsection{The Embedding Layer is a Linear Map}
 
 Given a vocabulary of size $V$ and embedding dimension $d$, the
 embedding layer is parameterized by a matrix $E \in \mathbb{R}^{V \times d}$.
@@ -627,7 +627,7 @@ matrix multiply. The embedding matrix is $O(Vd)$ parameters — for
 $V = 10^5$ and $d = 8{,}000$, this is $8\times 10^8$ parameters, which
 is often the single largest block in a model's parameter count.
 
-\subsubsection{Tied Input and Output Embeddings}
+\subsection{Tied Input and Output Embeddings}
 
 The output layer of a language model computes unnormalized logits
 \begin{equation}
@@ -647,7 +647,7 @@ that tokens with similar \emph{use} (appearing in similar contexts)
 should map to similar \emph{output} probabilities, matching the
 distributional hypothesis below.
 
-\subsubsection{Positional Encoding (Preview)}
+\subsection{Positional Encoding (Preview)}
 
 Transformer attention is permutation-equivariant; without extra
 machinery the model cannot distinguish ``dog bites man'' from
@@ -657,7 +657,7 @@ rotary~\citep{su2021rope} and ALiBi~\citep{press2022alibi} are
 multiplicative/additive inside the attention kernel. Positional
 encoding is covered in depth in Chapter~5.
 
-\subsection{The Distributional Hypothesis and Analogy Vectors}
+\section{The Distributional Hypothesis and Analogy Vectors}
 
 \citet{mikolov2013efficient,mikolov2013distributed} operationalized the
 distributional hypothesis — \emph{a word's meaning is characterized by
@@ -686,9 +686,9 @@ ratios.
         than semantic structure (see bias discussion below).
 \end{itemize}
 
-\subsection{Embedding Geometry}
+\section{Embedding Geometry}
 
-\subsubsection{Cosine Similarity and Anisotropy}
+\subsection{Cosine Similarity and Anisotropy}
 
 Similarity between embeddings is conventionally measured by cosine:
 \begin{equation}
@@ -727,7 +727,7 @@ without centering or whitening. Downstream retrieval pipelines
 comparing embeddings, and the effectiveness of that step is itself an
 empirical finding, not a theorem.
 
-\subsubsection{Visualization: PCA and t-SNE}
+\subsection{Visualization: PCA and t-SNE}
 
 Two-dimensional visualization of token embeddings is a useful but
 treacherous tool. PCA preserves global linear structure; t-SNE and
@@ -749,7 +749,7 @@ linear classifier that predicts a property (e.g., language, sentiment
 polarity) from the embedding. Its accuracy is an operational signal
 for whether the embedding has drifted.
 
-\subsection{Bias and Fairness in Embeddings}
+\section{Bias and Fairness in Embeddings}
 
 Embeddings inherit the statistical structure of their training
 corpus. \citet{bolukbasi2016man} showed that Word2Vec vectors
@@ -771,7 +771,7 @@ Three engineering positions on bias in embeddings:
 \end{itemize}
 This is reinforced in Chapter~9 (alignment) and Chapter~11 (governance).
 
-\subsection{Systems Engineering Implications}
+\section{Systems Engineering Implications}
 
 \begin{center}
 \begin{tabular}{|p{3.4cm}|p{3.4cm}|p{6.8cm}|}
@@ -806,7 +806,7 @@ Operations & Tokenizer versions in logs
 \end{tabular}
 \end{center}
 
-\subsection{Multilingual and Billing Considerations}
+\section{Multilingual and Billing Considerations}
 
 \Emp~A BPE vocabulary trained on an English-heavy corpus allocates most of
 its merge rules to English patterns. On other languages the same
@@ -834,7 +834,7 @@ as a planning anchor, not a guarantee. The practical effects:
 When building multilingual applications, measure the token-to-codepoint
 ratio for each target language and plan context budgets accordingly.
 
-\subsection{Human Factors and Failure Modes}
+\section{Human Factors and Failure Modes}
 
 \begin{itemize}
   \item \textbf{Assuming token = word}. Users who reason in words are
@@ -854,7 +854,7 @@ ratio for each target language and plan context budgets accordingly.
         instructions into a prompt. Normalize and log at ingress.
 \end{itemize}
 
-\subsection{Bridges to Later Chapters}
+\section{Bridges to Later Chapters}
 
 \begin{itemize}
   \item \textbf{Chapter 5 (Transformer Architecture)}: the embedding
@@ -879,7 +879,7 @@ ratio for each target language and plan context budgets accordingly.
         datasheet~\citep{mitchell2019modelcards,gebru2021datasheets}.
 \end{itemize}
 
-\subsection{Key References}
+\section{Key References}
 
 \begin{itemize}
   \item \citet{sennrich2016bpe} --- Byte-Pair Encoding for neural MT.
@@ -897,7 +897,7 @@ ratio for each target language and plan context budgets accordingly.
         Chapter~5).
 \end{itemize}
 
-\subsection{Recommended University Lectures}
+\section{Recommended University Lectures}
 
 \begin{itemize}
   \item Stanford CS224N --- word vectors, embeddings, and subword
@@ -907,7 +907,7 @@ ratio for each target language and plan context budgets accordingly.
   \item MIT NLP group resources, \citet{mit_nlp}.
 \end{itemize}
 
-\subsection{Practitioner Lab}
+\section{Practitioner Lab}
 
 \begin{enumerate}
   \item \textbf{Train a BPE tokenizer}. Using the Hugging Face
@@ -937,7 +937,7 @@ ratio for each target language and plan context budgets accordingly.
         into a CI pipeline.
 \end{enumerate}
 
-\subsection*{Derivation Ledger (Ch. 3)}
+\section*{Derivation Ledger (Ch. 3)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities.
@@ -964,7 +964,7 @@ Compact index of the chapter's central identities.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Chapter 4 Takeaway}
+\section{Chapter 4 Takeaway}
 
 \begin{quote}
 Tokenization defines the alphabet the model will ever perceive, and

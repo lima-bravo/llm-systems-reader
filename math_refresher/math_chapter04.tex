@@ -1,6 +1,6 @@
-\section{Chapter 4 Refresher: Tokenization and Embeddings — From Text to Vectors --- Tokenization and Embedding Geometry}
+\chapter{Chapter 4 Refresher: Tokenization and Embeddings — From Text to Vectors --- Tokenization and Embedding Geometry}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 What mathematical object is a ``token'' once computation begins? Preface Steps~1--3 treated symbols as draws from discrete supports; here we engineer those supports.
 
 \paragraph{Step A --- Segmentation as design.}
@@ -23,7 +23,7 @@ What mathematical object is a ``token'' once computation begins? Preface Steps~1
 
 Representation therefore choreographs every later dot product; mismatch here propagates like conditioning mismatch in Preface Step~2.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $V$: tokenizer vocabulary (finite symbol set).
   \item $\iota(\cdot)$: tokenizer mapping from text to token IDs.
@@ -33,7 +33,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item $u,v,q,d$: generic vectors used in similarity comparisons.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Tokenizer as function.} A tokenizer defines a mapping from strings to finite sequences of IDs,
   \[
@@ -54,7 +54,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item \textbf{Anisotropy and concentration.} After normalisation, many contextual vectors occupy a thin cone in $\mathbb{R}^d$: cosine similarities become systematically high even between moderately unrelated texts. Retrieval pipelines must therefore distinguish ``similar because topical'' from ``similar because geometry concentrates''---often via calibrated thresholds, hybrid lexical retrieval, or reranking.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Tokenization defines discrete symbols.
   \item Symbol IDs become one-hot basis vectors.
@@ -63,7 +63,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item Neighborhood structure influences retrieval and downstream context selection.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Vocabulary:} finite symbol inventory used by the model.
   \item \textbf{Token ID:} integer index assigned by tokenizer.
@@ -74,7 +74,7 @@ Representation therefore choreographs every later dot product; mismatch here pro
   \item \textbf{Anisotropy:} directional imbalance in vector space.
 \end{itemize}
 
-\subsection*{Worked Example (Why Metric Choice Changes Outcomes)}
+\section*{Worked Example (Why Metric Choice Changes Outcomes)}
 Let query vector be $q=(10,0)$ and two candidates:
 \[
 d_1=(1,0),\quad d_2=(1,1).
@@ -91,19 +91,19 @@ Cosine ranking:
 Now $d_1$ is clearly preferred directionally.  
 Reasoning implication: if your retrieval objective is semantic direction, cosine normalization is often essential; if magnitude encodes useful confidence/strength, dot-product behavior may be intentional.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Keep sequence-position indices separate from vocabulary indices.
   \item Tokenization choice changes sequence length and therefore perplexity comparability.
   \item Static-word-vector intuitions transfer only partially to contextual embeddings.
 \end{itemize}
 
-\subsection*{Pointers}
+\section*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
   \item Probability/perplexity interpretation: see Chapter 1 refresher.
 \end{itemize}
 
-\subsection*{References and What To Use Them For}
+\section*{References and What To Use Them For}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Jurafsky--Martin, \emph{SLP}} --- tokenizer design and language representation.
   \item \textbf{Strang, \emph{Linear Algebra}} --- vector spaces, norms, geometry.

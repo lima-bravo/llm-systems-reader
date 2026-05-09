@@ -1,6 +1,6 @@
-\section{Chapter 8 Refresher: Model Adaptation, LoRA, Quantization, and Deployment Reality --- Low-Rank Adaptation and Quantization}
+\chapter{Chapter 8 Refresher: Model Adaptation, LoRA, Quantization, and Deployment Reality --- Low-Rank Adaptation and Quantization}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Deployment freezes most of \(\theta\) learned via Preface Step~8-style objectives and tunes cheap corrections under storage/power envelopes---approximation theory meets accounting.
 
 \paragraph{Step A --- Low-rank hypothesis.}
@@ -21,7 +21,7 @@ Deployment freezes most of \(\theta\) learned via Preface Step~8-style objective
 
 Treat every shortcut as falsifiable: publish metrics or admit folklore.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $W$: base weight matrix, $\Delta W$: adaptation update.
   \item $A,B$: low-rank factors in LoRA update.
@@ -31,7 +31,7 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
   \item $\rho$: trainable parameter fraction versus full fine-tuning.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{LoRA update form and intuition.}
   \[
@@ -48,7 +48,7 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
   \item \textbf{Budget accounting:} adaptation and base-model memory are separate components.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Choose adaptation parameterization (full vs low-rank).
   \item Compute trainable parameter and memory deltas.
@@ -57,7 +57,7 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
   \item Decide deployment gate from explicit thresholds.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Rank:} dimensionality of adaptation subspace.
   \item \textbf{LoRA scaling factor:} controls update magnitude relative to rank.
@@ -66,7 +66,7 @@ Treat every shortcut as falsifiable: publish metrics or admit folklore.
   \item \textbf{Drift threshold:} maximum acceptable quality loss for deployment.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Parameter Fraction)}
+\section*{Worked Mini Example (Parameter Fraction)}
 Let $d=k=4096$ and $r=16$:
 \[
 \rho=\frac{16(4096+4096)}{4096\cdot4096}
@@ -74,7 +74,7 @@ Let $d=k=4096$ and $r=16$:
 \]
 This is about $0.78\%$ of full fine-tuning parameters for that layer.
 
-\subsection*{Worked Example (Quality Gate Under Approximation)}
+\section*{Worked Example (Quality Gate Under Approximation)}
 Suppose full fine-tuned baseline scores 78.4 on target benchmark.  
 LoRA+quantized candidate scores 77.1 overall, but subgroup analysis shows:
 \begin{itemize}[leftmargin=1.5em]
@@ -84,14 +84,14 @@ LoRA+quantized candidate scores 77.1 overall, but subgroup analysis shows:
 Reasoning: average drop may appear acceptable, but concentrated degradation violates deployment intent for long-context tasks.  
 Decision: reject current quantization profile or introduce subgroup-aware gate.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item A low-rank update is a hypothesis about task-adaptation dimensionality, not a theorem.
   \item Quantization quality is distribution-dependent; outlier channels can dominate failure.
   \item ``Near parity'' must be defined metric-by-metric, not as a vague label.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Rank and linear-algebra background: see Chapter 4 refresher.
   \item Optimizer/memory arithmetic: see Chapter 2 refresher.

@@ -1,7 +1,7 @@
-\section{Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol}
+\chapter{Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol}
 
-\subsection*{Setting the Scene}
-\addcontentsline{toc}{subsection}{Setting the Scene}
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
 
 \paragraph{The problem.}
 The first ten chapters of this book described how to construct a
@@ -93,7 +93,7 @@ invariants, the MCP transport layer --- are the discipline required
 to operate this surface without becoming the next incident
 report.
 
-\subsection{Learning Objectives}
+\section{Learning Objectives}
 
 By the end of this chapter, you should be able to:
 \begin{itemize}
@@ -134,7 +134,7 @@ By the end of this chapter, you should be able to:
         mitigations.
 \end{itemize}
 
-\subsection{Notation and Serving-Layer Assumptions}
+\section{Notation and Serving-Layer Assumptions}
 \label{sec:wk11_notation}
 
 \begin{notationbox}
@@ -205,7 +205,7 @@ We make the following assumptions unless otherwise noted.
 \end{description}
 \end{notationbox}
 
-\subsection{The Access Stack}
+\section{The Access Stack}
 
 Figure~\ref{fig:access_stack} lays out the layers we will traverse.
 The framing is deliberately analogous to the OSI model:
@@ -288,14 +288,14 @@ layers collapse: an internal batch-inference script might elide
 L2 and L3) or the system has a hidden dependency that will bite
 you later.
 
-\subsection{The Inference API Contract}
+\section{The Inference API Contract}
 
 We spend the rest of this section dissecting the L5--L6 contract
 in detail, because this is the interface most engineers work
 against daily and the one with the most surface area for subtle
 mistakes.
 
-\subsubsection{Chat Completions and the Role-Message Model}
+\subsection{Chat Completions and the Role-Message Model}
 
 The core abstraction is a list of \emph{messages}, each with a
 role and content. A minimal request body looks like:
@@ -337,7 +337,7 @@ lock-in. The stateless primitive is the single most common source
 of production bugs (silent context drift) and the single biggest
 reason to use an SDK that manages conversation state explicitly.
 
-\subsubsection{Sampling and Decoding Parameters}
+\subsection{Sampling and Decoding Parameters}
 
 The request body also carries decoding knobs, which we analyzed
 statistically in Chapter~6. A practitioner's quick reference:
@@ -380,7 +380,7 @@ collapse.
 repetition; blunt instruments, rarely the right tool if the
 underlying issue is prompt design.
 
-\subsubsection{Streaming}
+\subsection{Streaming}
 
 For interactive applications, the response is streamed back token-
 by-token using Server-Sent Events (SSE). The HTTP response never
@@ -410,7 +410,7 @@ Streaming creates real engineering complexity:
         benefit. Test end-to-end, not just against localhost.
 \end{itemize}
 
-\subsubsection{Structured Outputs}
+\subsection{Structured Outputs}
 
 For any non-trivial application you want the model to return
 parseable data. Three mechanisms, of increasing rigour:
@@ -439,7 +439,7 @@ hallucinated \emph{values}, only invalid \emph{shapes}. You will
 still get a schema-valid object whose fields are confabulated
 strings. Validation $\neq$ faithfulness.
 
-\subsubsection{Prompt Caching}
+\subsection{Prompt Caching}
 
 The KV cache (Chapter~5, Chapter~7) is a per-request optimization. At
 the API layer, providers expose a second cache: a \emph{prefix
@@ -501,7 +501,7 @@ different schedules); the cost equation itself is protocol-
 agnostic.
 \end{workedexample}
 
-\subsubsection{Rate Limits, Errors, and Retries}
+\subsection{Rate Limits, Errors, and Retries}
 
 Providers expose two rate-limit axes (\S\ref{sec:wk11_notation}):
 $\mathrm{RPM}$ requests per minute and $\mathrm{TPM}$ tokens per
@@ -622,7 +622,7 @@ guarantees} enforced by the provider; the handling of
 \emph{provider-specific}.
 \end{provedassumed}
 
-\subsection{Tool Use and Function Calling}
+\section{Tool Use and Function Calling}
 
 Tool use is the single most important capability beyond raw
 completion, because it is what makes an LLM useful in a real
@@ -672,7 +672,7 @@ implications are important: the LLM can ask to run
 \texttt{rm -rf /}; your client decides whether that request is
 permitted.
 
-\subsubsection{Tool-Choice Modes}
+\subsection{Tool-Choice Modes}
 
 Providers expose a \texttt{tool\_choice} parameter with values
 like \texttt{auto} (default; model decides), \texttt{none}
@@ -683,7 +683,7 @@ a tool named \texttt{submit\_answer} with the schema, force the
 choice, and the tool-call arguments \emph{become} the structured
 output.
 
-\subsubsection{Parallel Tool Calls}
+\subsection{Parallel Tool Calls}
 
 Modern models return multiple tool-call blocks in a single
 response when the tools' inputs are known independently. For
@@ -694,7 +694,7 @@ multiple tool-result messages in the next turn, each referring by
 \texttt{tool\_use\_id} to its matching call. Forgetting the IDs
 is a common bug.
 
-\subsubsection{Tool-Use Failure Modes}
+\subsection{Tool-Use Failure Modes}
 
 \textbf{Hallucinated tool names.} The model invents a tool that
 does not exist. Reject in the client; do not auto-define tools on
@@ -733,7 +733,7 @@ tool output behind structural markers, never run tools with more
 privilege than the user has, and apply least-privilege principles
 to the tools the agent can reach.
 
-\subsection{SDKs and Client Libraries}
+\section{SDKs and Client Libraries}
 
 A production client is not a \texttt{requests.post}. Official
 SDKs handle:
@@ -771,7 +771,7 @@ General rule: use the provider SDK directly for production
 pipelines; use LangChain for rapid prototyping and for research
 workflows where provider-switching is frequent.
 
-\subsubsection{Authentication and Key Management}
+\subsection{Authentication and Key Management}
 
 API keys are the security perimeter. Rules of thumb:
 \begin{itemize}
@@ -791,18 +791,18 @@ access (Azure OpenAI in Entra ID, Bedrock under IAM roles) so
 that access is tied to existing identity systems rather than a
 shared API key.
 
-\subsection{Deployment Surfaces}
+\section{Deployment Surfaces}
 
 Where the weights run has structural consequences, not just
 commercial ones.
 
-\subsubsection{Direct Provider APIs}
+\subsection{Direct Provider APIs}
 
 OpenAI, Anthropic, Google offer their models directly. Lowest
 latency to newest capability, simplest auth, usage-based billing,
 the provider's SLA, and typically one or two cloud regions.
 
-\subsubsection{Hyperscaler Relabels}
+\subsection{Hyperscaler Relabels}
 
 Azure OpenAI, AWS Bedrock, and Google Vertex AI offer provider
 models (plus their own) through cloud-native auth, VPC
@@ -811,7 +811,7 @@ compliance story. Trade-off: some capabilities lag the direct
 API by weeks to months; some provider experiments are never
 relabelled.
 
-\subsubsection{Open-Weights Self-Hosting}
+\subsection{Open-Weights Self-Hosting}
 
 Llama \citep{touvron2023llama2}, Qwen, Mistral, DeepSeek, Gemma
 ship weights publicly. You host with vLLM, TGI, or at small scale
@@ -825,7 +825,7 @@ Apache-2.0 (e.g.\ Mistral 7B base) is genuinely permissive; some
 research models forbid commercial use outright. Governance, not
 just engineering, hinges on reading the actual licence.
 
-\subsubsection{Batch, Fine-Tune, and Files APIs}
+\subsection{Batch, Fine-Tune, and Files APIs}
 
 Beyond real-time completions, major providers expose:
 \begin{itemize}
@@ -843,7 +843,7 @@ Beyond real-time completions, major providers expose:
         vendor lock-in.
 \end{itemize}
 
-\subsection{From Chat to Agents: The Control Loop}
+\section{From Chat to Agents: The Control Loop}
 
 An agent is, mechanically, a control loop around the chat
 completions API. Figure~\ref{fig:agent_loop} sketches it:
@@ -888,7 +888,7 @@ autonomous research assistants. The survey of
 \citet{sumers2023cognitive} argue the patterns are recovering
 classical cognitive architectures.
 
-\subsubsection{Memory}
+\subsection{Memory}
 
 Agents need three kinds of memory, each with its own engineering:
 
@@ -904,7 +904,7 @@ relevant records via a tool call.
 similarity. This is Chapter~10's RAG index, used as an agent tool
 rather than as a one-shot lookup.
 
-\subsubsection{Termination}
+\subsection{Termination}
 
 \Def\ Using the agent-loop variables of
 \S\ref{sec:wk11_notation}, a run is \emph{terminated} at iteration
@@ -950,7 +950,7 @@ produces).
         that halts the loop and surfaces a question to the user.
 \end{itemize}
 
-\subsubsection{Agent Frameworks}
+\subsection{Agent Frameworks}
 
 The frameworks to know:
 
@@ -989,7 +989,7 @@ demonstrated the ideas and introduced many to the public but has
 been largely superseded for production work by the typed,
 loop-budgeted, state-managed frameworks above.
 
-\subsection{IDE-Integrated Coding Agents}
+\section{IDE-Integrated Coding Agents}
 
 A special case of the agent pattern with specific tools
 (filesystem, shell, compiler, test runner, version control) and
@@ -1036,7 +1036,7 @@ files), not the per-token suggestion failures that an autocomplete
 plug-in produces. Treat the coding agent as a small distributed
 system in which the model is one service among many.
 
-\subsection{The Model Context Protocol}
+\section{The Model Context Protocol}
 
 Tool use solved part of the problem: the model can talk to tools.
 But it left a combinatorial problem: every agent needs custom
@@ -1047,7 +1047,7 @@ $M \times N$ integrations. Model Context Protocol
 2024 and adopted by OpenAI, Google, Microsoft, and most agent
 frameworks through 2025, collapses this to $M + N$.
 
-\subsubsection{Architecture}
+\subsection{Architecture}
 
 Three roles (Figure~\ref{fig:mcp}):
 
@@ -1075,7 +1075,7 @@ capabilities via the protocol. Servers are independent processes
 API. Each speaks only MCP and knows nothing about which LLM
 eventually consumes its output.
 
-\subsubsection{Transport}
+\subsection{Transport}
 
 Two production transports, per the current specification:
 
@@ -1093,7 +1093,7 @@ Both transports carry \textbf{JSON-RPC 2.0}
 \citep{json_rpc_spec} messages: request/response pairs, each
 with an id, plus server-initiated notifications.
 
-\subsubsection{Primitives}
+\subsection{Primitives}
 
 A server declares three kinds of capability:
 
@@ -1118,7 +1118,7 @@ The three primitives correspond to the three modalities of
 agent--world interaction: \emph{act} (tools), \emph{observe}
 (resources), and \emph{plan from templates} (prompts).
 
-\subsubsection{Capability Negotiation}
+\subsection{Capability Negotiation}
 
 At connection time the host and server exchange an
 \texttt{initialize} handshake: each side lists which capabilities
@@ -1127,7 +1127,7 @@ completion, roots), and the connection proceeds with the
 intersection. This is how the protocol evolves without breaking
 older clients.
 
-\subsubsection{Security Model}
+\subsection{Security Model}
 
 Security is by \emph{informed consent}. The host is the security
 boundary; servers are untrusted by default. In practice:
@@ -1178,7 +1178,7 @@ host can violate every property above without ceasing to be
 protocol-compliant. The same caveat applies to A11.3.
 \end{provedassumed}
 
-\subsubsection{The Connector Ecosystem}
+\subsection{The Connector Ecosystem}
 
 Because any host can speak to any server, the ecosystem has
 grown rapidly: filesystem, git, GitHub, GitLab, Slack, Linear,
@@ -1189,12 +1189,12 @@ skills and agent configuration. For an engineer, the leverage
 ratio is large: a custom workflow that would have required weeks
 of bespoke glue is now a hundred-line MCP server.
 
-\subsection{Observability and Operations}
+\section{Observability and Operations}
 
 An LLM application is a distributed system, and distributed
 systems that are not instrumented cannot be operated.
 
-\subsubsection{Traces and the GenAI Semantic Conventions}
+\subsection{Traces and the GenAI Semantic Conventions}
 
 OpenTelemetry's GenAI working group has defined semantic
 conventions \citep{otel_genai} for LLM traces: span attributes
@@ -1209,7 +1209,7 @@ An agent loop ends up as a deep tree; the tree tells you (i) how
 many iterations the agent took, (ii) where time was spent, (iii)
 where cost was spent, (iv) which tool calls failed and why.
 
-\subsubsection{Cost and Token Accounting}
+\subsection{Cost and Token Accounting}
 
 Per-request response metadata includes input and output tokens
 (and cached tokens, if caching fired). Instrument from day one.
@@ -1220,7 +1220,7 @@ usage invisibly, a new tool can trigger unexpected recursion,
 a prompt-cache invalidation can make your costs triple overnight
 in a pattern invisible to request-level graphs.
 
-\subsubsection{Eval Regression in CI}
+\subsection{Eval Regression in CI}
 
 Chapter~10 introduced the evaluation stack. The deployment practice
 is to run a small fixed eval set on every prompt or model change
@@ -1228,7 +1228,7 @@ and fail the build on regression beyond threshold. Libraries like
 \texttt{promptfoo}, \texttt{ragas}, and \texttt{inspect\_ai}
 (from the UK AI Safety Institute) are built around this.
 
-\subsubsection{Red-Team Regression}
+\subsection{Red-Team Regression}
 
 Alongside capability evals, maintain a red-team suite: jailbreak
 attempts, known prompt-injection payloads, adversarial tool
@@ -1236,7 +1236,7 @@ outputs. Re-run on every change, because changes intended to
 improve helpfulness routinely regress refusal behaviour
 \citep{wei2023jailbroken, zou2023universal}.
 
-\subsection{Deployment-Specific Failure Modes}
+\section{Deployment-Specific Failure Modes}
 \label{sec:wk11_failure_modes}
 
 Five failure modes that reliably catch teams off guard, and that
@@ -1278,7 +1278,7 @@ reviews any proposed action against the original user intent
 before executing, (iv) a human-in-the-loop for high-blast-radius
 actions (git push, send email, spend money).
 
-\subsection{Honest Limits of Current Access Patterns}
+\section{Honest Limits of Current Access Patterns}
 
 Despite the apparent maturity of the stack, several issues
 remain unresolved and are the subject of active engineering and
@@ -1318,7 +1318,7 @@ conventions are recent; many production systems still log
 proprietary shapes. Interoperability across vendors will remain
 lumpy through 2026--2027.
 
-\subsection{V-Model Mapping for Access-Stack Engineering}
+\section{V-Model Mapping for Access-Stack Engineering}
 
 Table~\ref{tab:vmodel_wk11} maps each layer of the access stack
 to its design contract, its verification method, and its primary
@@ -1349,7 +1349,7 @@ Human user & task, expectations, trust & user research, behaviour studies & trai
 \label{tab:vmodel_wk11}
 \end{table}
 
-\subsection{Practical Lab: Build a Minimal Agent Over MCP}
+\section{Practical Lab: Build a Minimal Agent Over MCP}
 
 A 10-step lab that takes roughly a day and produces an agent
 that edits a repository and commits its changes, end-to-end.
@@ -1405,7 +1405,7 @@ At the end you have a working coding agent, but more importantly
 a mental model of every layer in Figure~\ref{fig:access_stack}
 grounded in code you wrote yourself.
 
-\subsection{Bridges to Other Weeks}
+\section{Bridges to Other Weeks}
 
 Chapter~12 is the outer ring of the reader:
 
@@ -1440,7 +1440,7 @@ L5; assurance cases and red-team regression govern L2--L3; the
 human-factors argument lives at L1. Deployment without this
 chapter is engineering malpractice.
 
-\subsection*{Derivation Ledger (Ch. 11)}
+\section*{Derivation Ledger (Ch. 11)}
 
 \begin{derivledger}
 Compact index of the chapter's central identities for the access /
@@ -1483,7 +1483,7 @@ agent layer.
 \end{itemize}
 \end{derivledger}
 
-\subsection{Takeaway}
+\section{Takeaway}
 
 The engineer's job in 2026 is no longer to train a language
 model. It is to \emph{compose} one into a dependable system ---

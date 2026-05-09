@@ -1,6 +1,6 @@
-\section{Chapter 9 Refresher: Alignment, Instruction Tuning, and Preference Optimization --- Preferences, KL Regularization, and Policy Updates}
+\chapter{Chapter 9 Refresher: Alignment, Instruction Tuning, and Preference Optimization --- Preferences, KL Regularization, and Policy Updates}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Alignment reframes Preface Steps~2--4: instead of conditioning only on observed tokens, we condition on human comparisons and regularise policies toward trusted references.
 
 \paragraph{Step A --- Pairwise likelihood.}
@@ -21,7 +21,7 @@ Alignment reframes Preface Steps~2--4: instead of conditioning only on observed 
 
 Preference optimisation is probabilistic inference under sociotechnical data---mathematics unchanged, likelihood rewritten.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $x$: prompt/context.
   \item $y^+, y^-$: preferred and dispreferred responses.
@@ -32,7 +32,7 @@ Preference optimisation is probabilistic inference under sociotechnical data---m
   \item $\beta$: KL regularization coefficient.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Bradley--Terry form:}
   \[
@@ -48,7 +48,7 @@ Preference optimisation is probabilistic inference under sociotechnical data---m
   \item \textbf{Objective-vs-behavior distinction:} optimizing preference loss does not automatically guarantee safety or honesty on all distributions.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Convert pairwise labels into likelihood terms.
   \item Learn scoring or policy update from pairwise margins.
@@ -56,7 +56,7 @@ Preference optimisation is probabilistic inference under sociotechnical data---m
   \item Validate on held-out safety/helpfulness metrics.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Preference pair:} chosen vs rejected response for same prompt.
   \item \textbf{Margin:} score difference between preferred and non-preferred outputs.
@@ -65,14 +65,14 @@ Preference optimisation is probabilistic inference under sociotechnical data---m
   \item \textbf{Over-optimization:} objective improves while true quality degrades.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Pairwise Probability)}
+\section*{Worked Mini Example (Pairwise Probability)}
 If $r(x,y^+)=2.0$ and $r(x,y^-)=0.5$:
 \[
 P(y^+\succ y^-|x)=\sigma(1.5)\approx0.817.
 \]
 Interpretation: the model assigns roughly $82\%$ preference probability to $y^+$ under this reward gap.
 
-\subsection*{Worked Example (Preference Gain vs Safety Drift)}
+\section*{Worked Example (Preference Gain vs Safety Drift)}
 Suppose after tuning:
 \begin{itemize}[leftmargin=1.5em]
   \item preference win-rate improves from 62\% to 73\%,
@@ -81,14 +81,14 @@ Suppose after tuning:
 Reasoning: preference objective improved but safety behavior regressed.  
 Implication: keep preference metric and safety metric as separate acceptance gates; one does not substitute for the other.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Lower KL does not mean better helpfulness; it means less policy drift.
   \item Better reward-model fit does not guarantee lower downstream harm.
   \item Pairwise preferences encode relative order, not absolute truth.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item KL/cross-entropy foundations: see Chapter 1 refresher.
   \item Optimization mechanics: see Chapter 2 refresher.

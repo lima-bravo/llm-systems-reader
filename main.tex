@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt,a4paper,openany]{book}
 
 % --- Preamble ---
 \input{preamble}
@@ -11,19 +11,20 @@
 
 \begin{document}
 
+\frontmatter
+
 \maketitle
 \tableofcontents
-\newpage
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% INTRODUCTION
+% PREFACE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section*{Preface: A Letter to the Reader}
-\addcontentsline{toc}{section}{Preface: A Letter to the Reader}
+\chapter*{Preface: A Letter to the Reader}
+\addcontentsline{toc}{chapter}{Preface: A Letter to the Reader}
 
-\subsection*{The thing in front of you}
-\addcontentsline{toc}{subsection}{The thing in front of you}
+\section*{The thing in front of you}
+\addcontentsline{toc}{section}{The thing in front of you}
 
 You have, almost certainly, already used a Large Language Model. You
 asked it to draft an email, or to debug a stubborn piece of code, or
@@ -45,8 +46,8 @@ deep sense, find these systems mysterious. You may, however, find
 them more remarkable than you do today, and you will certainly find
 them less trustworthy in some specific and useful ways.
 
-\subsection*{How we got here}
-\addcontentsline{toc}{subsection}{How we got here}
+\section*{How we got here}
+\addcontentsline{toc}{section}{How we got here}
 
 It is worth remembering that the field has a history. The Russian
 mathematician Andrey Markov, in 1913, sat down with a copy of
@@ -84,8 +85,8 @@ of probability. The whole edifice rests on a few sturdy ideas, and
 this reader is in the business of giving you those ideas one at a
 time.
 
-\subsection*{How to read this book}
-\addcontentsline{toc}{subsection}{How to read this book}
+\section*{How to read this book}
+\addcontentsline{toc}{section}{How to read this book}
 
 This is a reader for engineers. It assumes you have the
 mathematical background of an undergraduate in a quantitative
@@ -122,9 +123,9 @@ Chapter~9 reappears in Chapter~11 as the agent-loop invariant. The
 dependency graph below makes the cross-references explicit so that
 a reader who already knows part of the material can skip in safely.
 
-\subsection*{What goes wrong, and why this is the most important
+\section*{What goes wrong, and why this is the most important
 section of the book}
-\addcontentsline{toc}{subsection}{What goes wrong}
+\addcontentsline{toc}{section}{What goes wrong}
 
 A language model trained on cross-entropy is, by construction, the
 most probable thing the model can say given the prompt. The most
@@ -170,8 +171,8 @@ sections carefully. They are where the unhelpful intuition that
 ``the model is doing exactly what we asked, and what we asked is
 not quite what we meant.''
 
-\subsection*{A note on tone}
-\addcontentsline{toc}{subsection}{A note on tone}
+\section*{A note on tone}
+\addcontentsline{toc}{section}{A note on tone}
 
 The narrative sections in this book are written in plain language
 because the technical sections are not. The technical sections are
@@ -190,8 +191,8 @@ we will rewrite it. The intent is not awe. The intent is that you
 put the book down able to reason about a class of system that did
 not exist when you began reading.
 
-\subsection*{On the writing of this book}
-\addcontentsline{toc}{subsection}{On the writing of this book}
+\section*{On the writing of this book}
+\addcontentsline{toc}{section}{On the writing of this book}
 
 This reader was written in collaboration with Claude, a language
 model produced by Anthropic. The subject matter of the book makes
@@ -213,8 +214,8 @@ not. Readers who find passages that are wrong, evasive, or fluent
 in a way that papers over a real difficulty are encouraged to say
 so. Any future edition will be better for the saying.
 
-\subsection*{Reading Order and Chapter Dependencies}
-\addcontentsline{toc}{subsection}{Reading Order and Chapter Dependencies}
+\section*{Reading Order and Chapter Dependencies}
+\addcontentsline{toc}{section}{Reading Order and Chapter Dependencies}
 
 The chapters are arranged so that each one's notation and results
 build on its predecessors. Figure~\ref{fig:chapter_dependencies}
@@ -226,54 +227,44 @@ outputs feed the target chapter along the arrows shown.
 
 \input{figures/chapter_dependencies}
 
+\mainmatter
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CHAPTERS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
 \input{weeks/ch01_statistical_foundations}
 
-\newpage
 \input{weeks/ch02_optimization_generalization}
 
-\newpage
 \input{weeks/ch03_neural_networks}
 
-\newpage
 \input{weeks/ch04_tokenization_embeddings}
 
-\newpage
 \input{weeks/ch05_transformer_architecture}
 
-\newpage
 \input{weeks/ch06_pretraining_incontext}
 
-\newpage
 \input{weeks/ch07_efficiency_scaling_moe}
 
-\newpage
 \input{weeks/ch08_adaptation_lora_quantization}
 
-\newpage
 \input{weeks/ch09_alignment_preference_optimization}
 
-\newpage
 \input{weeks/ch10_llm_systems_rag_tools_evaluation}
 
-\newpage
 \input{weeks/ch11_governance_assurance_future}
 
-\newpage
 \input{weeks/ch12_access_apis_agents_mcp}
 
-\newpage
 \input{weeks/ch13_human_centric_error_model}
+
+\backmatter
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % REFERENCES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newpage
 \bibliographystyle{apalike}
 \bibliography{references}
 

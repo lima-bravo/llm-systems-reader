@@ -1,6 +1,6 @@
-\section{Chapter 12 Refresher: Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol --- Latency, Queues, and Reliability Budgets}
+\chapter{Chapter 12 Refresher: Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol --- Latency, Queues, and Reliability Budgets}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 APIs expose stochastic models inside stochastic infrastructure: arrivals, service times, retries, and pricing multiply Preface Steps~5--7 expectations into tail experiences users actually feel.
 
 \paragraph{Step A --- Utilisation as latent probability.}
@@ -19,7 +19,7 @@ APIs expose stochastic models inside stochastic infrastructure: arrivals, servic
 
 Probability-minded reliability engineers read LM dashboards the same way traders read risk tapes---moments plus tails.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item $\lambda$: request arrival rate.
   \item $\mu$: service rate.
@@ -29,7 +29,7 @@ Probability-minded reliability engineers read LM dashboards the same way traders
   \item $\mathbb{E}[K]$: expected number of attempts.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Latency decomposition:} prefill latency plus per-output-token decode latency.
   \item \textbf{Queueing baseline (M/M/1).}
@@ -45,7 +45,7 @@ Probability-minded reliability engineers read LM dashboards the same way traders
   \item \textbf{Termination guards:} bounded steps/tokens/cost enforce finite agent behavior.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Estimate traffic intensity $(\lambda/\mu)$.
   \item Predict queue delay and saturation risk.
@@ -53,7 +53,7 @@ Probability-minded reliability engineers read LM dashboards the same way traders
   \item Enforce runtime guards for bounded execution.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Arrival rate $\lambda$:} requests per unit time.
   \item \textbf{Service rate $\mu$:} processing capacity per unit time.
@@ -62,7 +62,7 @@ Probability-minded reliability engineers read LM dashboards the same way traders
   \item \textbf{Budget guard:} hard bound on cost/tokens/steps.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Retries)}
+\section*{Worked Mini Example (Retries)}
 Let per-attempt failure probability be $p_f=0.2$ and assume independent retries with no cap.
 \[
 \mathbb{E}[K]=\frac{1}{1-p_f}=\frac{1}{0.8}=1.25.
@@ -72,7 +72,7 @@ If average successful request cost is \$0.04, expected cost with retries is roug
 0.04\times 1.25 = \$0.05.
 \]
 
-\subsection*{Worked Example (Queue and Retry Coupling)}
+\section*{Worked Example (Queue and Retry Coupling)}
 If base arrival rate is 80 req/s and retries add 25\% expected attempts, effective arrival becomes:
 \[
 \lambda_{\text{eff}} = 80 \times 1.25 = 100\ \text{req/s}.
@@ -80,14 +80,14 @@ If base arrival rate is 80 req/s and retries add 25\% expected attempts, effecti
 If service rate is $\mu=110$ req/s, utilization rises from $0.73$ to $0.91$.  
 Interpretation: retry policy can push system into tail-latency regime even when baseline looked safe.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Systems can meet average SLOs while failing badly in tails.
   \item Queueing approximations are useful planning tools, not exact traffic simulators.
   \item Reliability controls (backoff, circuit breaking) alter both latency and cost.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Systems scaling and bottlenecks: see Chapter 7 refresher.
   \item Evaluation and trust boundaries: see Chapter 10 refresher.

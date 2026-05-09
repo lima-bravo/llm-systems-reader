@@ -1,6 +1,6 @@
-\section{Chapter 13 Refresher: A Human-Centric Model for Understanding LLM Errors --- Diagnostic Decomposition and Multi-Objective Reasoning}
+\chapter{Chapter 13 Refresher: A Human-Centric Model for Understanding LLM Errors --- Diagnostic Decomposition and Multi-Objective Reasoning}
 
-\subsection*{Setting the Scene}
+\section*{Setting the Scene}
 Closing the loop returns evaluation to Preface discipline: partition failures into measurable slices before averaging hides pathology (Step~7 scepticism about naive empirical means).
 
 \paragraph{Step A --- Axes as orthogonal-ish hypotheses.}
@@ -27,14 +27,14 @@ The axes listed operationally:
 
 Structured diagnosis honours Preface probability hygiene: define events precisely, measure their frequencies, intervene where measurements spike.
 
-\subsection*{Notation Introduced in This Chapter}
+\section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
   \item Axis labels: structure, meaning, context, grounding, environment.
   \item Conditional slice: subset of cases defined by context/task conditions.
   \item Tradeoff surface: set of feasible points across accuracy, safety, latency, and cost.
 \end{itemize}
 
-\subsection*{What You Need To Recall Precisely}
+\section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Failure-axis decomposition:} structure, meaning, context, grounding, environment are separate tests.
   \item \textbf{Conditional error analysis:} inspect slices and contexts, not only aggregate rates.
@@ -43,7 +43,7 @@ Structured diagnosis honours Preface probability hygiene: define events precisel
   \item \textbf{Diagnostic ordering:} simple structural failures should be ruled out before attributing deep semantic or governance causes.
 \end{itemize}
 
-\subsection*{How These Results Build on Each Other}
+\section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Observe failure instance and classify candidate axes.
   \item Check low-level structural and context conditions first.
@@ -51,7 +51,7 @@ Structured diagnosis honours Preface probability hygiene: define events precisel
   \item Select intervention matched to diagnosed failure pathway.
 \end{enumerate}
 
-\subsection*{Reminder Glossary (Term by Term)}
+\section*{Reminder Glossary (Term by Term)}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Structure failure:} format/syntax/protocol violation.
   \item \textbf{Meaning failure:} semantic mismatch despite fluent output.
@@ -60,7 +60,7 @@ Structured diagnosis honours Preface probability hygiene: define events precisel
   \item \textbf{Environment failure:} external system/tool mismatch.
 \end{itemize}
 
-\subsection*{Worked Mini Example (Axis Decision)}
+\section*{Worked Mini Example (Axis Decision)}
 Suppose an answer is fluent but cites a nonexistent document.
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Structure:} pass (syntax and format are valid).
@@ -69,7 +69,7 @@ Suppose an answer is fluent but cites a nonexistent document.
 \end{itemize}
 The corrective action should prioritize grounding controls (retrieval/citation verification), not merely prompt rephrasing.
 
-\subsection*{Worked Example (Axis-Matched Intervention)}
+\section*{Worked Example (Axis-Matched Intervention)}
 Case: answer includes correct format and plausible language but wrong regulation citation.
 \begin{itemize}[leftmargin=1.5em]
   \item Structure: pass.
@@ -84,19 +84,19 @@ Intervention path:
 \end{enumerate}
 Reasoning: this is not primarily a prompt-style failure; it is evidence-path failure.
 
-\subsection*{Intuition Checkpoints}
+\section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item A plausible answer can still be ungrounded.
   \item One failure can belong to multiple axes; diagnosis is often multi-label.
   \item The strongest fix is the one that changes the relevant information pathway.
 \end{itemize}
 
-\subsection*{Pointers}
+\section*{Pointers}
 \begin{itemize}[leftmargin=1.5em]
   \item Calibration and uncertainty foundations: see Chapter 1 refresher.
 \end{itemize}
 
-\subsection*{Further Refresh}
+\section*{Further Refresh}
 \begin{itemize}[leftmargin=1.5em]
   \item Evaluation slicing and retrieval grounding: see Chapter 10 refresher.
   \item Risk and assurance framing: see Chapter 11 refresher.
