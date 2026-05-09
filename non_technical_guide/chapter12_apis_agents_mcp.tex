@@ -320,6 +320,21 @@ preserving the option to switch. Different teams sit in
 different places on the trade-off. The discipline is to make
 the choice consciously rather than by accident.
 
+\paragraph{Verification becomes the binding constraint as
+generation cheapens.} When language models were slow and
+expensive, generation was the bottleneck in any LLM workflow.
+As inference has become faster and cheaper, that bottleneck
+has shifted. A team using an LLM to draft contracts, code, or
+analysis at high volume will find that the rate-limiting step
+is no longer generating content but verifying it. This is not
+a failure mode. It is a structural shift in where the work
+lives, and it has a straightforward implication: invest in
+evaluation and verification infrastructure early, before the
+volume of generated content exceeds the team's capacity to
+review it. A product that generates faster than it can verify
+will eventually ship errors that a slower product would have
+caught.
+
 \paragraph{Observability is non-negotiable.} A production
 LLM system needs to log every request, every response, every
 tool call, and every error. The logs need to be searchable,

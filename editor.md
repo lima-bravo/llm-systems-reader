@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, and refresher alignment gaps filled
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, and NTG editorial fixes complete
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. Agentic AI, verification cost, private corpus, and refresher alignment coverage are now substantive. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -145,6 +145,24 @@ A cross-document audit identified five locations where the reader uses mathemati
 
 ---
 
+### A10. ✓ Non-technical guide editorial fixes — FIXED 2026-05-09
+
+Full editorial review of the non-technical companion guide (all 14 files). Two factual corrections required; four completeness/voice items also applied.
+
+| Fix | File | Issue | Action taken |
+|-----|------|-------|-------------|
+| **Factual 1** | `chapter07_scaling_efficiency.tex` | Mixtral 8x7B date stated as "2024"; correct date is December 2023 | Changed "in 2024" → "in December 2023" |
+| **Factual 2** | `chapter10_memory_the_model_lacks.tex` | BM25 attributed to Robertson and Spärck Jones "at Cambridge"; Robertson was at City University London | Split attribution: "Robertson at City University London and Spärck Jones at Cambridge" |
+| **Balance** | `chapter06_pretraining_gpt.tex` | Emergence discussion left reader with stronger impression of discontinuous emergence than current consensus supports | Rewrote "Emergence claims" paragraph to give Schaeffer (2023) reading majority weight while retaining honest uncertainty for remaining cases |
+| **Completeness** | `chapter10_memory_the_model_lacks.tex` | Private-corpus vocabulary gap (present in main reader ch04, ch10) absent from NTG | Added paragraph on tokenizer vocabulary mismatch in "What goes wrong, and why" |
+| **Completeness** | `chapter11_trust_governance.tex` | Automation complacency failure mode absent; aviation analogy already in chapter | Added paragraph on complacency in "What goes wrong, and why", tied to existing aviation analogy |
+| **Completeness** | `chapter12_apis_agents_mcp.tex` | Verification cost inversion (present in main reader ch10, ch12, ch13) absent from NTG | Added paragraph on verification as binding constraint in "The engineering consequence" |
+| **Voice** | `chapter07_scaling_efficiency.tex` | Energy/infrastructure paragraph had two sentences in tech-journalism register | Reworded to Sagan plain-prose register |
+
+Files changed: `chapter06_pretraining_gpt.tex`, `chapter07_scaling_efficiency.tex`, `chapter10_memory_the_model_lacks.tex`, `chapter11_trust_governance.tex`, `chapter12_apis_agents_mcp.tex`.
+
+---
+
 ### A5. LaTeX document class — production risk (still pending)
 
 `\documentclass{article}` works for a draft but produces a PDF without chapters, odd/even page handling, or standard front-matter conventions expected by publishers. Before any external submission:
@@ -245,4 +263,4 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ---
 
-*Last updated: 2026-05-09 (refresher alignment pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF).*
+*Last updated: 2026-05-09 (NTG editorial pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`, all 14 `non_technical_guide/*.tex` files. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF). NTG editorial review: full read of all 14 chapters against story consistency, Carl Sagan voice, factual correctness, and completeness criteria; seven fixes applied (see §A10).*

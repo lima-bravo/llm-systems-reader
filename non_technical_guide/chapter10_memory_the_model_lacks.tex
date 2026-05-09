@@ -54,7 +54,8 @@ of an unusual word was likely to be about that word's subject.
 The idea was refined over decades into the formula known as
 TF-IDF (term frequency, inverse document frequency), and
 later into a more sophisticated variant called BM25 by Stephen
-Robertson and Karen Sp\"arck Jones at Cambridge in the 1990s.
+Robertson at City University London and Karen Sp\"arck Jones at
+Cambridge in the 1990s.
 BM25 is, to this day, the default starting point for most
 text-search systems and an essential component of many
 retrieval pipelines.
@@ -384,6 +385,22 @@ relies exclusively on LLM-as-judge evaluation will be
 optimising the wrong metric. The fix is human evaluation on
 samples, with the LLM-as-judge used for scale rather than
 ground truth.
+
+\paragraph{Vocabulary mismatch in private-corpus deployments.}
+A language model's tokenizer --- the component that breaks input
+text into the pieces the model processes --- was built from the
+model's pretraining corpus. If that corpus was dominated by
+general English web text, the tokenizer will fragment
+specialised vocabulary poorly. A drug name, a legal term of
+art, or an engineering abbreviation that appears rarely in
+general English may be split into several small pieces, each of
+which carries less meaning than the whole. The consequence is
+that the model reasons about the term less effectively than it
+would about ordinary prose, even when the term appears in the
+retrieved passages. A deployment that relies heavily on
+technical, legal, or medical vocabulary should verify tokenizer
+coverage on a representative sample of its corpus before
+concluding that retrieval quality is the weakest link.
 
 \paragraph{Prompt injection through retrieved content.} The
 documents in the retrieval corpus may contain text that, when

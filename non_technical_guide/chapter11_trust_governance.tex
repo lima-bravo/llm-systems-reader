@@ -431,6 +431,24 @@ behavioural drift, and to test before any vendor-side update.
 Not all vendors expose version pinning, and the deployers of
 those vendors' models accept a real risk in doing so.
 
+\paragraph{Automation complacency.} Commercial aviation, which
+this chapter has used as its central analogy, achieved its
+safety record in part by assuming that human operators will
+become over-reliant on automation when systems are working
+well. Pilots who have not manually flown an approach in months
+are measurably slower to take control when the autopilot
+fails. The corresponding risk in LLM deployments is that human
+reviewers become progressively less critical as apparent
+reliability improves. A review process that was rigorous when
+the model was new will, over time, receive less scrutiny per
+case. The error rate may not have changed; the human eye
+trained to catch it has sharpened into complacency. The fix
+in aviation is mandatory periodic practice under conditions
+that do not allow automation to take over. The analogous
+discipline for AI is to calibrate the review process to the
+model's actual measured error rate, not to reviewers'
+subjective confidence in a system they have grown used to.
+
 \paragraph{The honest limits of evaluation.} The current
 evaluation methodology is good at catching the failure modes
 the evaluators thought to test for. It is, by its nature, less

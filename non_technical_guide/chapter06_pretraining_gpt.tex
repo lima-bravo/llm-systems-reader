@@ -441,22 +441,26 @@ different outputs. There is a research literature on
 but no general theory that lets you predict in advance which
 prompts will work. The practical advice is to test extensively.
 
-\paragraph{Emergence claims need scrutiny.} Researchers have
-reported that certain capabilities --- multi-step arithmetic,
-chain-of-thought reasoning, code synthesis --- appear
-\emph{suddenly} as the model crosses a threshold of scale,
-rather than improving smoothly. The 2022 paper by Jason Wei
-and his coauthors, titled \emph{Emergent Abilities of Large
-Language Models}, popularised the phrase. A 2023 paper by
-Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo, titled
-\emph{Are Emergent Abilities of Large Language Models a
-Mirage?}, argued that the apparent suddenness is in many cases
-a consequence of how the capability is being measured rather
-than of how the model is changing. The honest summary is that
-some capabilities do appear to scale smoothly when measured
-properly, that some still appear to emerge sharply, and that
-extrapolating from the current generation to the next on the
-basis of either picture is risky.
+\paragraph{Emergence claims need scrutiny.} In 2022, Jason Wei
+and his coauthors documented a striking pattern: certain
+capabilities --- multi-step arithmetic, chain-of-thought
+reasoning, code synthesis --- appeared to appear \emph{suddenly}
+as model scale crossed a threshold, rather than improving
+gradually. They named the phenomenon \emph{emergent abilities}.
+A 2023 paper by Rylan Schaeffer, Brando Miranda, and Sanmi
+Koyejo offered a more sceptical account: when those same
+capabilities are measured with a continuous metric rather than
+a pass-or-fail score, the discontinuity largely disappears.
+The apparent jump, on their account, is mostly a property of
+the measuring instrument, not of the underlying model. The
+Schaeffer critique has substantially shifted the field toward
+the smooth-scaling view. Most capabilities that once looked
+emergent now look, on closer measurement, like ordinary
+gradual improvement. A minority of cases still resist a clean
+smooth account. The practical implication is the same in
+either case: do not extrapolate confidently from the current
+generation of models to the next on the basis of what did or
+did not appear to emerge in the generation before it.
 
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
