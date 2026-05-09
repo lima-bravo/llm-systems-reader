@@ -221,6 +221,20 @@ does not say what the model summarized it as saying). Both are
 groundedness failures in the sense used here, and both are
 catchable only from outside the AI's output.
 
+The difficulty is compounded by a calibration problem specific to
+legal work. The model's expressed confidence --- the apparent
+authority of its prose --- gives no reliable signal of accuracy.
+A hallucinated holding arrives in the same authoritative register
+as a verified one. A misquoted statutory threshold sounds as
+precise as the actual text. Legal writing is authoritative in
+tone by convention; the model has absorbed that convention and
+applies it uniformly, whether the underlying claim is reliable or
+fabricated. There is no surface signal that distinguishes a
+misread case from a correctly read one. The implication for
+practice is that the plausibility of a summary cannot substitute
+for its verification. A persuasive-sounding statement of a
+holding is not evidence that the statement is accurate.
+
 The discipline for legal practice is the one the bar has long
 preached: verify any cited authority that matters. Use legal
 research tools that produce checkable citations and check them.
@@ -302,7 +316,7 @@ and citations and stopped.
 \section*{What the ladder does not capture}
 
 The five-rung framework is useful because it is simple. It is also
-incomplete. Four classes of failure deserve explicit mention
+incomplete. Six classes of failure deserve explicit mention
 because they are directly relevant to legal practice and escape
 the ladder entirely.
 
@@ -362,6 +376,38 @@ processed many correct outputs processes the next one less
 vigilantly. The bar records whether review happened, not how
 carefully. The tool's failure rate may be constant; the effective
 error rate seen by clients rises as vigilance decays.
+
+The fifth is the \emph{compositional} failure. Legal analysis
+characteristically requires chaining multiple inferences:
+determining standing, then jurisdiction, then the applicable
+standard of review, then whether the facts satisfy each element
+of the test. When a model works through a multi-step analysis,
+errors compound across the chain. A model that is highly reliable
+on each individual step may produce a wrong final conclusion
+because a subtle error in an early step --- a mischaracterization
+of the standard, a slightly wrong reading of the procedural
+posture --- propagates through the downstream reasoning. No single
+step fails the five-rung ladder in a way that a careful reading
+of that step alone would catch; the failure is a property of the
+chain, not of any individual link. Multi-step doctrinal analysis
+deserves verification not only at the conclusion but at each
+material intermediate step.
+
+The sixth is the \emph{coverage} failure. A legal AI tool is
+shaped not only by what it has seen but by what its fine-tuning
+and evaluation emphasized. Tools trained and benchmarked on broad
+legal research tasks may have attenuated, lower-quality performance
+in specific niches --- specialty courts, narrow regulatory domains,
+emerging statutory areas, non-majority jurisdictions --- not
+because the relevant authority is absent from training data but
+because the model's behavior was shaped toward the modal legal
+task, not toward the specific practice area. A tool that performs
+impressively on mainstream commercial litigation research may be
+unreliable in the particular procedural context, doctrinal niche,
+or jurisdiction of a given matter. The remedy is targeted
+evaluation on representative examples from the specific practice
+area before deploying the tool in that context, rather than
+relying on general benchmark performance.
 
 \section*{What this means for firms}
 

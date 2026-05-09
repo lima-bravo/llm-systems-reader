@@ -249,6 +249,21 @@ fact lookup. The pattern is to take as much of the work that
 demands grounding as possible and move it outside the language
 model.
 
+The difficulty is compounded by a calibration problem. The model's
+expressed confidence --- the apparent certainty of its prose --- is
+not a reliable signal of actual reliability. A hallucinated
+statistic arrives in the same register as a verified one. A
+fabricated API call sounds as authoritative as a real one.
+Token-level probabilities correlate with accuracy well above
+chance, but the correlation is not strong enough to substitute for
+external verification, and it is inaccessible to users who see
+prose rather than logits. The practical consequence is that the
+model's apparent confidence cannot be used to triage which claims
+need checking. All claims need checking uniformly, or none of them
+can be trusted --- and the discipline of treating any factual
+claim as a hypothesis holds across the board, not selectively for
+claims that happen to sound uncertain.
+
 The diagnostic discipline is to treat any factual claim by the
 model as a hypothesis. If the claim matters, verify it. If it
 cannot be verified, do not use it. The careful practitioner builds
@@ -384,7 +399,7 @@ likely'' to ``what is consistent with this document.''
 \section*{What the model does not capture}
 
 The taxonomy is useful because it is simple. It is also incomplete.
-Four classes of failure escape it.
+Six classes of failure escape it.
 
 The first is \emph{normative}. An output that is structurally
 fine, internally coherent, situationally appropriate, factually
@@ -397,8 +412,19 @@ correct.
 
 The second is \emph{adversarial}. An output deliberately induced
 by a malicious prompt, a poisoned retrieval source, or a
-manipulated tool. These failures cross trust boundaries and need
-defenses in depth, not diagnostic ladders.
+manipulated tool. The most practically important variant for
+systems in production is \emph{indirect prompt injection}:
+instructions embedded not in the user's prompt but in content the
+model is asked to process --- retrieved documents, tool outputs,
+web pages fetched by an agent. A retrieval pipeline that fetches
+arbitrary external content is processing potential adversarial
+inputs on every call. The model has no reliable mechanism to
+distinguish instructions from data; text that looks like a
+document to the system designer may look like a prompt to the
+model. These failures cross trust boundaries and require defenses
+in depth --- input sanitization, output schema enforcement,
+privilege separation between retrieval and execution --- not
+diagnostic ladders.
 
 The third is \emph{drift}. An output that was correct yesterday
 and is wrong today because the world has changed. This is a
@@ -416,14 +442,51 @@ how carefully. The model's failure rate may be constant; the
 effective error rate seen by users rises as vigilance decays.
 The ladder can only be climbed by someone who is still climbing.
 
+The fifth is \emph{compositional degradation}. When a task
+requires chaining multiple inferences --- a function that calls
+three helpers, an argument that applies four tests in sequence, a
+data pipeline that transforms through five stages --- errors
+compound. A model that is ninety-five percent reliable on each
+step is below sixty percent reliable on a ten-step chain. No
+single step fails the ladder in a way that a five-axis walk would
+catch; each step can be structurally valid, internally coherent,
+contextually appropriate, grounded, and environmentally specified,
+and the chain still produces a wrong final answer because an early
+error propagated. The remedy is not a better prompt but a better
+architecture: decompose, verify at each stage rather than only
+at the end, and build checkpoints that a human or automated
+verifier can inspect.
+
+The sixth is \emph{distributional mismatch}. A model is shaped
+by its fine-tuning and alignment distribution, not only its
+pretraining corpus. The tasks most heavily represented in the
+fine-tuning phase become the model's modal behavior; tasks at
+the periphery of that distribution receive attenuated,
+lower-quality performance --- not because the relevant information
+is absent from pretraining but because the model's behavior was
+tuned toward the center of the task distribution, not toward the
+specific edges. A model that performs impressively on a broad
+benchmark may be unreliable in the specific domain, register, or
+procedural context of a given deployment. The diagnostic signature
+is a system that looks capable in demonstrations and is brittle
+in the particular corner of the problem space you actually need.
+The remedy is targeted evaluation on representative examples drawn
+from the real deployment distribution before relying on general
+benchmark numbers.
+
 The five-axis model is meant for the user-facing case in which a
 single output is in front of you and you want to know what to do.
-For everything else, the broader engineering literature on safety,
-adversarial robustness, and operational monitoring remains the
-authoritative reference. Hold the ladder loosely. The axes are not
-orthogonal; failures often span multiple. The ordering is a
-heuristic, not a theorem. The model is at its most useful in the
-conversation, not in the algorithm.
+It also does not address conversation-level degradation ---
+earlier errors propagating into later outputs, instruction drift
+across a long session, the model losing track of constraints set
+at the session's start --- which require evaluation at the session
+level, not the output level. For everything else, the broader
+engineering literature on safety, adversarial robustness, and
+operational monitoring remains the authoritative reference. Hold
+the ladder loosely. The axes are not orthogonal; failures often
+span multiple. The ordering is a heuristic, not a theorem. The
+model is at its most useful in the conversation, not in the
+algorithm.
 
 \section*{Why this matters}
 
