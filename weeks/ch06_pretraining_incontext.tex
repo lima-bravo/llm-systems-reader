@@ -1,5 +1,5 @@
 \section{Pretraining, GPT-Style Models, and In-Context Learning}
-\label{sec:week5-pretrain}
+\label{sec:ch6-pretrain}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -100,7 +100,7 @@ the math in this chapter exists to help you tell the difference.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Describe an industrial-grade pretraining data pipeline
         (acquisition, filtering, deduplication, licensing, red-flag
@@ -160,7 +160,7 @@ GPT-style pretraining optimizes a single objective: maximize the
 autoregressive log-likelihood of text under the causal factorization
 from Chapter~1:
 \begin{equation}
-\label{eq:week5-pretrain-obj}
+\label{eq:ch6-pretrain-obj}
 \mathcal{L}(\theta)
  \;=\; -\,\E_{x \sim \mathcal{D}}
        \Bigl[\,\textstyle\sum_{t=1}^{T} \log p_\theta(x_t \mid x_{<t})\Bigr].
@@ -180,7 +180,7 @@ constructing the right prompts and constraining the outputs of this
 engine.
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week5-notation}
+\label{sec:ch6-notation}
 
 \begin{notationbox}
 For this chapter: $N$ is parameter count, $D$ is training tokens, and
@@ -197,7 +197,7 @@ Beam width is $B$. For ICL few-shot prompts, $k$-shot denotes the
 number of in-context exemplars (distinguished from top-$k$ by
 context). For memorization, $\ell$ is the recall string length and
 $k$ is duplication count (reusing symbol intentionally — see
-Eq.~\eqref{eq:week5-memorization}).
+Eq.~\eqref{eq:ch6-memorization}).
 
 Standing assumptions are:
 \textbf{(A5.1)} Chinchilla exponents $(\alpha, \beta)$ and the
@@ -209,7 +209,7 @@ range.
 the forward pass) are \emph{interpretive hypotheses} with partial
 empirical support on controlled tasks; none is a proved theorem for
 natural-language ICL.
-\textbf{(A5.3)} The memorization law Eq.~\eqref{eq:week5-memorization}
+\textbf{(A5.3)} The memorization law Eq.~\eqref{eq:ch6-memorization}
 is an \emph{empirical parametric fit} to extraction-probe data; its
 exponents $(a, b, c)$ vary by model family, corpus, and probe
 methodology, and the functional form is not derived from first
@@ -224,7 +224,7 @@ worth understanding.
 
 \subsubsection{Autoregressive (Causal) LM}
 
-Eq.~\eqref{eq:week5-pretrain-obj}, with a causal mask (Chapter~5).
+Eq.~\eqref{eq:ch6-pretrain-obj}, with a causal mask (Chapter~5).
 Every position is both a training \emph{context} and a training
 \emph{target}: the cross-entropy is summed over all $T$ positions in a
 single forward pass. Architectures: GPT family, Llama, Mistral,
@@ -377,12 +377,12 @@ the compute a uniform full-length pretrain would cost.
 From Chapter~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
 is
 \begin{equation}
-\label{eq:week5-chinchilla}
+\label{eq:ch6-chinchilla}
 L(N, D) \;=\; E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}.
 \end{equation}
 
 \begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Chapter~2]
-Fix $C \approx 6\,N D$. Minimizing Eq.~\eqref{eq:week5-chinchilla}
+Fix $C \approx 6\,N D$. Minimizing Eq.~\eqref{eq:ch6-chinchilla}
 subject to $N D = C/6$ via the Lagrangian
 $\mathcal{J}(N, D, \mu) = L(N, D) - \mu\,(N D - C/6)$ yields the
 first-order conditions
@@ -542,7 +542,7 @@ across several paraphrases of the same prompt.
 
 \subsection{Sampling and Decoding}
 
-Recall from \S\ref{sec:week5-notation} the decoding parameter set
+Recall from \S\ref{sec:ch6-notation} the decoding parameter set
 $(T_s, k, p, \alpha, \rho, B)$: temperature, top-$k$ cutoff, nucleus
 threshold, min-$p$ coefficient, repetition penalty, beam width. All
 operate on the per-position logit vector $\mathbf{z} \in \R^{V}$.
@@ -550,13 +550,13 @@ operate on the per-position logit vector $\mathbf{z} \in \R^{V}$.
 Given logits $\mathbf{z} \in \mathbb{R}^V$ at each step, the
 conditional distribution after temperature $T$ scaling is
 \begin{equation}
-\label{eq:week5-softmax-temp}
+\label{eq:ch6-softmax-temp}
 p_T(i) \;=\; \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}.
 \end{equation}
 $T \to 0$ recovers greedy (argmax), $T = 1$ recovers the model's
 native distribution, $T > 1$ flattens it. (Throughout this section,
 $T$ is temperature; sequence length from
-Eq.~\eqref{eq:week5-pretrain-obj} does not appear in the decoding
+Eq.~\eqref{eq:ch6-pretrain-obj} does not appear in the decoding
 formulas.)
 
 \subsubsection{Greedy and Beam}
@@ -578,7 +578,7 @@ the $k$ highest-probability tokens, renormalize, sample.
 
 \textbf{Top-$p$ (nucleus)} \citep{holtzman2020curious}: let
 \begin{equation}
-\label{eq:week5-nucleus}
+\label{eq:ch6-nucleus}
 \mathcal{V}^{(p)}
  \;=\; \mathrm{smallest~set}\ S \subseteq V
        \ \mathrm{s.t.}\ \sum_{i \in S} p_T(i) \ge p,
@@ -765,7 +765,7 @@ low-extraction regime probed by} \citet{carlini2023quantifying},
 memorization of a string of length $\ell$ scales roughly as the
 parametric fit
 \begin{equation}
-\label{eq:week5-memorization}
+\label{eq:ch6-memorization}
 \Pr[\text{verbatim recall}]
   \;\approx\; \min\!\left(1,\;
               \left(\frac{N}{N_0}\right)^{a}
@@ -778,7 +778,7 @@ local-fit description of the low-probability regime and saturates
 trivially at $1$; for high-probability regimes a logit-link or odds
 form is the safer extrapolation.
 
-\Assum\ Eq.~\eqref{eq:week5-memorization} is a regression to
+\Assum\ Eq.~\eqref{eq:ch6-memorization} is a regression to
 extraction-probe data; the exponents $(a, b, c)$ depend on model
 family, training mixture, and attacker methodology, and the
 multiplicative functional form is not derived from first principles
@@ -953,24 +953,24 @@ Compact index of the chapter's central identities.
 \begin{itemize}
   \item \textbf{Causal LM pretraining objective.}\
         $\mathcal{L} = -\sum_{t=1}^{T} \log p_\theta(w_t \mid w_{<t})$
-        --- Eq.~\eqref{eq:week5-pretrain-obj}; identical (up to
+        --- Eq.~\eqref{eq:ch6-pretrain-obj}; identical (up to
         normalisation) to the cross-entropy of CH1
         Eq.~\eqref{eq:nll-ce}.
   \item \textbf{Compute-optimal scaling (Chinchilla form).}\
         Solving the constrained $L(N, D)$ minimisation under
         $C = 6ND$ produces $N^* \propto C^a$, $D^* \propto C^{1-a}$
-        --- Eq.~\eqref{eq:week5-chinchilla}; redundant with
-        Eq.~\eqref{eq:week2-chinchilla-opt} of CH2.
+        --- Eq.~\eqref{eq:ch6-chinchilla}; redundant with
+        Eq.~\eqref{eq:ch2-chinchilla-opt} of CH2.
   \item \textbf{Temperature decoding.}\
         $p_\tau(v) \propto \exp(z_v / \tau)$
-        --- Eq.~\eqref{eq:week5-softmax-temp};
+        --- Eq.~\eqref{eq:ch6-softmax-temp};
         $\tau \to 0$ recovers greedy, $\tau \to \infty$ uniform.
   \item \textbf{Nucleus (top-$p$) decoding.}\
         Smallest set $S$ s.t. $\sum_{v \in S} p(v) \ge p_{\rm nuc}$,
-        renormalise --- Eq.~\eqref{eq:week5-nucleus}.
+        renormalise --- Eq.~\eqref{eq:ch6-nucleus}.
   \item \textbf{Memorisation rate (empirical).}\
         Per-string verbatim recall increases with duplication count
-        --- Eq.~\eqref{eq:week5-memorization} (\Emp\ scope: framed
+        --- Eq.~\eqref{eq:ch6-memorization} (\Emp\ scope: framed
         as observation, not theorem).
 \end{itemize}
 \end{derivledger}

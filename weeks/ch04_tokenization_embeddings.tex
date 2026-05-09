@@ -1,5 +1,5 @@
 \section{Tokenization and Embeddings — From Text to Vectors}
-\label{sec:week3-tokemb}
+\label{sec:ch4-tokemb}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -122,7 +122,7 @@ boundaries is the vocabulary in which the problem is named.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Walk through the Byte-Pair Encoding (BPE) algorithm end-to-end
         and trace how a concrete string becomes a token sequence.
@@ -169,7 +169,7 @@ By the end of this week, you should be able to:
 \end{itemize}
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week3-notation}
+\label{sec:ch4-notation}
 
 \begin{notationbox}
 \textbf{Alphabet and token set.}
@@ -217,7 +217,7 @@ Neural networks operate on $\mathbb{R}^d$; natural language is discrete,
 hierarchical, and Unicode-encoded. Every LLM pipeline begins with a
 deterministic function
 \begin{equation}
-\label{eq:week3-pipeline}
+\label{eq:ch4-pipeline}
 \text{text} \;\xrightarrow{\text{normalize}}\;
 \text{code-points} \;\xrightarrow{\text{tokenize}}\;
 \text{token sequence} \;\xrightarrow{\text{vocab}}\;
@@ -404,7 +404,7 @@ WordPiece~\citep{devlin2019bert} replaces BPE's ``most frequent pair''
 criterion with a likelihood-maximization criterion. At each step it
 merges the pair $(a, b)$ that maximizes
 \begin{equation}
-\label{eq:week3-wordpiece}
+\label{eq:ch4-wordpiece}
 \mathrm{score}(a, b) \;=\;
 \frac{\mathrm{count}(ab)}
      {\mathrm{count}(a)\,\mathrm{count}(b)}.
@@ -447,7 +447,7 @@ continuation (``playing'' $\to$ \texttt{play \#\#ing}).
 \emph{start} with a large seed vocabulary and \emph{prune} it down. The
 tokenizer maintains a unigram language model over subwords,
 \begin{equation}
-\label{eq:week3-unigram}
+\label{eq:ch4-unigram}
 p(\mathbf{x}) \;=\; \prod_{t} p(x_t),
 \end{equation}
 with the per-subword probabilities fit by EM.
@@ -507,9 +507,9 @@ Tokenizer & Training objective & Encoding & Used by \\
 \hline
 BPE              & Greedy pair frequency            & Deterministic
                    & GPT-2/3/4, Llama (byte-level) \\
-WordPiece        & Likelihood score Eq.~\eqref{eq:week3-wordpiece}  & Greedy longest-match
+WordPiece        & Likelihood score Eq.~\eqref{eq:ch4-wordpiece}  & Greedy longest-match
                    & BERT, ALBERT \\
-Unigram LM       & EM pruning, Eq.~\eqref{eq:week3-unigram}         & Viterbi (probabilistic)
+Unigram LM       & EM pruning, Eq.~\eqref{eq:ch4-unigram}         & Viterbi (probabilistic)
                    & T5, Gemini, many multilingual models \\
 Byte-level BPE   & BPE over bytes                   & Deterministic
                    & GPT-2 onwards, Llama~2/3 \\
@@ -563,7 +563,7 @@ than under a multilingual-tuned one.
 \textbf{Proved.} BPE and WordPiece are deterministic given their
 merge tables (A3.1). SentencePiece's whitespace-as-sentinel design
 guarantees lossless detokenization (A3.2). WordPiece's score
-Eq.~\eqref{eq:week3-wordpiece} is proportional to the unigram
+Eq.~\eqref{eq:ch4-wordpiece} is proportional to the unigram
 log-likelihood gain per merge (derivation above). Unigram-LM EM
 maximizes corpus log-likelihood under the Bayesian posterior over
 segmentations.\\
@@ -614,7 +614,7 @@ embedding layer is parameterized by a matrix $E \in \mathbb{R}^{V \times d}$.
 For a token ID $\iota \in \{0,\dots,V-1\}$, the input embedding is
 the $\iota$-th row:
 \begin{equation}
-\label{eq:week3-embed}
+\label{eq:ch4-embed}
 \mathbf{e}_\iota \;=\; E^{\top} \mathbf{1}_\iota,
 \end{equation}
 where $\mathbf{1}_\iota \in \{0,1\}^{V}$ is the one-hot indicator vector.
@@ -631,7 +631,7 @@ is often the single largest block in a model's parameter count.
 
 The output layer of a language model computes unnormalized logits
 \begin{equation}
-\label{eq:week3-unembed}
+\label{eq:ch4-unembed}
 \mathbf{z} \;=\; W_{\mathrm{out}}\,\mathbf{h},
 \qquad
 W_{\mathrm{out}} \in \mathbb{R}^{V \times d},
@@ -944,11 +944,11 @@ Compact index of the chapter's central identities.
 \begin{itemize}
   \item \textbf{Tokenization pipeline.}\
         Bytes $\to$ pre-tokens $\to$ subword sequence
-        --- Eq.~\eqref{eq:week3-pipeline}; deterministic under
+        --- Eq.~\eqref{eq:ch4-pipeline}; deterministic under
         \textbf{(A3.1)}.
   \item \textbf{WordPiece score (ratio form).}\
         $\mathrm{score}(a,b) = \mathrm{count}(ab)/(\mathrm{count}(a)\,\mathrm{count}(b))$
-        --- Eq.~\eqref{eq:week3-wordpiece}. The per-merge unigram
+        --- Eq.~\eqref{eq:ch4-wordpiece}. The per-merge unigram
         log-likelihood gain is $\mathrm{count}(ab)\cdot
         \log[N\cdot\mathrm{score}(a,b)]$, so maximising the score
         and maximising the log-likelihood gain pick the same merge.
@@ -956,11 +956,11 @@ Compact index of the chapter's central identities.
         E-step: posterior over segmentations;
         M-step: $p(s) \leftarrow \mathbb{E}[\#s] / \sum_{s'} \mathbb{E}[\#s']$;
         prune $s^* = \arg\min_s (\ell_V - \ell_{V \setminus \{s\}})$
-        --- Eq.~\eqref{eq:week3-unigram}.
+        --- Eq.~\eqref{eq:ch4-unigram}.
   \item \textbf{Embedding lookup.}\
-        $\mathbf{e}_\iota = E^\top \mathbf{1}_\iota$ --- Eq.~\eqref{eq:week3-embed}.
+        $\mathbf{e}_\iota = E^\top \mathbf{1}_\iota$ --- Eq.~\eqref{eq:ch4-embed}.
   \item \textbf{Unembedding (weight tying).}\
-        Logit $z_v = e^\top E_v$ --- Eq.~\eqref{eq:week3-unembed}.
+        Logit $z_v = e^\top E_v$ --- Eq.~\eqref{eq:ch4-unembed}.
 \end{itemize}
 \end{derivledger}
 

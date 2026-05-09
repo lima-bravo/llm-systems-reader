@@ -1,5 +1,5 @@
 \section{The Transformer --- Attention as the Core Computational Primitive}
-\label{sec:week4-transformer}
+\label{sec:ch5-transformer}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -109,7 +109,7 @@ comes from and which architectural choice each one is the price of.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Derive scaled dot-product attention, state the roles of
         $Q, K, V$, and justify the $\sqrt{d_k}$ scale from a
@@ -154,7 +154,7 @@ By the end of this week, you should be able to:
 \end{itemize}
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week4-notation}
+\label{sec:ch5-notation}
 
 \begin{notationbox}
 \textbf{Shapes.}
@@ -178,12 +178,12 @@ $W_V \in \R^{d\times d_v}$, $W_O \in \R^{H d_v \times d}$.
 \textbf{(A4.1)} The variance-preserving scaling argument for
 $1/\sqrt{d_k}$ assumes $Q_{ij}, K_{ij}$ have zero mean, unit
 variance, and are pairwise independent across the summation index
-(Eq.~\eqref{eq:week4-qk-var-assumption} below). These conditions
+(Eq.~\eqref{eq:ch5-qk-var-assumption} below). These conditions
 hold only at initialization; during training, the variance is
 empirically regularized by gradient flow but no longer by
 independence.
 \textbf{(A4.2)} RoPE's relative-position identity
-(Eq.~\eqref{eq:week4-rope-relative}) is \emph{exact} under exact
+(Eq.~\eqref{eq:ch5-rope-relative}) is \emph{exact} under exact
 arithmetic, but extrapolation beyond the training range relies on
 the further \emph{empirical} assumption that learned query/key
 statistics generalize to unseen rotation angles --- which they do
@@ -229,7 +229,7 @@ $X \in \mathbb{R}^{T\times d}$ (one row per token, $T$ tokens in the
 context, model dimension $d$). Each attention layer projects $X$ into
 \emph{queries}, \emph{keys}, and \emph{values}:
 \begin{equation}
-\label{eq:week4-qkv}
+\label{eq:ch5-qkv}
 Q = X W_Q, \qquad
 K = X W_K, \qquad
 V = X W_V,
@@ -239,7 +239,7 @@ $W_V \in \mathbb{R}^{d \times d_v}$. So $Q, K \in \mathbb{R}^{T\times d_k}$
 and $V \in \mathbb{R}^{T\times d_v}$. The output is a weighted
 combination of the value rows:
 \begin{equation}
-\label{eq:week4-attn}
+\label{eq:ch5-attn}
 \mathrm{Attn}(Q, K, V)
   \;=\; \underbrace{\mathrm{softmax}\!\left(\frac{Q K^{\top}}{\sqrt{d_k}} \;+\; M\right)}_{A \in \mathbb{R}^{T\times T}}\,
         V,
@@ -252,10 +252,10 @@ for $j \le i$ and $M_{ij} = -\infty$ for $j > i$. Figure
 \centering
 \input{figures/attention_scores}
 \caption{Scaled dot-product attention, governing
-  Eq.~\eqref{eq:week4-attn}. Queries $Q$ and keys $K^{\top}$ multiply
+  Eq.~\eqref{eq:ch5-attn}. Queries $Q$ and keys $K^{\top}$ multiply
   to form the attention score matrix $Q K^{\top} \in \mathbb{R}^{T
   \times T}$, which is scaled by $\sqrt{d_k}$
-  (Eq.~\eqref{eq:week4-qk-sum}), masked, softmax-normalized, and
+  (Eq.~\eqref{eq:ch5-qk-sum}), masked, softmax-normalized, and
   finally used as weights against the values $V$.}
 \label{fig:week4-attn-scores}
 \end{figure}
@@ -271,12 +271,12 @@ uncorrelated across $m$ (i.e.\ $\mathrm{Cov}(Q_{im},Q_{im'}) = 0$ for
 $m\neq m'$ and similarly for $K$), so that the products
 $Q_{im}K_{jm}$ are uncorrelated across $m$ and $\Var$ is additive
 in the sum below.
-\label{eq:week4-qk-var-assumption}
+\label{eq:ch5-qk-var-assumption}
 
 Each score entry is a sum over the head dimension:
 \begin{equation}
 (QK^{\top})_{ij} \;=\; \sum_{m=1}^{d_k} Q_{im} K_{jm}.
-\label{eq:week4-qk-sum}
+\label{eq:ch5-qk-sum}
 \end{equation}
 By independence and zero mean, each summand satisfies
 $\E[Q_{im}K_{jm}] = \E[Q_{im}]\E[K_{jm}] = 0$ and
@@ -401,7 +401,7 @@ projections and concatenates the results:
 h_i &= \mathrm{Attn}(X W_Q^{(i)}, X W_K^{(i)}, X W_V^{(i)}),
       \qquad i = 1, \ldots, H, \\
 \mathrm{MHA}(X) &= \bigl[h_1 \,|\, h_2 \,|\, \cdots \,|\, h_H\bigr]\, W_O,
-\label{eq:week4-mha}
+\label{eq:ch5-mha}
 \end{align}
 with $W_O \in \mathbb{R}^{H d_v \times d}$. Typically $d_k = d_v = d/H$
 so the parameter count matches a single full-size head. Figure
@@ -410,9 +410,9 @@ so the parameter count matches a single full-size head. Figure
 \begin{figure}[h]
 \centering
 \input{figures/multihead_attention}
-\caption{Multi-head attention, governing Eq.~\eqref{eq:week4-mha}.
+\caption{Multi-head attention, governing Eq.~\eqref{eq:ch5-mha}.
   $H$ independent attention heads (each following
-  Eq.~\eqref{eq:week4-attn}) operate in parallel over the same input
+  Eq.~\eqref{eq:ch5-attn}) operate in parallel over the same input
   $X$; their outputs are concatenated along the feature axis and
   projected back to model dimension $d$ by $W_O$.}
 \label{fig:week4-mha}
@@ -455,7 +455,7 @@ full MHA.
 positional signal); the score decomposition
 $A V = \mathrm{softmax}(QK^{\top}/\sqrt{d_k} + M) V$ is exact;
 causal masking by $-\infty$ strictly zeros post-softmax weights at
-$j > i$; KV-cache formula Eq.~\eqref{eq:week4-kvbytes} is an exact
+$j > i$; KV-cache formula Eq.~\eqref{eq:ch5-kvbytes} is an exact
 byte count. \\
 \textbf{Empirical.} Head specialization (attention circuits,
 induction heads) \citep{elhage2021mathematical, olsson2022induction}.
@@ -474,7 +474,7 @@ not be treated as an architectural contract.
 Between attention layers each position is transformed independently
 by a two-layer feed-forward network (FFN):
 \begin{equation}
-\label{eq:week4-ffn-classic}
+\label{eq:ch5-ffn-classic}
 \mathrm{FFN}(x) \;=\; W_2 \,\sigma(W_1 x + b_1) + b_2,
 \end{equation}
 with $W_1 \in \mathbb{R}^{d_f \times d}$, $W_2 \in \mathbb{R}^{d \times d_f}$,
@@ -488,7 +488,7 @@ training stability.
 quality with no extra parameters if the hidden size is rescaled
 appropriately:
 \begin{equation}
-\label{eq:week4-swiglu}
+\label{eq:ch5-swiglu}
 \mathrm{SwiGLU}(x)
  \;=\; \bigl(W_g x \odot \mathrm{Swish}(W_u x)\bigr) W_2,
 \qquad
@@ -519,7 +519,7 @@ x_{\ell+1} \;=\; \mathrm{LN}\bigl(x_\ell + \mathrm{Sublayer}(x_\ell)\bigr).
 The \emph{pre-norm} variant, now standard, moves the normalization
 inside the residual branch:
 \begin{equation}
-\label{eq:week4-prenorm}
+\label{eq:ch5-prenorm}
 x_{\ell+1} \;=\; x_\ell + \mathrm{Sublayer}\bigl(\mathrm{LN}(x_\ell)\bigr).
 \end{equation}
 \citet{xiong2020onlayer} showed that, under standard initialization
@@ -536,7 +536,7 @@ modern LLMs. Figure \ref{fig:week4-block} shows a pre-norm block.
 \centering
 \input{figures/transformer_block}
 \caption{A pre-norm Transformer block, governing
-  Eq.~\eqref{eq:week4-prenorm}. Layer normalization is applied before
+  Eq.~\eqref{eq:ch5-prenorm}. Layer normalization is applied before
   each sublayer; the residual connections bypass the normalization so
   the residual stream remains an identity at initialization.}
 \label{fig:week4-block}
@@ -552,7 +552,7 @@ activation along the feature dimension:
 with $\mu, \sigma$ the per-token mean and std. RMSNorm
 \citep{zhang2019rmsnorm} drops the mean-centering:
 \begin{equation}
-\label{eq:week4-rmsnorm}
+\label{eq:ch5-rmsnorm}
 \mathrm{RMSNorm}(x) \;=\; \gamma \odot \frac{x}{\mathrm{RMS}(x) + \epsilon},
 \qquad
 \mathrm{RMS}(x) = \sqrt{\tfrac{1}{d}\sum_j x_j^2},
@@ -583,7 +583,7 @@ positional information the model cannot tell ``dog bites man'' from
 The original Transformer \citep{vaswani2017attention} adds a fixed
 sinusoid to the token embedding:
 \begin{equation}
-\label{eq:week4-sinusoidal}
+\label{eq:ch5-sinusoidal}
 \mathrm{PE}(t, 2i)     = \sin\!\Bigl(t \,/\, 10000^{2i/d}\Bigr),
 \quad
 \mathrm{PE}(t, 2i+1)   = \cos\!\Bigl(t \,/\, 10000^{2i/d}\Bigr).
@@ -609,7 +609,7 @@ Attention with Linear Biases \citep{press2022alibi} adds a
 \emph{fixed} linear penalty to the attention scores based on relative
 distance:
 \begin{equation}
-\label{eq:week4-alibi}
+\label{eq:ch5-alibi}
 \mathrm{Score}(i, j) \;=\; \frac{q_i^{\top} k_j}{\sqrt{d_k}}
   \;-\; m_h\,|i - j|,
 \end{equation}
@@ -650,7 +650,7 @@ $R_t^{\top} R_s = R_{-t} R_s = R_{s-t}$. Therefore
 &= q_t^{\top} R_{-t} R_s k_s
   \qquad (\text{transpose} = \text{inverse rotation}) \\
 &= q_t^{\top} R_{s-t} k_s.
-\label{eq:week4-rope-relative}
+\label{eq:ch5-rope-relative}
 \end{align}
 The score depends only on the \emph{relative} displacement
 $s - t$, not on absolute positions. \Ident\ Exact under exact
@@ -684,9 +684,9 @@ RoPE            & yes    & only with NTK/YaRN scaling & no \\
 \begin{provedassumed}[Positional encoding: what is established vs assumed]
 \textbf{Proved.} Attention is permutation-equivariant without a
 positional signal (algebraic). RoPE's relative-position identity
-Eq.~\eqref{eq:week4-rope-relative} is exact under exact arithmetic
+Eq.~\eqref{eq:ch5-rope-relative} is exact under exact arithmetic
 (2-D rotation algebra). ALiBi's distance bias
-Eq.~\eqref{eq:week4-alibi} is a zero-parameter additive penalty. \\
+Eq.~\eqref{eq:ch5-alibi} is a zero-parameter additive penalty. \\
 \textbf{Empirical.} ALiBi extrapolation beyond training length is
 benchmark-supported at the lengths measured in
 \citet{press2022alibi}; RoPE extrapolation requires NTK-aware or YaRN
@@ -710,7 +710,7 @@ tokens at every step is $O(T^2)$ redundant work. The KV cache
 \emph{stores} the key/value tensors from previous steps and appends
 the current step's $(K_t, V_t)$:
 \begin{equation}
-\label{eq:week4-kvcache}
+\label{eq:ch5-kvcache}
 K_{1:t} \;\leftarrow\; \begin{bmatrix} K_{1:t-1} \\ k_t \end{bmatrix},
 \qquad
 V_{1:t} \;\leftarrow\; \begin{bmatrix} V_{1:t-1} \\ v_t \end{bmatrix}.
@@ -725,7 +725,7 @@ MHA there are $H$ independent K/V tensors per layer; under GQA with
 $G$ groups, there are only $G$. The factor of 2 counts both $K$ and
 $V$. The general formula is
 \begin{equation}
-\label{eq:week4-kvbytes}
+\label{eq:ch5-kvbytes}
 \text{bytes/token}
 \;=\; 2 \cdot L \cdot G_{\mathrm{eff}} \cdot d_k \cdot b,
 \qquad
@@ -741,7 +741,7 @@ $H/G$: Llama-2-70B uses $H=64$, $G=8$, cutting KV cache by $8\times$.
 
 \begin{workedexample}[KV cache budgets: dense MHA vs GQA vs MQA]
 Fix $L=80$, $H=64$, $d_k=128$, $b=2$~(bf16), and compute
-bytes/token from Eq.~\eqref{eq:week4-kvbytes}:
+bytes/token from Eq.~\eqref{eq:ch5-kvbytes}:
 \begin{align*}
 \text{MHA} \; (G_{\mathrm{eff}}=64) &:
   \;2 \cdot 80 \cdot 64 \cdot 128 \cdot 2 \approx 2.62~\text{MB/tok},\\
@@ -957,7 +957,7 @@ Operations & Prompt length vs cache size
 
 \begin{enumerate}
   \item \textbf{Minimal attention implementation}. Code Eq.\,
-        \eqref{eq:week4-attn} in under 30 lines of PyTorch/JAX. Verify
+        \eqref{eq:ch5-attn} in under 30 lines of PyTorch/JAX. Verify
         numerically that it matches \texttt{torch.nn.MultiheadAttention}
         on a small input.
   \item \textbf{$\sqrt{d_k}$ ablation}. Remove the scaling. Measure
@@ -969,11 +969,11 @@ Operations & Prompt length vs cache size
         positions $\le t$, by perturbing input position $t+1$ and
         checking the output at position $t$ is unchanged.
   \item \textbf{RoPE relative-position check}. Confirm Eq.\,
-        \eqref{eq:week4-rope-relative} empirically: rotate both $q$
+        \eqref{eq:ch5-rope-relative} empirically: rotate both $q$
         and $k$ by the same absolute offset and verify that
         $q^{\top}k$ is unchanged.
   \item \textbf{KV cache memory budget}. For a model of your choice,
-        compute Eq.~\eqref{eq:week4-kvbytes} and verify against
+        compute Eq.~\eqref{eq:ch5-kvbytes} and verify against
         measured GPU memory during generation at $T \in \{1k, 8k,
         32k, 128k\}$.
   \item \textbf{FlashAttention benchmark}. Compare FlashAttention-2
@@ -991,32 +991,32 @@ Compact index of the chapter's central identities.
 \begin{itemize}
   \item \textbf{QKV projections.}\
         $Q = X W_Q$, $K = X W_K$, $V = X W_V$
-        --- Eq.~\eqref{eq:week4-qkv}.
+        --- Eq.~\eqref{eq:ch5-qkv}.
   \item \textbf{Scaled dot-product attention.}\
         $\mathrm{Attn}(Q,K,V) = \mathrm{softmax}(QK^\top/\sqrt{d_k} + M)V$,
         with $M$ the causal (and, where needed, padding/packing)
-        mask --- Eq.~\eqref{eq:week4-attn};
-        $\sqrt{d_k}$ scaling justified by Eq.~\eqref{eq:week4-qk-sum}
+        mask --- Eq.~\eqref{eq:ch5-attn};
+        $\sqrt{d_k}$ scaling justified by Eq.~\eqref{eq:ch5-qk-sum}
         under independence/unit-variance assumption
-        Eq.~\eqref{eq:week4-qk-var-assumption}.
+        Eq.~\eqref{eq:ch5-qk-var-assumption}.
   \item \textbf{Multi-head concatenation.}\
-        Eq.~\eqref{eq:week4-mha}; invariant $d = H \cdot d_k$.
+        Eq.~\eqref{eq:ch5-mha}; invariant $d = H \cdot d_k$.
   \item \textbf{FFN families.}\
-        Classic 2-layer Eq.~\eqref{eq:week4-ffn-classic};
-        SwiGLU Eq.~\eqref{eq:week4-swiglu}.
+        Classic 2-layer Eq.~\eqref{eq:ch5-ffn-classic};
+        SwiGLU Eq.~\eqref{eq:ch5-swiglu}.
   \item \textbf{Pre-norm residual.}\
-        Eq.~\eqref{eq:week4-prenorm}; RMSNorm
-        Eq.~\eqref{eq:week4-rmsnorm}.
+        Eq.~\eqref{eq:ch5-prenorm}; RMSNorm
+        Eq.~\eqref{eq:ch5-rmsnorm}.
   \item \textbf{Positional encodings.}\
-        Sinusoidal Eq.~\eqref{eq:week4-sinusoidal};
-        ALiBi bias Eq.~\eqref{eq:week4-alibi};
+        Sinusoidal Eq.~\eqref{eq:ch5-sinusoidal};
+        ALiBi bias Eq.~\eqref{eq:ch5-alibi};
         RoPE relative-position identity
         $\tilde q_t^\top \tilde k_s = q_t^\top R_{s-t} k_s$
-        --- Eq.~\eqref{eq:week4-rope-relative} (one-step:
+        --- Eq.~\eqref{eq:ch5-rope-relative} (one-step:
         $R_t^\top R_s = R_{-t} R_s = R_{s-t}$).
   \item \textbf{KV cache.}\
         Per-token bytes $= 2 \cdot L \cdot G_{\rm eff} \cdot d_k \cdot b$
-        --- Eqs.~\eqref{eq:week4-kvcache}--\eqref{eq:week4-kvbytes}
+        --- Eqs.~\eqref{eq:ch5-kvcache}--\eqref{eq:ch5-kvbytes}
         with $G_{\rm eff} \in \{H, G, 1\}$ for MHA / GQA / MQA.
 \end{itemize}
 \end{derivledger}

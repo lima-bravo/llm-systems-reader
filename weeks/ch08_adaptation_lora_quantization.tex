@@ -98,7 +98,7 @@ asking for.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item explain quantitatively why full fine-tuning of a modern LLM is
         infeasible for most teams and operationally undesirable for the rest;
@@ -152,7 +152,7 @@ degrade the product.
 \paragraph{Versioning and rollback complexity.}
 A fully finetuned model is an entirely new 140~GB artefact. Storing
 many of them (one per customer, per domain, per experiment) is
-expensive and slow. Rolling back to ``last week's model'' means
+expensive and slow. Rolling back to the previous model means
 reloading 140~GB into GPU memory, not swapping an adapter.
 
 \paragraph{Safety drift.}
@@ -176,7 +176,7 @@ The whole of this chapter can be read as a formalization of that
 separation.
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week7-notation}
+\label{sec:ch8-notation}
 
 \begin{notationbox}
 \textbf{Base/adapter pair.}
@@ -197,7 +197,7 @@ against $N \in [10^{9}, 10^{11}]$ base parameters.
 
 \textbf{Precision formats.}
 Bytes-per-parameter coefficients (extending the Chapter~2 vocabulary
-from Eq.~\eqref{eq:week2-mem-budget}): $b_{\mathrm{fp32}} = 4$,
+from Eq.~\eqref{eq:ch2-mem-budget}): $b_{\mathrm{fp32}} = 4$,
 $b_{\mathrm{bf16}} = b_{\mathrm{fp16}} = 2$, $b_{\mathrm{fp8}} = 1$,
 $b_{\mathrm{int8}} = 1$, $b_{\mathrm{int4}} = b_{\mathrm{nf4}} = 0.5$
 (one nibble per weight, plus $O(1/32)$ block-scale overhead for NF4).
@@ -350,7 +350,7 @@ $d=k=4096$, $r=16$, this is $\approx 128\times$.
 
 \Ident\ \emph{LoRA adapter memory budget.} Let $N_{\Delta} = \sum_\ell r_\ell
 (d_\ell + k_\ell)$ over adapted layers $\ell$. Using the Chapter~2 memory
-equation (Eq.~\eqref{eq:week2-mem-budget}), for AdamW training in bf16
+equation (Eq.~\eqref{eq:ch2-mem-budget}), for AdamW training in bf16
 with fp32 master weights and optimizer state,
 \begin{equation}
   M_{\mathrm{LoRA}}
@@ -360,7 +360,7 @@ with fp32 master weights and optimizer state,
   \underbrace{(b_{\mathrm{bf16}} + b_{\mathrm{grad}}
             + b_{\mathrm{opt}}) N_{\Delta}}_{\text{adapter + state}}
   \;+\; M_{\mathrm{act}},
-  \label{eq:week7-lora-mem}
+  \label{eq:ch8-lora-mem}
 \end{equation}
 where $b_{\mathrm{bf16}}=2$, $b_{\mathrm{grad}}=4$ (fp32 master grad),
 $b_{\mathrm{opt}}=8$ (Adam $m,v$ at fp32). For QLoRA, replace the
@@ -390,7 +390,7 @@ state: $\sim 500$~MB. Activations (seq~2048, batch~1): $\sim 12$~GB.
 \textbf{70B model, QLoRA.} Base: $35$~GB + $\sim 2$~GB scales.
 \emph{Total $\approx 49$~GB} --- fits on one 80~GB H100.
 
-\textbf{Full FT, 70B.} Memory from Eq.~\eqref{eq:week2-mem-budget}
+\textbf{Full FT, 70B.} Memory from Eq.~\eqref{eq:ch2-mem-budget}
 with $b_p+b_g+b_o=16$: $16 \cdot 7 \cdot 10^{10} = 1.12$~TB plus
 activations. \emph{$\geq 16$~H100s per training job} before data
 parallelism.
@@ -1040,8 +1040,8 @@ Compact index of the chapter's central identities.
         small whenever $r \ll \min(d, k)$, derived in §LoRA Memory.
   \item \textbf{LoRA memory budget.}\
         $M_{\rm LoRA} = b_{\rm bf16} N + (b_{\rm bf16} + b_{\rm grad} + b_{\rm opt}) N_\Delta + M_{\rm act}$
-        --- Eq.~\eqref{eq:week7-lora-mem}; specialises CH2's
-        Eq.~\eqref{eq:week2-mem-budget} to the case where only the
+        --- Eq.~\eqref{eq:ch8-lora-mem}; specialises CH2's
+        Eq.~\eqref{eq:ch2-mem-budget} to the case where only the
         adapter parameters $N_\Delta$ carry gradients and optimiser
         state.
   \item \textbf{NF4 quantile construction.}\

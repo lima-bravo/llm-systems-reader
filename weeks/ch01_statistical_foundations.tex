@@ -1,9 +1,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% WEEK 1 -- STATISTICAL LEARNING FOUNDATIONS FOR LLMs
+%% CHAPTER 1 -- STATISTICAL LEARNING FOUNDATIONS FOR LLMs
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Statistical Learning Foundations for Large Language Models}
-\label{sec:week1}
+\label{sec:ch1}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -120,7 +120,7 @@ rest of the book will document.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Formally interpret a Large Language Model (LLM) as a conditional probabilistic model over sequences of discrete symbols.
   \item Re-derive the cross-entropy loss used in next-token prediction from first principles, both as a maximum-likelihood estimator and as a consequence of the information-theoretic identity $H(p,q) = H(p) + \KL(p \parallel q)$.
@@ -135,7 +135,7 @@ By the end of this week, you should be able to:
 
 \subsection{LLM Components Covered}
 
-This week focuses on the statistical substrate underlying all LLM systems. Every concept introduced here will reappear in later weeks under increasingly engineering-heavy disguises, so the aim is to establish vocabulary and intuition that later chapters can take as given.
+This chapter focuses on the statistical substrate underlying all LLM systems. Every concept introduced here will reappear in later chapters under increasingly engineering-heavy disguises, so the aim is to establish vocabulary and intuition that later chapters can take as given.
 
 \textbf{Modeling and Training}
 \begin{itemize}
@@ -153,7 +153,7 @@ This week focuses on the statistical substrate underlying all LLM systems. Every
 \end{itemize}
 
 \subsection{Notation and Assumptions}
-\label{sec:week1_notation}
+\label{sec:ch1_notation}
 
 \begin{notationbox}
 We fix a finite vocabulary $V$ of size $|V|$. Sequences are written
@@ -1019,7 +1019,7 @@ Effective first-line mitigations include structured outputs with explicit confid
 
 \subsection{Bridges to Later Chapters}
 
-The statistical machinery of this chapter is revisited, refined, or challenged in every subsequent week. Explicit bridges worth keeping in mind:
+The statistical machinery of this chapter is revisited, refined, or challenged in every subsequent chapter. Explicit bridges worth keeping in mind:
 \begin{itemize}
   \item \textbf{Chapter 2 (Optimization)} studies how we actually find $\hat\theta$ in practice, and why the optimization dynamics of cross-entropy over deep networks defy the intuition of classical statistics.
   \item \textbf{Chapter 4 (Tokenization \& Embeddings)} makes precise what $x_t$ is as an object: a token rather than a word, and embedded in a vector space rather than a categorical index.

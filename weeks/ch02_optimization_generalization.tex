@@ -1,5 +1,5 @@
 \section{Optimization, Generalization, and Scaling Intuition}
-\label{sec:week2-optgen}
+\label{sec:ch2-optgen}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -108,7 +108,7 @@ regimes in which it is not.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Derive SGD, momentum, and Adam/AdamW updates from first principles and
         explain the role of bias correction.
@@ -160,7 +160,7 @@ long sequence of gradient updates against an empirical risk. The objective
 from Chapter~1, indexed over the $N_{\mathrm{tok}}$ (context, token) pairs in
 the training set, is the empirical cross-entropy
 \begin{equation}
-\label{eq:week2-empirical-loss}
+\label{eq:ch2-empirical-loss}
 \mathcal{L}(\theta)
   \;=\; \frac{1}{N_{\mathrm{tok}}} \sum_{i=1}^{N_{\mathrm{tok}}}
         -\log p_{\theta}\!\left( x^{(i)}_{t_i} \,\middle|\, x^{(i)}_{<t_i} \right),
@@ -170,7 +170,7 @@ symbol $N$ is reserved for the model parameter count later in the
 chapter. The objective is optimized via variants of stochastic
 gradient descent:
 \begin{equation}
-\label{eq:week2-sgd}
+\label{eq:ch2-sgd}
 \theta_{t+1} \;=\; \theta_t - \eta_t\, g_t,
 \qquad
 g_t \;=\; \frac{1}{B}\sum_{i \in \mathcal{B}_t}
@@ -198,12 +198,12 @@ That modern deep networks reliably converge under these conditions is an
 empirical observation about the loss landscape, not a theorem.
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week2-notation}
+\label{sec:ch2-notation}
 
 \begin{notationbox}
 Throughout this chapter the parameter vector is
 $\theta \in \R^{d}$ with $d \sim 10^{9}$--$10^{12}$; $\mathcal{L}(\theta)$
-is the empirical cross-entropy of Eq.~\eqref{eq:week2-empirical-loss};
+is the empirical cross-entropy of Eq.~\eqref{eq:ch2-empirical-loss};
 $g_t$ is the stochastic minibatch gradient with batch size $B$ and
 conditional covariance $\Sigma(\theta)$; $\eta_t$ is the learning rate
 at step $t$; $m_t, v_t$ are first- and second-moment accumulators with
@@ -213,10 +213,10 @@ parameters are warmup length $T_w$, total horizon $T_{\max}$, peak
 rate $\eta_{\max}$, and floor $\eta_{\min}$. Gradient-clip threshold
 is $c > 0$. For scaling laws, $N$ is parameter count, $D$ is training
 tokens, $C$ is compute in FLOPs, and $(A, B, E, \alpha, \beta)$ are
-the Chinchilla fit constants of Eq.~\eqref{eq:week2-chinchilla}.
+the Chinchilla fit constants of Eq.~\eqref{eq:ch2-chinchilla}.
 Standing assumptions are:
 \textbf{(A2.1)} the SGD-to-SDE approximation
-(Eq.~\eqref{eq:week2-langevin}) holds only when $\eta$ is small
+(Eq.~\eqref{eq:ch2-langevin}) holds only when $\eta$ is small
 relative to curvature, $\Sigma$ is approximately locally stationary,
 and $\xi_t$ is approximately Gaussian by a CLT argument over the
 minibatch;
@@ -224,7 +224,7 @@ minibatch;
 properly tuned baselines and extrapolate only within the compute range
 spanned by the fit (roughly $10^{19}$--$10^{24}$ FLOPs);
 \textbf{(A2.3)} the memory budget
-(Eq.~\eqref{eq:week2-mem-budget}) assumes standard mixed-precision
+(Eq.~\eqref{eq:ch2-mem-budget}) assumes standard mixed-precision
 AdamW with per-worker full optimizer state; ZeRO-style sharding is
 layered on top in Chapter~7 and changes only the per-worker terms, not
 the total.
@@ -239,7 +239,7 @@ $g_t = \nabla \mathcal{L}(\theta_t) + \xi_t$, with
 $\mathbb{E}[\xi_t]=0$ and $\mathrm{Cov}(\xi_t) \approx \Sigma(\theta_t)/B$.
 
 \Assum\ Under A2.1 the discrete-time recursion of
-Eq.~\eqref{eq:week2-sgd} is approximated by a continuous-time SDE
+Eq.~\eqref{eq:ch2-sgd} is approximated by a continuous-time SDE
 \emph{only} when three conditions hold simultaneously: (i) $\eta$ is
 small relative to the inverse Lipschitz constant of
 $\nabla \mathcal{L}$ (so the discretization error per step is
@@ -252,9 +252,9 @@ or heavy-tailed per-example gradients — the SDE picture is
 illustrative rather than predictive.
 
 Under these assumptions, the continuous-time limit of
-Eq.~\eqref{eq:week2-sgd} is the Langevin SDE
+Eq.~\eqref{eq:ch2-sgd} is the Langevin SDE
 \begin{equation}
-\label{eq:week2-langevin}
+\label{eq:ch2-langevin}
 d\theta_t \;=\; -\nabla \mathcal{L}(\theta_t)\, dt
                 + \sqrt{\eta\,\Sigma(\theta_t)/B}\; dW_t,
 \end{equation}
@@ -277,7 +277,7 @@ it as a design-time heuristic, not a guarantee.
 Momentum introduces an exponentially-weighted moving average of past
 gradients:
 \begin{align}
-m_t &= \beta\, m_{t-1} + (1-\beta)\, g_t, \label{eq:week2-momentum-m} \\
+m_t &= \beta\, m_{t-1} + (1-\beta)\, g_t, \label{eq:ch2-momentum-m} \\
 \theta_{t+1} &= \theta_t - \eta_t\, m_t.
 \end{align}
 Geometrically, momentum acts as a low-pass filter on the gradient signal:
@@ -305,7 +305,7 @@ Let $g_t = \nabla_\theta \mathcal{L}(\theta_t)$ be the minibatch
 gradient. Adam maintains two exponential moving averages:
 \begin{align}
 m_t &= \beta_1\, m_{t-1} + (1-\beta_1)\, g_t
-       & \text{(first moment)}, \label{eq:week2-adam-m}\\
+       & \text{(first moment)}, \label{eq:ch2-adam-m}\\
 v_t &= \beta_2\, v_{t-1} + (1-\beta_2)\, g_t^2
        & \text{(second moment)},
 \end{align}
@@ -314,7 +314,7 @@ are biased toward zero in the first several steps. Adam corrects this
 bias analytically.
 
 \begin{derivation}[for Adam bias correction]
-Unroll Eq.~\eqref{eq:week2-adam-m} from $m_0 = 0$:
+Unroll Eq.~\eqref{eq:ch2-adam-m} from $m_0 = 0$:
 \begin{align*}
 m_t &= (1-\beta_1) \sum_{k=1}^{t} \beta_1^{\,t-k}\, g_k.
 \end{align*}
@@ -345,7 +345,7 @@ $v_t$ yields $\hat v_t = v_t/(1-\beta_2^{\,t})$.
 
 The parameter update becomes
 \begin{equation}
-\label{eq:week2-adam-update}
+\label{eq:ch2-adam-update}
 \theta_{t+1} \;=\; \theta_t - \eta_t\,\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon},
 \qquad
 \hat m_t = \frac{m_t}{1-\beta_1^{\,t}},
@@ -367,7 +367,7 @@ regularization is entangled with the gradient magnitude. AdamW
 \emph{decouples} weight decay by applying it directly to the parameters,
 not through the loss gradient~\citep{loshchilov2019decoupled}:
 \begin{equation}
-\label{eq:week2-adamw-update}
+\label{eq:ch2-adamw-update}
 \theta_{t+1} \;=\; \theta_t
   - \eta_t\!\left(\frac{\hat m_t}{\sqrt{\hat v_t} + \epsilon} + \lambda\,\theta_t\right).
 \end{equation}
@@ -398,7 +398,7 @@ $\sim 8$ bytes/param at fp32).
 \Ident\ Write the per-worker training memory budget, under A2.3, as
 the sum of four terms:
 \begin{equation}
-\label{eq:week2-mem-budget}
+\label{eq:ch2-mem-budget}
 \boxed{\;M_{\mathrm{total}}
   \;=\; \underbrace{b_{\mathrm p}\, N}_{\text{params}}
      + \underbrace{b_{\mathrm g}\, N}_{\text{grads}}
@@ -430,7 +430,7 @@ static term across workers; activation checkpointing attacks
 $M_{\mathrm{act}}$; QLoRA and 8-bit optimizers~\citep{dettmers20228bit}
 reduce $b_{\mathrm o}$; quantization at serving time (Chapter~8) reduces
 $b_{\mathrm p}$ further. Chapter~7 revisits the sharded form of
-Eq.~\eqref{eq:week2-mem-budget}.
+Eq.~\eqref{eq:ch2-mem-budget}.
 
 \subsection{Learning Rate Schedules}
 
@@ -486,7 +486,7 @@ once over the entire run.
 
 Figure~\ref{fig:lr_schedule} overlays the three schedules discussed
 above on a common axis; for the figure, recall from
-\S\ref{sec:week2-notation} the four schedule parameters:
+\S\ref{sec:ch2-notation} the four schedule parameters:
 warmup length $T_w$, total training horizon $T_{\max}$, peak rate
 $\eta_{\max}$, and floor rate $\eta_{\min}$. Cosine decay uses all
 four; inverse-square-root uses only $T_w$ and $\eta_{\max}$; the
@@ -510,7 +510,7 @@ Deep Transformer stacks can produce exploding-norm gradients when
 activations or attention logits grow during early training. Gradient
 clipping bounds the global step size:
 \begin{equation}
-\label{eq:week2-gradclip}
+\label{eq:ch2-gradclip}
 g_t \;\leftarrow\; g_t \cdot \min\!\left(1, \frac{c}{\|g_t\|_2}\right),
 \qquad c \in [0.5, 2.0].
 \end{equation}
@@ -526,7 +526,7 @@ sudden increase typically precedes a loss spike by a few hundred steps.
 Consider a two-parameter toy with raw gradient
 $g_t = (3, 4) \in \R^{2}$, so $\|g_t\|_2 = 5$, and clip threshold
 $c = 1$. Since $\|g_t\|_2 > c$, the scaling factor in
-Eq.~\eqref{eq:week2-gradclip} equals $c / \|g_t\|_2 = 1/5$, and the
+Eq.~\eqref{eq:ch2-gradclip} equals $c / \|g_t\|_2 = 1/5$, and the
 clipped gradient is
 \[
 g_t^{\mathrm{clip}}
@@ -542,7 +542,7 @@ which would produce $g_t^{\mathrm{elem}} = (\min(3,1), \min(4,1)) = (1,1)$,
 pointing along a direction $45^{\circ}$ off from $\hat g$. For a
 second case, $g_t = (0.3, 0.4)$ has $\|g_t\|_2 = 0.5 < c$; the clip
 factor is $\min(1, c/0.5) = 1$ and the gradient passes through
-unchanged. This is why the activation rate of Eq.~\eqref{eq:week2-gradclip}
+unchanged. This is why the activation rate of Eq.~\eqref{eq:ch2-gradclip}
 (fraction of steps for which $\|g_t\|_2 > c$) is a clean telemetry
 signal: under stable training it is stably small; under incipient
 divergence it rises sharply well before loss explodes.
@@ -651,7 +651,7 @@ engineering decision to scale up rather than regularize down.
 \citet{kaplan2020scaling} observed that cross-entropy loss follows
 smooth power laws in model size $N$, dataset size $D$, and compute $C$:
 \begin{equation}
-\label{eq:week2-kaplan}
+\label{eq:ch2-kaplan}
 L(N) \;\approx\; \left(\frac{N_c}{N}\right)^{\alpha_N},
 \qquad
 L(D) \;\approx\; \left(\frac{D_c}{D}\right)^{\alpha_D},
@@ -675,7 +675,7 @@ a research question, not a guarantee.
 hyperparameter tuning and reached a very different conclusion. Their
 form is
 \begin{equation}
-\label{eq:week2-chinchilla}
+\label{eq:ch2-chinchilla}
 L(N, D) \;=\; E + \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}},
 \end{equation}
 with approximately $\alpha \approx 0.34$, $\beta \approx 0.28$,
@@ -723,12 +723,12 @@ b \;=\; \frac{\alpha}{\alpha + \beta}.
 With Chinchilla's fitted $\alpha \approx 0.34$, $\beta \approx 0.28$,
 we get $a \approx 0.45$, $b \approx 0.55$; the ``equal exponents''
 approximation $a \approx b \approx 0.5$ of
-Eq.~\eqref{eq:week2-chinchilla-opt} reflects the near-equality of
+Eq.~\eqref{eq:ch2-chinchilla-opt} reflects the near-equality of
 $\alpha$ and $\beta$ in the original fit.
 \end{derivation}
 
 \begin{equation}
-\label{eq:week2-chinchilla-opt}
+\label{eq:ch2-chinchilla-opt}
 N^\star \propto C^{a},
 \qquad
 D^\star \propto C^{b},
@@ -768,7 +768,7 @@ resources under A2.2; they do \emph{not} predict:
   \item the effect of data quality, deduplication, or mixture ratios.
 \end{itemize}
 They are compute-planning tools, not capability forecasts. Any
-document that uses Eq.~\eqref{eq:week2-chinchilla-opt} to argue for a
+document that uses Eq.~\eqref{eq:ch2-chinchilla-opt} to argue for a
 capability level, rather than a loss level, is conflating these two
 predictive regimes. The minimum bar for using the law as a capability
 predictor is an empirical fit on the specific task being claimed; in
@@ -777,14 +777,14 @@ law alone should be treated as out-of-scope.
 
 \begin{provedassumed}
 \emph{Proved (within the fit range).}
-Eq.~\eqref{eq:week2-chinchilla} is a regression fit whose exponents
+Eq.~\eqref{eq:ch2-chinchilla} is a regression fit whose exponents
 follow as closed-form stationarity conditions under Lagrangian
 optimization (the derivation above); the compute-optimal exponents
 $a = \beta/(\alpha+\beta)$, $b = \alpha/(\alpha+\beta)$ are
 mathematical consequences of the functional form.
 
 \emph{Assumed.}
-(i) The parametric form of Eq.~\eqref{eq:week2-chinchilla} — a power
+(i) The parametric form of Eq.~\eqref{eq:ch2-chinchilla} — a power
 law plus a constant floor — is an empirical fit, not a derivation
 from first principles.
 (ii) The exponents $(\alpha, \beta, E)$ extrapolate only within the
@@ -796,7 +796,7 @@ inference-time, activation-recompute, and MoE routing cost, and is
 only a first-order estimate.
 (iv) Loss is a proxy for capability; the gap between the two is
 what Chapter~6 calls ``emergent capabilities'' and is \emph{not}
-governed by Eq.~\eqref{eq:week2-chinchilla}.
+governed by Eq.~\eqref{eq:ch2-chinchilla}.
 \end{provedassumed}
 
 \subsection{Systems Engineering Implications}
@@ -877,7 +877,7 @@ mistake that better instrumentation would have caught.
   \item \textbf{Chapter 4 (Tokenization and Embeddings)}: embedding tables
         are the largest single contributor to optimizer state memory;
         tokenizer choice directly affects the effective $D$ in
-        Eq.~\eqref{eq:week2-chinchilla}.
+        Eq.~\eqref{eq:ch2-chinchilla}.
   \item \textbf{Chapter 5 (Transformer Architecture)}: the layer
         normalization placement (pre-LN vs post-LN)
         \citep{xiong2020onlayer} interacts with warmup schedule length.
@@ -948,7 +948,7 @@ mistake that better instrumentation would have caught.
         and final perplexity.
   \item \textbf{Bias correction.} Remove the
         $1-\beta_1^{\,t}, 1-\beta_2^{\,t}$ terms from
-        Eq.~\eqref{eq:week2-adam-update}. Measure the impact on the first
+        Eq.~\eqref{eq:ch2-adam-update}. Measure the impact on the first
         500 steps.
   \item \textbf{LR sweep.} Sweep $\eta_{\max} \in \{1, 3, 10, 30, 100\}
         \times 10^{-5}$ with a warmup+cosine schedule. Plot loss at step
@@ -973,31 +973,31 @@ derivation already given in the text.
 \begin{itemize}
   \item \textbf{Empirical-risk objective.}\
         $\mathcal{L}(\theta) = \tfrac{1}{N_{\mathrm{tok}}} \sum_i \ell(\theta; x_i)$
-        --- Eq.~\eqref{eq:week2-empirical-loss}.
+        --- Eq.~\eqref{eq:ch2-empirical-loss}.
   \item \textbf{Minibatch SGD update.}\
-        Eq.~\eqref{eq:week2-sgd}; assumption (unbiased gradient
+        Eq.~\eqref{eq:ch2-sgd}; assumption (unbiased gradient
         estimate, bounded variance) stated in §SGD-to-SDE.
   \item \textbf{SGD-to-SDE (Langevin approximation).}\
         $d\theta_t = -\nabla \mathcal{L}\, dt + \sqrt{\eta \Sigma}\, dW_t$
-        --- Eq.~\eqref{eq:week2-langevin}; requires small learning rate
+        --- Eq.~\eqref{eq:ch2-langevin}; requires small learning rate
         and approximately Gaussian gradient noise.
   \item \textbf{Adam / AdamW updates.}\
         First and second moment recursions
-        Eqs.~\eqref{eq:week2-adam-m}--\eqref{eq:week2-adam-update};
-        decoupled weight-decay form Eq.~\eqref{eq:week2-adamw-update}.
+        Eqs.~\eqref{eq:ch2-adam-m}--\eqref{eq:ch2-adam-update};
+        decoupled weight-decay form Eq.~\eqref{eq:ch2-adamw-update}.
   \item \textbf{Mixed-precision memory budget.}\
         $M = (b_{\rm param} + b_{\rm grad} + b_{\rm opt}) \cdot N + M_{\rm act}$
-        --- Eq.~\eqref{eq:week2-mem-budget}; reused by CH7 for LoRA and
+        --- Eq.~\eqref{eq:ch2-mem-budget}; reused by CH7 for LoRA and
         QLoRA budgets.
   \item \textbf{Gradient clipping.}\
         Rescale $g \leftarrow g \cdot \min(1, \tau / \|g\|)$
-        --- Eq.~\eqref{eq:week2-gradclip}.
+        --- Eq.~\eqref{eq:ch2-gradclip}.
   \item \textbf{Kaplan scaling law.}\
-        Power-law loss in $N, D, C$ --- Eq.~\eqref{eq:week2-kaplan}.
+        Power-law loss in $N, D, C$ --- Eq.~\eqref{eq:ch2-kaplan}.
   \item \textbf{Chinchilla compute-optimal.}\
         Lagrangian over $L(N,D)$ under $C = 6ND$ yields
         $N^* \propto C^a$, $D^* \propto C^{1-a}$
-        --- Eqs.~\eqref{eq:week2-chinchilla}--\eqref{eq:week2-chinchilla-opt}.
+        --- Eqs.~\eqref{eq:ch2-chinchilla}--\eqref{eq:ch2-chinchilla-opt}.
 \end{itemize}
 \end{derivledger}
 

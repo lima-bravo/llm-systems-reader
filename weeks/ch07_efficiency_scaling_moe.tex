@@ -1,5 +1,5 @@
 \section{Efficiency, Scaling, and Mixture-of-Experts}
-\label{sec:week6-moe}
+\label{sec:ch7-moe}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
@@ -98,7 +98,7 @@ before you find out the expensive way.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Decompose an LLM workload along the three axes of compute,
         memory, and bandwidth, and identify which one is binding.
@@ -188,7 +188,7 @@ memory footprint of the 1T model}. This asymmetry drives most of what
 is interesting about MoE at the systems level.
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week6-notation}
+\label{sec:ch7-notation}
 
 \begin{notationbox}
 This chapter reuses several symbols across regimes; disambiguation is
@@ -216,7 +216,7 @@ but prefer $N_e$ in new derivations.
 \textbf{Capacity and batch.}
 $B$ is total tokens per batch, $f \ge 1$ is capacity factor,
 $C = \lceil f k B / N_e \rceil$ is per-expert capacity
-(Eq.~\eqref{eq:week6-capacity}); the overflow is the number of tokens
+(Eq.~\eqref{eq:ch7-capacity}); the overflow is the number of tokens
 routed to an expert beyond $C$.
 
 \textbf{Parallelism degrees.}
@@ -243,7 +243,7 @@ worst-case cost; production stacks (DeepSpeed-MoE) recover
 throughput by overlap and expert-placement heuristics not modeled
 here.
 \textbf{(A6.3)} The unified MoE scaling law
-Eq.~\eqref{eq:week6-unified-scaling} is an \emph{empirical fit}
+Eq.~\eqref{eq:ch7-unified-scaling} is an \emph{empirical fit}
 across the dense--routed family; exponents
 $(\alpha, \beta, \gamma)$ depend on routing policy, data mixture,
 and architectural details, and extrapolation to unseen routing
@@ -346,7 +346,7 @@ bubble size, and the blast radius of a single-GPU failure.
 Pure data parallelism replicates parameters, gradients, optimizer
 state, and activations on every GPU -- memory is $O(N)$ per device
 even on huge clusters. Recall the per-worker memory budget from
-Chapter~2 Eq.~\eqref{eq:week2-mem-budget},
+Chapter~2 Eq.~\eqref{eq:ch2-mem-budget},
 $M_{\mathrm{total}} = b_p N + b_g N + b_o N + M_{\mathrm{act}}$;
 unsharded DP pays all four terms per device. The Zero Redundancy
 Optimizer (ZeRO)~\citep{rajbhandari2020zero} shards these tensors
@@ -354,10 +354,10 @@ across data-parallel ranks, reconstructing them only when needed:
 \begin{itemize}
   \item \textbf{ZeRO-1}: shard the optimizer state (the $m_t, v_t$ of
         AdamW from Chapter~2; the $b_o N$ term of
-        Eq.~\eqref{eq:week2-mem-budget}). Memory per device drops by
+        Eq.~\eqref{eq:ch2-mem-budget}). Memory per device drops by
         the DP degree with only an additional all-gather per step.
   \item \textbf{ZeRO-2}: additionally shard the gradients (the
-        $b_g N$ term of Eq.~\eqref{eq:week2-mem-budget}).
+        $b_g N$ term of Eq.~\eqref{eq:ch2-mem-budget}).
   \item \textbf{ZeRO-3}: additionally shard the parameters themselves
         (the $b_p N$ term); each forward pass all-gathers the needed
         shard, runs locally, then discards.
@@ -388,11 +388,11 @@ A dense Transformer block has an FFN:
 $\mathrm{FFN}(x) = W_2\,\sigma(W_1 x)$. An MoE block replaces this
 with an ensemble of experts $\{E_1, \ldots, E_N\}$ plus a router:
 \begin{align}
-\label{eq:week6-moe-router}
+\label{eq:ch7-moe-router}
 \mathbf{s}(x)        &= \mathrm{softmax}(W_r x)\in \Delta^{N-1}, \\
-\label{eq:week6-moe-topk}
+\label{eq:ch7-moe-topk}
 \mathcal{T}_k(x)     &= \mathrm{top}_k(\mathbf{s}(x)), \\
-\label{eq:week6-moe-out}
+\label{eq:ch7-moe-out}
 y \;=\; \mathrm{MoE}(x)
   &= \sum_{i \in \mathcal{T}_k(x)} \tilde g_i(x)\,E_i(x),
 \end{align}
@@ -420,7 +420,7 @@ operation.
 In a distributed implementation, each expert has a fixed buffer size.
 The \emph{capacity} per expert is
 \begin{equation}
-\label{eq:week6-capacity}
+\label{eq:ch7-capacity}
 C = \lceil f \cdot k \cdot B / N \rceil,
 \end{equation}
 with $B$ the total tokens in the batch, $N$ the number of experts,
@@ -434,7 +434,7 @@ empty slots.
 \begin{workedexample}[capacity factor, per-expert drop threshold]
 Consider an MoE layer with $B = 4096$ tokens per batch, $N_e = 8$
 experts, top-$k = 2$ routing, capacity factor $f = 1.25$. The
-per-expert buffer size from Eq.~\eqref{eq:week6-capacity} is
+per-expert buffer size from Eq.~\eqref{eq:ch7-capacity} is
 \[
 C \;=\; \left\lceil f \cdot k \cdot B / N_e \right\rceil
   \;=\; \lceil 1.25 \cdot 2 \cdot 4096 / 8 \rceil
@@ -468,7 +468,7 @@ through $\mathrm{top}_k$; without an auxiliary signal, the router can
 collapse onto a few experts (``the rich get richer''). Switch
 Transformer introduces
 \begin{equation}
-\label{eq:week6-load-balance}
+\label{eq:ch7-load-balance}
 \mathcal{L}_{\mathrm{aux}}
    \;=\; \alpha \cdot N_e \sum_{i=1}^{N_e} f_i \cdot P_i,
 \end{equation}
@@ -483,7 +483,7 @@ Equilibrium is $f_i = P_i = 1/N$, i.e., uniform.
 \begin{derivation}[gradient direction of the aux loss]
 Treat $f_i$ as a constant (no gradient flows through the discrete
 $\mathrm{top}_k$) and differentiate
-Eq.~\eqref{eq:week6-load-balance} with respect to router parameters
+Eq.~\eqref{eq:ch7-load-balance} with respect to router parameters
 $\phi$:
 \[
 \nabla_\phi \mathcal{L}_{\mathrm{aux}}
@@ -512,7 +512,7 @@ convergence under SGD.
 \citet{zoph2022stmoe} introduced the router $z$-loss to stabilize
 router logits:
 \begin{equation}
-\label{eq:week6-zloss}
+\label{eq:ch7-zloss}
 \mathcal{L}_z \;=\;
   \beta \cdot \E_x\!\left[\bigl(\log\!\sum_i e^{(W_r x)_i}\bigr)^2\right],
 \end{equation}
@@ -555,7 +555,7 @@ memory} because the router can select any subset per token.
 \Ident\ The following table makes the dense--MoE asymmetry concrete
 at a fixed active parameter count $N_{\mathrm{active}}$. The
 training-memory column uses the mixed-precision-AdamW coefficient
-from Eq.~\eqref{eq:week2-mem-budget} ($16 N$ bytes for weights +
+from Eq.~\eqref{eq:ch2-mem-budget} ($16 N$ bytes for weights +
 grads + optimizer, ignoring activations); the serving-memory column
 uses $2 N$ bytes (fp16/bf16 weights only, no optimizer state, no
 gradients).
@@ -599,7 +599,7 @@ Consequences:
 \Emp\ Under A6.3, \citet{clark2022unified} fit a unified scaling law
 across dense and routed models of the form
 \begin{equation}
-\label{eq:week6-unified-scaling}
+\label{eq:ch7-unified-scaling}
 L(N_{\mathrm{total}}, N_{\mathrm{active}}, D) \;\approx\;
   E + \frac{A}{N_{\mathrm{total}}^\alpha} +
       \frac{B}{N_{\mathrm{active}}^\gamma} +
@@ -621,7 +621,7 @@ Qwen-MoE, Grok-1).
 
 \begin{provedassumed}
 \emph{Proved (within the fit range).}
-Given the functional form Eq.~\eqref{eq:week6-unified-scaling}, the
+Given the functional form Eq.~\eqref{eq:ch7-unified-scaling}, the
 same Lagrangian argument used for Chinchilla in Chapter~2 applies: at
 fixed compute $C$, the loss-minimizing split between
 $N_{\mathrm{active}}$ and $D$ is determined by matching the two
@@ -629,7 +629,7 @@ power-law terms' logarithmic sensitivities. The reduction to
 Chinchilla as $N_{\mathrm{total}} = N_{\mathrm{active}}$ is algebraic.
 
 \emph{Assumed.}
-(i) The parametric form of Eq.~\eqref{eq:week6-unified-scaling} is
+(i) The parametric form of Eq.~\eqref{eq:ch7-unified-scaling} is
 an empirical fit; the separation of $N_{\mathrm{total}}$ and
 $N_{\mathrm{active}}$ contributions as additive power-law terms is
 not derived from first principles.
@@ -664,12 +664,12 @@ distribution shift mid-training.
 Router logits oscillate, sending a given token to expert 3 on one
 step and expert 7 on the next -- nominally equivalent if $E_3$ and
 $E_7$ are well-balanced, but in practice training slows to a crawl.
-The $z$-loss (Eq.\ \eqref{eq:week6-zloss}) was designed to address
+The $z$-loss (Eq.\ \eqref{eq:ch7-zloss}) was designed to address
 this; so was the switch to bf16 for router logits specifically.
 
 \subsubsection{Token Drop}
 
-When an expert's capacity $C$ (Eq.\ \eqref{eq:week6-capacity}) is
+When an expert's capacity $C$ (Eq.\ \eqref{eq:ch7-capacity}) is
 exceeded, overflow tokens are dropped. Small drop rates (few percent)
 are benign; large drop rates starve the model of signal. Monitoring
 the drop rate per layer is essential.
@@ -684,7 +684,7 @@ in ways that are hard to anticipate.
 \begin{provedassumed}
 \emph{Proved.}
 The aux-loss fixed point $f_i = P_i = 1/N_e$ is a stationary point of
-Eq.~\eqref{eq:week6-load-balance} under the constraints $\sum f_i
+Eq.~\eqref{eq:ch7-load-balance} under the constraints $\sum f_i
 = \sum P_i = 1$ (rearrangement inequality); the capacity threshold
 $C$ is an exact combinatorial bound on per-expert processed tokens.
 
@@ -755,7 +755,7 @@ V-model stage & Efficiency / MoE property & System requirement or activity \\
 Requirements & Inference latency budget & Prefer sparse if FLOPs
    dominate; dense if memory dominates. \\
  & Training compute budget & Chinchilla for dense, Eq.\,
-   \eqref{eq:week6-unified-scaling} for MoE. \\
+   \eqref{eq:ch7-unified-scaling} for MoE. \\
 \hline
 Architecture & 3D/4D parallelism mesh & Configure
    (DP, TP, PP, SP, EP) per workload. \\
@@ -866,8 +866,8 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         and batch. Report peak memory per device and wall clock per
         step.
   \item \textbf{MoE from scratch}. Implement Eq.\
-        \eqref{eq:week6-moe-router}--\eqref{eq:week6-moe-out} for a
-        small Transformer. Add Eq.\ \eqref{eq:week6-load-balance}.
+        \eqref{eq:ch7-moe-router}--\eqref{eq:ch7-moe-out} for a
+        small Transformer. Add Eq.\ \eqref{eq:ch7-load-balance}.
         Train on a toy task.
   \item \textbf{Capacity factor sweep}. Sweep $f \in \{0.8, 1.0,
         1.25, 2.0\}$. Log drop rate, load imbalance, and final loss.
@@ -875,7 +875,7 @@ Operations & Expert health dashboards & $f_i$, drop rate, router
         confirm the router collapses onto few experts within a few
         thousand steps.
   \item \textbf{Router $z$-loss stability}. Train with and without
-        Eq.\ \eqref{eq:week6-zloss}; log the max absolute router
+        Eq.\ \eqref{eq:ch7-zloss}; log the max absolute router
         logit per step.
   \item \textbf{MoE serving memory}. Profile peak resident memory
         for Mixtral-8x7B at batch 1 and batch 32; reconcile with the
@@ -889,30 +889,30 @@ Compact index of the chapter's central identities.
 \begin{itemize}
   \item \textbf{Router softmax.}\
         $g(x) = \mathrm{softmax}(W_g x)$
-        --- Eq.~\eqref{eq:week6-moe-router}.
+        --- Eq.~\eqref{eq:ch7-moe-router}.
   \item \textbf{Top-$k$ expert selection.}\
         $\mathcal{T}_k(x) = \mathrm{TopK}(g(x), k)$
-        --- Eq.~\eqref{eq:week6-moe-topk}.
+        --- Eq.~\eqref{eq:ch7-moe-topk}.
   \item \textbf{MoE output.}\
         $y = \sum_{e \in \mathcal{T}_k(x)} g_e(x) \cdot \mathrm{FFN}_e(x)$
-        --- Eq.~\eqref{eq:week6-moe-out}; per-token FLOPs scale with $k$,
+        --- Eq.~\eqref{eq:ch7-moe-out}; per-token FLOPs scale with $k$,
         not with total expert count $E$.
   \item \textbf{Capacity factor and dropped-token rate.}\
         Per-expert capacity $\lceil k T \cdot \mathrm{CF} / E \rceil$
-        --- Eq.~\eqref{eq:week6-capacity}; tokens beyond capacity
+        --- Eq.~\eqref{eq:ch7-capacity}; tokens beyond capacity
         drop or reroute.
   \item \textbf{Load-balancing loss.}\
         $\mathcal{L}_{\rm aux} = \alpha\,N_e \sum_{i=1}^{N_e} f_i \cdot P_i$
-        --- Eq.~\eqref{eq:week6-load-balance}; gradient flows
+        --- Eq.~\eqref{eq:ch7-load-balance}; gradient flows
         through $P_i$ (mean router probability) into router logits,
         even though token assignment is non-differentiable.
   \item \textbf{Router $z$-loss.}\
         Penalises router-logit norm to stabilise training
-        --- Eq.~\eqref{eq:week6-zloss}.
+        --- Eq.~\eqref{eq:ch7-zloss}.
   \item \textbf{Unified scaling (active vs total params).}\
         Loss is a function of active parameters per token, not total
-        --- Eq.~\eqref{eq:week6-unified-scaling}; this rewrites
-        Chinchilla Eq.~\eqref{eq:week2-chinchilla-opt} for sparse
+        --- Eq.~\eqref{eq:ch7-unified-scaling}; this rewrites
+        Chinchilla Eq.~\eqref{eq:ch2-chinchilla-opt} for sparse
         models.
 \end{itemize}
 \end{derivledger}

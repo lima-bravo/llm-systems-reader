@@ -1,16 +1,16 @@
 <!-- markdownlint-disable MD022 MD032 -->
-# Undergraduate Math Refresher By Week
+# Undergraduate Math Refresher By Chapter
 
-This is a lookup guide, not a linear tutorial. Use the week section you need, then jump to the references for that topic.
+This is a lookup guide, not a linear tutorial. Use the chapter section you need, then jump to the references for that topic.
 
 ## How To Use This Refresher
-- Read only the week you are currently studying.
-- If a topic was already covered in an earlier week, follow the pointer instead of re-reading everything.
+- Read only the chapter you are currently studying.
+- If a topic was already covered in an earlier chapter, follow the pointer instead of re-reading everything.
 - Use this for reminders, not full proofs.
 
 ---
 
-## Week 1 — Statistical Foundations
+## Chapter 1 — Statistical Foundations
 
 Refresh topics:
 - Probability distributions, conditional probability, chain rule, MLE/NLL.
@@ -24,7 +24,7 @@ Further study: `[R1] [R2] [R3] [R4]`
 
 ---
 
-## Week 2 — Optimization, Generalization, Scaling
+## Chapter 2 — Optimization, Generalization, Scaling
 
 Refresh topics:
 - Gradient descent, SGD, momentum, Adam/AdamW update mechanics.
@@ -35,13 +35,31 @@ Refresh topics:
 - Scaling laws and compute-optimal tradeoffs.
 
 Pointers:
-- Calibration/probability metrics: see Week 1 refresher.
+- Calibration/probability metrics: see Chapter 1 refresher.
 
 Further study: `[R5] [R6] [R7]`
 
 ---
 
-## Week 3 — Tokenization and Embeddings
+## Chapter 3 — Neural Networks
+
+Refresh topics:
+- MLP forward pass: affine transformation, activation functions (ReLU, GELU, SiLU).
+- Backpropagation as reverse-mode automatic differentiation.
+- Chain rule for composed functions; Jacobian interpretation.
+- Depth and representational capacity intuition.
+- Variance-preserving initialization (Xavier/He).
+- Universal approximation intuition and its practical limits.
+
+Pointers:
+- Gradient mechanics: see Chapter 2 refresher.
+- Softmax output head: see Chapter 1 refresher.
+
+Further study: `[R5] [R9] [R10]`
+
+---
+
+## Chapter 4 — Tokenization and Embeddings
 
 Refresh topics:
 - One-hot vectors and embedding lookup as matrix multiplication.
@@ -51,13 +69,14 @@ Refresh topics:
 - Embedding anisotropy and nearest-neighbor behavior.
 
 Pointers:
-- Softmax/probability output layer: see Week 1 refresher.
+- Softmax/probability output layer: see Chapter 1 refresher.
+- MLP and vector space intuition: see Chapter 3 refresher.
 
 Further study: `[R8] [R9] [R10]`
 
 ---
 
-## Week 4 — Transformer Architecture
+## Chapter 5 — Transformer Architecture
 
 Refresh topics:
 - Scaled dot-product attention as matrix operations.
@@ -69,14 +88,15 @@ Refresh topics:
 - Attention numerical stability motivation.
 
 Pointers:
-- Linear algebra basics: see Week 3 refresher.
-- Softmax numerics: see Week 1 refresher.
+- Linear algebra basics: see Chapter 4 refresher.
+- Softmax numerics: see Chapter 1 refresher.
+- MLP block inside Transformer: see Chapter 3 refresher.
 
 Further study: `[R9] [R11] [R12]`
 
 ---
 
-## Week 5 — Pretraining and In-Context Learning
+## Chapter 6 — Pretraining and In-Context Learning
 
 Refresh topics:
 - Autoregressive objective as conditional likelihood factorization.
@@ -87,14 +107,14 @@ Refresh topics:
 - Interpreting emergence claims cautiously.
 
 Pointers:
-- CE/perplexity/temperature math: see Week 1 refresher.
-- Optimization dynamics: see Week 2 refresher.
+- CE/perplexity/temperature math: see Chapter 1 refresher.
+- Optimization dynamics: see Chapter 2 refresher.
 
 Further study: `[R5] [R6] [R13]`
 
 ---
 
-## Week 6 — Efficiency, Scaling, MoE
+## Chapter 7 — Efficiency, Scaling, MoE
 
 Refresh topics:
 - Parallelism arithmetic (data/model/pipeline/expert).
@@ -105,14 +125,14 @@ Refresh topics:
 - Throughput/latency scaling with basic rate models.
 
 Pointers:
-- Optimization stability: see Week 2 refresher.
-- Matrix and attention complexity: see Week 4 refresher.
+- Optimization stability: see Chapter 2 refresher.
+- Matrix and attention complexity: see Chapter 5 refresher.
 
 Further study: `[R6] [R7] [R14]`
 
 ---
 
-## Week 7 — Adaptation, LoRA, Quantization
+## Chapter 8 — Adaptation, LoRA, Quantization
 
 Refresh topics:
 - Low-rank matrix factorization intuition behind LoRA.
@@ -123,14 +143,14 @@ Refresh topics:
 - Approximation error vs deployment efficiency.
 
 Pointers:
-- Matrix factorization fundamentals: see Week 3 refresher.
-- Optimization and numerics: see Week 2 refresher.
+- Matrix factorization fundamentals: see Chapter 4 refresher.
+- Optimization and numerics: see Chapter 2 refresher.
 
 Further study: `[R9] [R14] [R15]`
 
 ---
 
-## Week 8 — Alignment and Preference Optimization
+## Chapter 9 — Alignment and Preference Optimization
 
 Refresh topics:
 - Pairwise preference modeling (Bradley-Terry/logistic form).
@@ -140,14 +160,14 @@ Refresh topics:
 - Label noise and annotator disagreement effects.
 
 Pointers:
-- KL/cross-entropy foundation: see Week 1 refresher.
-- Optimization mechanics: see Week 2 refresher.
+- KL/cross-entropy foundation: see Chapter 1 refresher.
+- Optimization mechanics: see Chapter 2 refresher.
 
 Further study: `[R1] [R5] [R16]`
 
 ---
 
-## Week 9 — RAG, Tools, Evaluation
+## Chapter 10 — RAG, Tools, Evaluation
 
 Refresh topics:
 - Retrieval metrics: precision@k, recall@k, ranking tradeoffs.
@@ -158,14 +178,14 @@ Refresh topics:
 - Basic significance discipline for A/B comparisons.
 
 Pointers:
-- Embedding geometry: see Week 3 refresher.
-- Calibration/uncertainty basics: see Week 1 refresher.
+- Embedding geometry: see Chapter 4 refresher.
+- Calibration/uncertainty basics: see Chapter 1 refresher.
 
 Further study: `[R10] [R17] [R18]`
 
 ---
 
-## Week 10 — Governance and Assurance
+## Chapter 11 — Governance and Assurance
 
 Refresh topics:
 - Risk matrices and expected-impact style reasoning.
@@ -176,14 +196,14 @@ Refresh topics:
 - Claims/evidence argument structure.
 
 Pointers:
-- Evaluation caveats: see Week 9 refresher.
-- Calibration uncertainty framing: see Week 1 refresher.
+- Evaluation caveats: see Chapter 10 refresher.
+- Calibration uncertainty framing: see Chapter 1 refresher.
 
 Further study: `[R19] [R20] [R21]`
 
 ---
 
-## Week 11 — APIs, Agents, MCP
+## Chapter 12 — APIs, Agents, MCP
 
 Refresh topics:
 - Latency decomposition and throughput arithmetic.
@@ -194,14 +214,14 @@ Refresh topics:
 - Boundary reasoning with set unions/intersections.
 
 Pointers:
-- Systems scaling intuition: see Week 6 refresher.
-- Evaluation discipline: see Week 9 refresher.
+- Systems scaling intuition: see Chapter 7 refresher.
+- Evaluation discipline: see Chapter 10 refresher.
 
 Further study: `[R7] [R22] [R23]`
 
 ---
 
-## Week 12 — Human-Centric Error Model
+## Chapter 13 — Human-Centric Error Model
 
 Refresh topics:
 - Multi-axis error decomposition and confounded causes.
@@ -212,9 +232,9 @@ Refresh topics:
 - Multi-objective tradeoff surfaces (accuracy/safety/latency/cost).
 
 Pointers:
-- Calibration and uncertainty: see Week 1 refresher.
-- Eval harness and slicing: see Week 9 refresher.
-- Governance risk framing: see Week 10 refresher.
+- Calibration and uncertainty: see Chapter 1 refresher.
+- Eval harness and slicing: see Chapter 10 refresher.
+- Governance risk framing: see Chapter 11 refresher.
 
 Further study: `[R1] [R20] [R21]`
 

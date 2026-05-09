@@ -1,11 +1,11 @@
 \section{A Human-Centric Model for Understanding LLM Errors}
-\label{sec:week12-error-model}
+\label{sec:ch13-error-model}
 
 \subsection*{Setting the Scene}
 \addcontentsline{toc}{subsection}{Setting the Scene}
 
 \paragraph{The problem.}
-The eleven chapters of this book have given you the vocabulary of
+The thirteen chapters of this book have given you the vocabulary of
 the engineer who builds, trains, deploys, and governs a Large
 Language Model. That vocabulary contains terms like
 \emph{cross-entropy}, \emph{prompt injection}, \emph{lost in the
@@ -118,7 +118,7 @@ consult.
 
 \subsection{Learning Objectives}
 
-By the end of this week, you should be able to:
+By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Articulate the five axes of the human-centric error model
         (structure, meaning, context, grounding, environment) and
@@ -162,7 +162,7 @@ By the end of this week, you should be able to:
 \end{itemize}
 
 \subsection{Notation and Standing Assumptions}
-\label{sec:week12-notation}
+\label{sec:ch13-notation}
 
 \begin{notationbox}
 \textbf{Symbols.}
@@ -173,11 +173,11 @@ context (everything they know about the situation, including
 things not in $p$). The five axes can be expressed as predicates
 over these objects:
 \begin{align}
-  \mathrm{structure}(y) &= \mathbb{1}\!\left[y \in \mathcal{V}_{\mathrm{form}}\right] \label{eq:week12-structure}\\
-  \mathrm{meaning}(y) &= \mathbb{1}\!\left[y \text{ is internally consistent}\right] \label{eq:week12-meaning}\\
-  \mathrm{context}(y; s) &= \mathbb{1}\!\left[y \text{ is appropriate for } s\right] \label{eq:week12-context}\\
-  \mathrm{grounding}(y; w) &= \mathbb{1}\!\left[y \text{ is true in } w\right] \label{eq:week12-grounding}\\
-  \mathrm{environment}(p; h) &= \mathbb{1}\!\left[p \text{ encodes enough of } h\right] \label{eq:week12-environment}
+  \mathrm{structure}(y) &= \mathbb{1}\!\left[y \in \mathcal{V}_{\mathrm{form}}\right] \label{eq:ch13-structure}\\
+  \mathrm{meaning}(y) &= \mathbb{1}\!\left[y \text{ is internally consistent}\right] \label{eq:ch13-meaning}\\
+  \mathrm{context}(y; s) &= \mathbb{1}\!\left[y \text{ is appropriate for } s\right] \label{eq:ch13-context}\\
+  \mathrm{grounding}(y; w) &= \mathbb{1}\!\left[y \text{ is true in } w\right] \label{eq:ch13-grounding}\\
+  \mathrm{environment}(p; h) &= \mathbb{1}\!\left[p \text{ encodes enough of } h\right] \label{eq:ch13-environment}
 \end{align}
 where $\mathcal{V}_{\mathrm{form}}$ is the set of well-formed
 outputs for the purpose at hand (a JSON schema, a grammatical

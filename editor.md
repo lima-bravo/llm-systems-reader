@@ -4,17 +4,17 @@
 
 ---
 
-## Current status: STRONG DRAFT — not yet publication-ready
+## Current status: STRONG DRAFT — blocking structural issues resolved
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The blocking issues are structural and fixable, not conceptual.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** Resolve the five items in §A before any external review or classroom pilot. §B items are required for a commercial edition. §C items are optional enhancements.
+**Verdict:** §A is complete. Address §B items before any external review or classroom pilot.
 
 ---
 
-## §A — BLOCKING ISSUES (fix before any external review or classroom use)
+## §A — BLOCKING ISSUES ✓ RESOLVED 2026-05-09
 
-### A1. Chapter count inconsistency — HIGH RISK
+### A1. ✓ Chapter count inconsistency — FIXED
 
 Three places in the manuscript state **"eleven chapters"**:
 - `main.tex` preface (~line 96): *"The book is organised into eleven chapters"*
@@ -27,7 +27,7 @@ The actual `\input` count in `main.tex` is **twelve** week files (`week01`–`we
 
 ---
 
-### A2. Neural networks chapter: integration decision required — HIGHEST PRIORITY
+### A2. ✓ Neural networks chapter: integrated as Chapter 3 — FIXED
 
 `weeks/ch03_neural_networks.tex` is a **1,706-line draft** that is explicitly excluded from `main.tex`. Its header says future integration will renumber chapters 3–12 as 4–13. This single unresolved decision creates **two cascading problems**:
 
@@ -45,7 +45,7 @@ Neither path is wrong. The status quo — draft present in repo, excluded from b
 
 ---
 
-### A3. Math refresher chapter numbers do not match reader week numbers — STUDENT-FACING BUG
+### A3. ✓ Math refresher chapter numbers now match reader — FIXED
 
 The refresher has **13 chapters** keyed as "Chapter N Refresher." The reader has **12 weeks**. The offset arises because math_chapter03 ("Neural Networks") corresponds to the unintegrated draft.
 
@@ -68,7 +68,7 @@ Add a **cross-reference table** at the front of `math_refresh.tex`: two columns,
 
 ---
 
-### A4. "Chapter" vs "Week" terminology — inconsistency throughout
+### A4. ✓ "Chapter" terminology — unified throughout — FIXED
 
 Reader files are named `weekNN`; prose inside the files sometimes says "Chapter~1" (e.g. `week03` references "Chapter~1"). Student-facing documents should pick one canonical term and apply it everywhere. Recommend **"Chapter"** since the refresher already uses it and it is more conventional in a print textbook context. If keeping "Week," the refresher section headers must be updated to match.
 
@@ -76,7 +76,7 @@ Reader files are named `weekNN`; prose inside the files sometimes says "Chapter~
 
 ---
 
-### A5. LaTeX document class — production risk
+### A5. LaTeX document class — production risk (still pending)
 
 `\documentclass{article}` works for a draft but produces a PDF without chapters, odd/even page handling, or standard front-matter conventions expected by publishers. Before any external submission:
 
@@ -167,12 +167,12 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ## Open questions requiring author decision
 
-| Question | Options | Deadline |
-|----------|---------|----------|
-| Integrate NN chapter or defer? | See A2 above | Before any classroom pilot |
-| "Chapter" or "Week" as canonical term? | See A4 above | Before A3 fix |
-| Target document class for publisher? | `book` vs `report` | Before publisher submission |
-| Exercise authoring: author writes or commissioned? | — | Before B1 |
+| Question | Options | Status |
+|----------|---------|--------|
+| ~~Integrate NN chapter or defer?~~ | ~~See A2 above~~ | ✓ Integrated 2026-05-09 |
+| ~~"Chapter" or "Week" as canonical term?~~ | ~~See A4 above~~ | ✓ "Chapter" adopted 2026-05-09 |
+| Target document class for publisher? | `book` vs `report` | Pending — before publisher submission |
+| Exercise authoring: author writes or commissioned? | — | Pending — before B1 |
 
 ---
 

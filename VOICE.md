@@ -3,7 +3,7 @@
 This document anchors the Carl-Sagan-inspired voice used in the
 book-level introduction and the per-chapter prologues. Every prologue
 is checked against this guide before commit. The goal is consistency
-of tone across eleven chapters and a substantial preface, so that the
+of tone across thirteen chapters and a substantial preface, so that the
 reader never feels they have wandered into a different book.
 
 ## What we are imitating, and what we are not
