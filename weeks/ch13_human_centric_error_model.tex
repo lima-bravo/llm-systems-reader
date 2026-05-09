@@ -699,6 +699,48 @@ The walk shows the discipline: we did not stop at the first axis
 that passed; we did not jump to the most exotic explanation; we
 located the failure at the level where the remedy lives.
 
+It is worth pausing on the grounding failure case to name the
+mechanism that produced it, because the ladder's value to an
+engineer is greatest when it points back to the chapter where the
+fix lives.
+
+The invented ORM method --- \texttt{customers.filter\_by\_region()}
+--- is a grounding failure produced by the mechanism of Chapter~1:
+next-token prediction trains for plausibility, not for truth.
+Method call patterns of the form \texttt{object.verb\_by\_field()}
+are common in the training corpus; the model produces what is
+statistically likely given the surrounding code structure.
+There is no signal in the pretraining objective that distinguishes
+a method call that is real in the user's specific ORM version from
+one that merely fits the pattern. Notice also \emph{where} the
+failure concentrates: not in the high-level structure (filter a
+list, sort by numeric field, return names) but in a specific
+peripheral detail (the exact method name). This distribution is
+characteristic of grounding failures. The skeleton of a correct
+answer is more strongly represented in training than the specific,
+deployment-relevant details that make the skeleton executable.
+Hallucinated citations, invented API endpoints, and fabricated
+function signatures all follow the same shape: the genre is correct,
+the specific referent is not.
+
+The system-level remedy --- giving the model the actual ORM schema
+before generation --- works by changing the question from ``what is
+statistically likely'' (a pretraining question) to ``what is
+consistent with this document'' (a grounding question). Retrieval
+is not a fix to the model; it is a reframing of the task so that
+the model's native strength (conditional plausibility) is applied
+to a context that already contains the ground truth.
+
+The environment failure case carries a different lesson. No change
+to the model, no retrieval pipeline, and no schema injection will
+help if the user's intent --- what ``region'' means in their
+business --- was never written into the prompt. This failure is
+invisible from inside the model and invisible from inside the
+system. It is visible only to the user, who knows what they meant.
+The diagnostic value of the environment axis is precisely that it
+names the class of failure no engineering intervention can prevent:
+the failure that belongs to the human end of the loop.
+
 \section{Bridges to Other Weeks}
 
 \begin{itemize}
@@ -761,3 +803,63 @@ the one most likely to change shape under contact with a real user
 sitting across a real desk. The other chapters describe how the
 machine works. This one describes how to talk about what it gets
 wrong, and the talking, in the end, is most of the work.
+
+\section{What Endures and What Ages}
+\label{sec:ch13-what-endures}
+
+A reader who returns to this book in three years will find specific
+numbers out of date. The observed alignment-tax ranges will be
+different. The benchmark scores will be different. The specific
+model families will be different. Some of the architectural choices
+--- mixture-of-experts routing, specific positional encodings,
+particular KV-cache layouts --- will have been superseded.
+Re-measure the empirical claims against the current generation;
+treat them as calibration data, not as constants.
+
+Three structural observations will not change as quickly, because
+they concern the training objectives rather than the specific models
+trained under them.
+
+\textbf{The plausibility--truth gap.} As long as language models are
+trained on next-token prediction over a corpus, they optimise for
+plausibility. Plausibility and truth are correlated where the corpus
+is accurate and uncorrelated where the corpus is sparse, wrong, or
+silent. Scaling the model and the corpus narrows the practical gap
+on the distribution of the training data; it does not close the
+conceptual gap, because the objective does not change. The grounding
+axis of the error model is the user-visible surface of this
+property. It will remain the most consequential axis until the
+training objective changes in a fundamental way.
+
+\textbf{The pattern-matcher problem.} A reward model trained on
+pairwise preferences is identified only up to an additive constant
+per prompt; only ordinal structure is recoverable from the signal.
+The policy trained against it learns to produce outputs the reward
+model scores highly, which is correlated with but not identical to
+what humans actually prefer in situations the reward model has not
+seen. The gap between the two --- Goodhart drift, reward hacking,
+sycophancy --- is a structural property of training preferences
+from comparisons rather than from ground truth. New preference
+algorithms narrow the gap; none close it. Knowing this is knowing
+why the alignment failure modes of Chapter~9 are not engineering
+accidents but structural consequences of the training setup.
+
+\textbf{The form-without-reference problem.} A model trained on
+linguistic form has no native mechanism for connecting tokens to
+the world the tokens describe. Retrieval, tool use, and grounding
+architectures import external reference into the context window at
+inference time; they do not solve the underlying problem
+architecturally. This is the observation that Harnad's symbol-
+grounding problem, Bender and Koller's octopus argument, and a
+large body of empirical hallucination research all converge on from
+different directions. It is not a claim that the models are useless;
+it is a claim about what kind of thing they are and therefore what
+kind of failure to expect from them and what kind of engineering
+to reach for.
+
+These three are the load-bearing walls of the current architecture.
+The error model in this chapter is the user-facing vocabulary for
+the same set of facts. A practitioner who holds both --- the
+mechanism and the vocabulary --- can navigate the technology as it
+changes without having to rebuild intuition from scratch each time
+a new model family arrives.

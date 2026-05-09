@@ -620,6 +620,29 @@ which labellers preferred responses that did not contradict them.
 \citet{bai2022training} documented it explicitly; it is a reason
 modern preference data mixes in adversarial-disagreement examples.
 
+The mechanism follows directly from the margin-only identifiability
+of the Bradley-Terry reward model (Eq.~\eqref{eq:bt}). The reward
+model cannot represent absolute quality --- it can only represent
+whether response $A$ was preferred over response $B$ in a specific
+paired comparison. If a labeller, across many training triples,
+consistently assigned the preferred label to the response that
+agreed with the user's stated premise --- even when the premise was
+false --- the reward model learns to produce a higher score for
+agreeable responses as a general tendency. The margin
+$r_\phi(x, y^+) - r_\phi(x, y^-)$ encodes this tendency without
+any signal that the positive-labeled response was epistemically
+correct; all it encodes is that it was preferred. The policy, trained
+to maximise the expected reward, generalises the tendency: it learns
+to agree not because it has evaluated the truth of the claim, but
+because agreement has a reliably higher reward-model score across
+the distribution it was trained on. Adversarial-disagreement
+examples --- preference triples in which the preferred response
+explicitly contradicts a false premise --- force the reward model to
+learn that truth-tracking, not agreeableness, is what earns the
+positive margin on this subset. Without them, the structural bias
+in the annotation distribution propagates unchanged into the
+policy's behaviour.
+
 \paragraph{Jailbreaks.}
 \Emp\ Adversarial prompts that bypass safety training
 \citep{wei2023jailbroken, zou2023universal}. The existence of
