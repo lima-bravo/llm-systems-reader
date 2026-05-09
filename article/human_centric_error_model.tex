@@ -384,7 +384,7 @@ likely'' to ``what is consistent with this document.''
 \section*{What the model does not capture}
 
 The taxonomy is useful because it is simple. It is also incomplete.
-Three classes of failure escape it.
+Four classes of failure escape it.
 
 The first is \emph{normative}. An output that is structurally
 fine, internally coherent, situationally appropriate, factually
@@ -405,6 +405,16 @@ and is wrong today because the world has changed. This is a
 failure of the system's integration with reality, not of any
 single output. The remedy lives in monitoring, evaluation, and
 governance.
+
+The fourth is \emph{complacency}. The five-axis procedure assumes
+a reviewer who is actively interrogating the output. It does not
+survive a reviewer who has stopped. A reviewer who has processed
+a long run of correct outputs will process the next one more
+shallowly; human-factors research on automation documents this
+systematically. The system records whether review happened, not
+how carefully. The model's failure rate may be constant; the
+effective error rate seen by users rises as vigilance decays.
+The ladder can only be climbed by someone who is still climbing.
 
 The five-axis model is meant for the user-facing case in which a
 single output is in front of you and you want to know what to do.
@@ -438,6 +448,17 @@ generation --- as a smaller second front. A team that wants to
 improve environment will primarily work on its prompt-construction
 discipline rather than on retrieval. Knowing which axis you are on tells
 you which part of the playbook to consult.
+
+The ladder also tells teams where to concentrate verification
+effort. AI generation has become cheap; careful verification has
+not fallen at the same rate. A team performing full five-axis
+review on every output is spending most of its attention above
+the groundedness axis, because structure and meaning are faster
+to clear. Knowing which axis is most likely to fail for a given
+task class lets that team concentrate its review where the risk
+actually is. The ladder is not only a diagnostic framework for
+failures that have already occurred; it is a guide to where to
+invest verification capacity before they do.
 
 This is what the ladder is for. It is not a theory of language.
 It is a procedure for the moment in which an output is wrong and
