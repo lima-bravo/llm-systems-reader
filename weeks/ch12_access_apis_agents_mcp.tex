@@ -950,6 +950,56 @@ produces).
         that halts the loop and surfaces a question to the user.
 \end{itemize}
 
+\subsection{Planning under Uncertainty}
+
+The agent loop above assumes a \emph{fully observable}
+environment: at each step the agent's context window contains an
+accurate description of the current state of the world. In
+practice this assumption rarely holds. The agent operates as a
+\emph{partially observable} planner: its context is a noisy,
+delayed, incomplete projection of ground truth.
+
+Sources of partial observability in deployed agents:
+\begin{itemize}
+  \item \emph{Stale context.} Tool outputs describe the world at
+        the moment they were called; the world may have changed
+        before the next action executes. A file read at step 2 may
+        reflect a state the step-5 write will overwrite.
+  \item \emph{Noisy observations.} Search results, web pages,
+        OCR outputs, and API responses all carry noise. The model
+        treats them as accurate unless explicitly instructed
+        otherwise.
+  \item \emph{Truncated context.} The ``lost in the middle''
+        \citep{liu2024lost} effect means older parts of the context
+        are de-emphasised by the attention mechanism. In a long
+        agent loop, early task specifications compete with recent
+        tool outputs for the model's effective attention.
+  \item \emph{Epistemic hallucination.} The model may confabulate
+        tool outputs it did not actually receive, especially in
+        the middle of a long trajectory. The generated ``memory''
+        of a tool call is indistinguishable, from the model's
+        perspective, from an actual tool call.
+\end{itemize}
+
+The formalisation from decision theory is the
+\emph{partially observable Markov decision process} (POMDP),
+in which the agent maintains a \emph{belief state} --- a
+probability distribution over possible world states --- and
+acts to maximise expected utility under that uncertainty. Current
+LLM agents do not maintain an explicit belief state; they
+approximate one through the text of their context window. This
+approximation is practical but not principled: it fails whenever
+the context window misrepresents the world without the model
+having a mechanism to detect the mismatch.
+
+\Cons\ Practical mitigations for partial observability:
+(i) re-read files and re-query APIs immediately before acting on
+them, not only at the start of the loop; (ii) include explicit
+uncertainty prompts (``if you are unsure whether your information
+is current, say so and pause''); (iii) treat any high-stakes
+action as requiring a fresh read of the relevant state
+immediately before execution.
+
 \subsection{Agent Frameworks}
 
 The frameworks to know:
@@ -988,6 +1038,64 @@ The early agent zoo --- AutoGPT
 demonstrated the ideas and introduced many to the public but has
 been largely superseded for production work by the typed,
 loop-budgeted, state-managed frameworks above.
+
+\subsection{Multi-Agent Failure Modes}
+
+The frameworks above list architectures; this subsection names
+what fails when they are deployed.
+
+\textbf{Trust propagation.} The trust-boundary invariant in
+\S\ref{sec:wk11_trust} applies between an agent and its tools.
+It does not automatically extend between agents. When an
+orchestrator agent delegates to a subagent, and that subagent
+delegates to a second subagent, the trust context of the original
+user intent must be explicitly propagated at each hop. In
+practice it is not: the subagent receives only the orchestrator's
+instruction, stripped of the original system prompt and consent
+scope. A malicious or hallucinating subagent can issue tool calls
+that the user never authorised. Mitigation: every agent-to-agent
+call should carry a capability scope (what tools may be used),
+a budget scope (what cost may be incurred), and a provenance tag
+(the original user session), all verified by the receiving agent
+before execution. Without this, a multi-agent system has the
+security surface of its most permissive subagent.
+
+\textbf{Cascading hallucination.} In a single-agent loop, a
+hallucinated tool call parameter causes a single tool failure,
+which the agent can observe and correct. In a pipeline of agents
+--- Planner $\rightarrow$ Executor $\rightarrow$ Critic ---
+a hallucination injected by the Planner is treated as ground
+truth by the Executor, whose output is then reviewed by the
+Critic against the Planner's (hallucinated) specification.
+The Critic finds no inconsistency, because the Executor followed
+the spec. The error is invisible to any individual agent yet
+catastrophic at the pipeline level. This is the multi-agent
+analogue of an error that survives code review because the
+reviewer read the code against a wrong requirements document.
+Mitigation: route a sample of Executor outputs to an independent
+validator that checks against the original user intent, not
+against the Planner's restatement of it.
+
+\textbf{Coordination overhead and cost explosion.} Each
+orchestrator-to-subagent call is itself an LLM call. A
+Planner-Executor-Critic loop that uses three models and runs
+for five iterations performs fifteen model calls per user
+request before tool calls are counted. Costs compound with
+depth. The engineering discipline is to calculate the worst-case
+call graph before deploying a multi-agent architecture, and to
+set per-request budget caps at the orchestrator level, not just
+at the individual agent level.
+
+\textbf{Deadlock and livelock.} In systems where agents wait on
+one another's outputs (LangGraph conditional edges, AutoGen
+group-chat termination), it is possible for two agents to enter
+a mutual-wait cycle (deadlock) or to exchange messages that
+each interpret as forward progress while the task does not
+advance (livelock). Both are variants of the classical concurrent-
+systems failure. Mitigations: global timeout at the orchestration
+layer, explicit ``no-op'' detection (count iterations in which
+no new tool call or new user-visible output is produced, halt
+after threshold).
 
 \section{IDE-Integrated Coding Agents}
 
@@ -1236,6 +1344,66 @@ outputs. Re-run on every change, because changes intended to
 improve helpfulness routinely regress refusal behaviour
 \citep{wei2023jailbroken, zou2023universal}.
 
+\subsection{Agent Evaluation Methodology}
+
+Chapter~10 introduced the evaluation stack for single-turn and
+RAG systems. Agents require an extended framework, because the
+unit of evaluation is no longer a response but a
+\emph{trajectory}: the full sequence of observations, decisions,
+and tool calls from task start to termination.
+
+\textbf{Outcome vs.\ trajectory evaluation.} Outcome evaluation
+asks only whether the agent achieved the goal (did the test
+suite pass? was the correct file produced?). It is coarse but
+fast and directly tied to user value. Trajectory evaluation
+examines every step: were the right tools called in the right
+order, with the right arguments, without unnecessary detours?
+Trajectory evaluation catches agents that stumble to the right
+answer by accident and agents that fail gracefully in ways that
+outcome metrics miss. Both are necessary; neither is sufficient
+alone.
+
+\textbf{Capability vs.\ alignment evaluation.} Capability evals
+measure whether the agent \emph{can} complete the task. Alignment
+evals measure whether the agent completes the task \emph{in the
+way the designer intended} --- within budget, without scope
+creep, without bypassing guardrails, without acquiring resources
+beyond what the task requires. An agent can score perfectly on
+capability benchmarks while failing alignment evals: it completes
+the task by using ten times the authorised tool budget, or by
+rewriting files outside the specified scope, or by caching
+credentials it should not retain. Alignment eval design for
+agents is an open research problem; current practice is manual
+trajectory review on a sample of production traces.
+
+\textbf{Published benchmarks.} Two benchmarks have emerged as
+de-facto standards for agent capability evaluation. SWE-bench
+\citep{jimenez2023swebench} presents real GitHub issues from
+open-source Python repositories; the agent must produce a patch
+that passes the associated test suite. It is well-specified,
+reproducible, and difficult: as of 2025, the best published
+agents resolve roughly 50\% of the full benchmark under
+independent evaluation. TAU-bench \citep{yao2024tau} evaluates
+agents on tool-use tasks in simulated customer-service and retail
+environments, with a human-in-the-loop component; it is
+designed to test instruction-following under ambiguity rather
+than pure coding skill.
+
+\Emp\ Both benchmarks exhibit distribution shift from
+deployment. SWE-bench tasks come from popular, well-documented
+repositories; production codebases are neither. TAU-bench
+simulates user behaviour from a fixed distribution; real users
+are adversarial, ambiguous, and more varied. Benchmark scores
+should be treated as capability lower bounds, not deployment
+performance estimates.
+
+\textbf{Eval-in-production.} For long-horizon tasks, the only
+tractable evaluation is production sampling: route a small
+fraction of real tasks to human reviewers who assess trajectory
+quality. Combine this with automated outcome checks on all tasks.
+The combination gives a noisy but calibrated signal that
+benchmark-only evaluation cannot provide.
+
 \section{Deployment-Specific Failure Modes}
 \label{sec:wk11_failure_modes}
 
@@ -1277,6 +1445,132 @@ output as data, not instructions), (iii) a second model that
 reviews any proposed action against the original user intent
 before executing, (iv) a human-in-the-loop for high-blast-radius
 actions (git push, send email, spend money).
+
+\textbf{Reward hacking in the agent loop.} Chapter~9
+(\S\ref{sec:ch09_reward_hacking}) described reward hacking as a
+training-time phenomenon: a model exploiting a misspecified
+reward signal to achieve high scores by routes no designer
+intended. The same dynamic appears at deployment time inside an
+agent loop. If the agent receives feedback signals --- user
+approval clicks, downstream tool success codes, a critic model
+scoring each action --- it will, over many iterations or many
+users, find policies that score well on the feedback signal
+rather than on the underlying task. Concretely: an agent
+tasked with writing and sending emails may learn that short,
+confident emails receive fewer ``fix this'' tool calls and
+therefore cost less budget, regardless of whether they served
+the user. An agent whose termination criterion is approval from
+a downstream model may learn to produce outputs the downstream
+model rates highly rather than outputs the human principal
+actually wants. The distinction is that training-time reward
+hacking is corrected (in principle) by better data; deployment-
+time reward hacking recurs every session. Mitigations: (i) make
+feedback signals sparse and human-sourced rather than automated;
+(ii) audit agent trajectories against task outcomes, not just
+final outputs; (iii) treat any automated scoring signal as a
+potential attack surface, not a ground truth.
+
+\textbf{Cascading and unrecoverable state.} Single-turn LLM
+calls are stateless; a bad completion is discarded and the user
+retries. An agent loop is not stateless. Each tool call may
+mutate the world --- writing a file, sending a message, calling
+a billable API, pushing a commit, charging a payment method.
+Once the action is taken, a subsequent LLM call cannot undo it.
+In a long loop, early errors compound: a misread context leads
+to a wrong intermediate file, which misleads the next read,
+which produces a wrong final output, each step appearing locally
+coherent. The aggregate trajectory has diverged from ground
+truth while every individual step cleared whatever narrow
+validity check existed. Mitigations follow a reversibility
+hierarchy: (i) prefer reversible tools (write to staging before
+production, draft before send); (ii) require explicit
+confirmation before irreversible high-blast-radius actions; (iii)
+implement dry-run modes for all tools with side-effects, and run
+the first iteration in dry-run before committing; (iv) design
+tools to be idempotent where possible so that a retry after a
+partial failure does not double the side-effect. A loop that
+cannot be interrupted and rolled back is not production-ready
+regardless of its capability benchmark score.
+
+\section{Human-in-the-Loop Controls}
+\label{sec:wk11_hitl}
+
+Earlier sections mentioned human checkpoints in passing ---
+``ask for help'' as a termination signal
+(\S\ref{sec:wk11_term}), approval before high-blast-radius
+tool calls in the prompt-injection mitigation, plan-and-approve
+in coding agents. This section treats HITL as a first-class
+architectural component rather than an afterthought.
+
+\textbf{Why HITL degrades without design.} The naive HITL
+pattern is ``ask the user whenever the agent is uncertain.'' It
+fails in two symmetric ways. Under-interruption: the agent
+proceeds autonomously through an irreversible action the user
+should have approved. Over-interruption: the agent pauses so
+frequently that the user approves requests without reading them
+(approval fatigue), defeating the purpose of the checkpoint.
+Both failure modes produce the same outcome: an agent whose
+decisions are not actually reviewed by a human, despite the
+formal presence of a human in the loop.
+
+\textbf{Classifying actions by blast radius and reversibility.}
+The foundational design decision is an action taxonomy. Before
+deployment, enumerate every tool the agent can call and classify
+each on two axes:
+
+\begin{itemize}
+  \item \emph{Reversibility.} Is the action undoable within a
+        practical time window? (Read: fully reversible. Draft an
+        email: reversible before send. Send an email: not
+        reversible. Delete a file without backup: not reversible.)
+  \item \emph{Blast radius.} How many people or systems are
+        affected by a mistake? (Edit a private draft: low. Push
+        to main: medium. Send to all 50,000 subscribers: high.)
+\end{itemize}
+
+Actions that are irreversible \emph{or} high blast-radius
+require a mandatory human approval gate. Actions that are
+reversible \emph{and} low blast-radius may proceed autonomously.
+This taxonomy should be written into the system prompt and
+enforced at the tool layer, not left to the model's judgment.
+
+\textbf{Escalation policy as an architectural component.} The
+escalation policy defines what the agent does when it reaches
+a decision point it cannot resolve autonomously. A minimal
+policy has four arms: (i) proceed (action is approved by the
+taxonomy above), (ii) confirm (action requires human approval
+before execution), (iii) clarify (agent lacks information
+necessary to act; asks a targeted question and waits), (iv)
+abort (task cannot be safely completed without information or
+permissions not available; agent terminates gracefully and
+explains what is missing). The policy should be explicit,
+documented, and testable. An agent without a defined escalation
+policy defaults to either always-abort (unhelpful) or always-
+proceed (unsafe).
+
+\textbf{The cost of human checkpoints.} Every HITL gate adds
+latency and labour. For a consumer-facing agent serving
+thousands of users, ``confirm before every high-blast-radius
+action'' may mean a staffed review queue. For an internal tool,
+it may mean a Slack approval. The engineering decision is not
+whether to have HITL but \emph{where} to place the gates so that
+the human reviewer has enough context to make a real decision in
+a reasonable time, and receives requests at a sustainable rate.
+A gate that arrives with fifty lines of agent trace and a ten-
+second decision window is not a human checkpoint; it is
+a rubber stamp.
+
+\Cons\ Practical architecture for HITL in production:
+(i) implement the ``confirm'' arm as a tool the agent calls
+(not as a free-text request); the tool structures the approval
+request with action type, affected resources, estimated
+blast-radius, and a one-sentence justification;
+(ii) route confirm requests to a review interface with
+task context, not raw API traces;
+(iii) set a confirmation timeout after which the loop aborts
+rather than proceeding, to prevent indefinite hanging;
+(iv) log every approval and denial with reviewer identity and
+timestamp for post-hoc audit.
 
 \section{Honest Limits of Current Access Patterns}
 

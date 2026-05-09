@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI gaps filled
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in Chapter 12 have been addressed (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. Agentic AI coverage is now substantive. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -73,6 +73,29 @@ Add a **cross-reference table** at the front of `math_refresh.tex`: two columns,
 Reader files are named `weekNN`; prose inside the files sometimes says "Chapter~1" (e.g. `week03` references "Chapter~1"). Student-facing documents should pick one canonical term and apply it everywhere. Recommend **"Chapter"** since the refresher already uses it and it is more conventional in a print textbook context. If keeping "Week," the refresher section headers must be updated to match.
 
 **Action:** Grep for "Chapter~" and "Week~" cross-references in all `weeks/*.tex` files; normalize to one term.
+
+---
+
+### A6. ✓ Chapter 12 agentic AI coverage gaps — FILLED 2026-05-09
+
+A review of `ch12_access_apis_agents_mcp.tex` identified six gaps relative to a practitioner-ready treatment of agentic AI. All six have been addressed:
+
+| Gap | Status | Location in ch12 |
+|-----|--------|-----------------|
+| Reward hacking in agent loops (bridge from ch09) | ✓ Added | Deployment Failure Modes — 7th mode |
+| Cascading / unrecoverable state | ✓ Added | Deployment Failure Modes — 6th mode |
+| Multi-agent coordination failure modes | ✓ Added | New `\subsection{Multi-Agent Failure Modes}` after Agent Frameworks |
+| Planning under uncertainty / partial observability | ✓ Added | New `\subsection{Planning under Uncertainty}` after Termination |
+| Agent evaluation methodology | ✓ Added | New `\subsection{Agent Evaluation Methodology}` in eval/observability section |
+| Unified human-in-the-loop / escalation controls | ✓ Added | New `\section{Human-in-the-Loop Controls}` before Honest Limits |
+
+**Content notes:**
+- Reward hacking bridges explicitly to §\ref{sec:ch09_reward_hacking}; deployment-time vs training-time distinction is drawn clearly.
+- Cascading state includes a reversibility hierarchy and idempotency requirement for agent tools.
+- Multi-agent section covers trust propagation, cascading hallucination, coordination overhead, and deadlock/livelock.
+- Partial observability section names the POMDP framing as a bridge for readers who encounter decision-theory literature.
+- Evaluation section covers SWE-bench and TAU-bench with an empirical caveat on distribution shift.
+- HITL section introduces blast-radius/reversibility taxonomy, escalation policy arms (proceed/confirm/clarify/abort), and an engineering-consequence block for production implementation.
 
 ---
 
@@ -176,4 +199,4 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ---
 
-*Last updated: 2026-05-09. Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`. Chapter title mapping verified by grep on section headers.*
+*Last updated: 2026-05-09 (agentic AI pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content.*
