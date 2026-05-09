@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI gaps filled
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI and verification gaps filled
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in Chapter 12 have been addressed (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in Chapter 12 have been addressed (2026-05-09). Verification cost erosion has been added across ch10, ch12, and ch13 (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. Agentic AI coverage is now substantive. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. Agentic AI and verification cost coverage are now substantive. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -73,6 +73,20 @@ Add a **cross-reference table** at the front of `math_refresh.tex`: two columns,
 Reader files are named `weekNN`; prose inside the files sometimes says "Chapter~1" (e.g. `week03` references "Chapter~1"). Student-facing documents should pick one canonical term and apply it everywhere. Recommend **"Chapter"** since the refresher already uses it and it is more conventional in a print textbook context. If keeping "Week," the refresher section headers must be updated to match.
 
 **Action:** Grep for "Chapter~" and "Week~" cross-references in all `weeks/*.tex` files; normalize to one term.
+
+---
+
+### A7. ✓ Verification cost erosion — ADDED 2026-05-09
+
+The failure mode where verification overhead erodes or eliminates the economic benefit of LLM deployment was absent from all chapters. Added in three coordinated locations:
+
+| Location | Content |
+|----------|---------|
+| **ch10** `\subsection{Verification Cost Erosion}` (after LLM-as-judge) | Break-even arithmetic with formal derivation (Eq. `ch10-breakeven`, `ch10-breakeven-threshold`); worked example showing sensitivity of break-even error rate to verification ratio $v$; calibration routing problem (cannot selectively verify without an external classifier); LLM-as-judge cost circuit (correlated failures, per-call floor cost) |
+| **ch13** `\section{What the Model Does Not Capture}` | Automation complacency as the fourth case beyond the five-axis model; Parasuraman & Manzey (2010) citation; three amplifying patterns (low base-rate, plausibility of grounding failures, throughput pressure); engineering consequences (calibration cases, review accuracy metrics); cross-reference to ch10 break-even |
+| **ch12** deployment failure modes intro | Forward pointer naming verification cost erosion as a sixth failure mode, with cross-references to ch10 §verification-cost-erosion and ch13 |
+
+`references.bib` updated with `parasuraman2010complacency`.
 
 ---
 

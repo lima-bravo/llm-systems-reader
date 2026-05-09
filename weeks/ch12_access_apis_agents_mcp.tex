@@ -1538,7 +1538,14 @@ benchmark-only evaluation cannot provide.
 \label{sec:wk11_failure_modes}
 
 Five failure modes that reliably catch teams off guard, and that
-no model capability improvement eliminates:
+no model capability improvement eliminates. A sixth --- the
+erosion of deployment benefit by the cost of verifying LLM
+output --- is analysed quantitatively in
+Chapter~10 (\S\ref{sec:verification-cost-erosion}) and from
+the human-factors angle in Chapter~13; the complacency effect
+described there raises the effective user-facing error rate
+above the model's raw error rate and compounds the failure
+modes listed here.
 
 \textbf{Rate-limit fragility.} A viral launch pushes your RPM
 past quota. The model call 429's, your retry storm amplifies,

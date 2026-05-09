@@ -782,6 +782,7 @@ model is better because ROUGE went up'' without a paired human
 eval is a common and expensive error.
 
 \subsection{LLM-as-judge and its biases}
+\label{sec:wk10_llm_judge}
 
 LLM-as-judge scales to thousands of pairwise comparisons per
 dollar, but it has well-documented biases \citep{zheng2023llmjudge}.
@@ -801,6 +802,128 @@ evaluation or human calibration is required.
 
 \paragraph{Self-preference bias.} LLM judges prefer their own
 outputs. Never evaluate a model with itself as the sole judge.
+
+\subsection{Verification Cost Erosion}
+\label{sec:verification-cost-erosion}
+
+The evaluation disciplines above address whether a system is
+\emph{accurate}. This subsection addresses a distinct deployment
+question: at what error rate does the cost of verifying LLM
+output eliminate the economic benefit of using the LLM at all?
+This failure mode is systematic, routinely underestimated, and
+absent from most deployment checklists.
+
+\textbf{The break-even arithmetic.} Consider a task that costs
+$X$ in staff time to perform manually. An LLM performs the same
+task at cost $X/r$ for some speedup factor $r > 1$, but with
+error rate $\epsilon$ (fraction of outputs that are wrong).
+Wrong outputs must be caught and corrected. Let $v \in (0, 1]$
+be the \emph{verification ratio}: the fraction of staff time
+required to check and correct an LLM output relative to
+producing the output from scratch. The total cost of the
+LLM-assisted workflow per unit task is:
+\begin{equation}
+  C_{\rm LLM}(\epsilon, v)
+  \;=\; \frac{X}{r}
+        \;+\; \bigl[\epsilon \cdot v + (1 - \epsilon) \cdot s\bigr] X,
+  \label{eq:ch10-breakeven}
+\end{equation}
+where $s \ll v$ is the fraction of time a reviewer spends on a
+correct output (a quick read-through). The system saves money
+iff $C_{\rm LLM} < X$, which gives the break-even error rate:
+\begin{equation}
+  \epsilon^{\star}
+  \;=\; \frac{1 - 1/r - s}{v - s}.
+  \label{eq:ch10-breakeven-threshold}
+\end{equation}
+
+\begin{workedexample}[: document drafting at $r = 5$]
+An LLM drafts legal summaries at one-fifth the staff cost
+($r = 5$). A reviewer spends 60\% of the manual production
+time correcting an error ($v = 0.6$) and 10\% spot-checking
+a correct output ($s = 0.1$). Substituting into
+Eq.~\eqref{eq:ch10-breakeven-threshold}:
+\[
+  \epsilon^{\star}
+  = \frac{1 - 0.2 - 0.1}{0.6 - 0.1}
+  = \frac{0.7}{0.5}
+  = 1.4.
+\]
+$\epsilon^\star > 1$ means the system is profitable for any
+error rate in this scenario. Now raise $v$ to 0.9 (correction
+is nearly as costly as production, which is realistic when the
+reviewer must reconstruct the document's reasoning rather than
+simply fix it):
+\[
+  \epsilon^{\star}
+  = \frac{0.7}{0.9 - 0.1}
+  = \frac{0.7}{0.8}
+  = 0.875.
+\]
+Still profitable. But set $r = 2$ (more modest speedup, common
+in high-complexity domains) and $v = 0.9$:
+\[
+  \epsilon^{\star}
+  = \frac{1 - 0.5 - 0.1}{0.8}
+  = \frac{0.4}{0.8}
+  = 0.50.
+\]
+The system breaks even at a 50\% error rate. A real deployment
+might achieve 85\% accuracy --- well below the break-even.
+\end{workedexample}
+
+The worked example illustrates a consistent pattern: the
+break-even threshold is sensitive to $v$, and $v$ is almost
+always underestimated at design time. Teams measure how long it
+takes a subject-matter expert to verify a correct output
+(which is fast) and weight that against the LLM speedup. They
+do not adequately measure how long it takes to correct a
+wrong output, particularly when the error is subtle and
+the LLM's reasoning is not exposed.
+
+\textbf{The calibration routing problem.} A natural response
+is to verify selectively: check only the outputs most likely
+to be wrong. Chapter~1 establishes that LLMs are poorly
+calibrated --- the model's expressed confidence does not
+reliably track its accuracy. A fluently expressed hallucination
+arrives with the same textual confidence as a correct answer.
+Selective verification therefore requires an external
+classifier that routes outputs to human review; building,
+calibrating, and maintaining that classifier is a non-trivial
+engineering investment that must be added to the deployment
+cost. If no such classifier exists, the practical choice
+is between verifying all outputs (expensive, may eliminate
+the benefit) and sampling a fixed fraction (cheap, but the
+sample size required to detect a 5\% error rate at 95\%
+confidence over 1{,}000 daily outputs is roughly 220 --- a
+substantial reviewer burden).
+
+\textbf{The LLM-as-judge cost circuit.} Using a second LLM
+to verify the first (\S\ref{sec:wk10_llm_judge}) adds a
+model call per output, competes for the same token and rate
+budget, and introduces correlated failures: two models from
+the same training distribution will share distributional
+blind spots and are more likely to agree on the same wrong
+answer than two independent reviewers would be. LLM-as-judge
+is an effective tool for comparative evaluation at scale; it
+is a weaker tool for catching deployment-time errors in
+individual outputs, and it does not reduce the verification
+overhead below the cost-of-a-model-call floor.
+
+\Cons\ The practical implication is that verification cost
+must be estimated \emph{before} a deployment decision, not
+after. Measure $v$ on a representative sample of error cases
+(not correct cases). Measure the actual $r$ on the target
+task distribution (not a benchmark). Compute $\epsilon^\star$
+from Eq.~\eqref{eq:ch10-breakeven-threshold} and compare it
+to the error rate observed in pre-deployment testing. If
+the observed error rate exceeds $\epsilon^\star$, the
+deployment is expected to cost more than the manual baseline.
+Reducing $\epsilon$ (better model, better prompts, retrieval
+augmentation) and reducing $v$ (structured output formats that
+make errors machine-detectable rather than human-detectable)
+are the two levers. Both are more tractable than raising $r$,
+which is largely fixed by the task.
 
 \subsection{RAG-specific evaluation}
 \label{sec:rag-eval}
