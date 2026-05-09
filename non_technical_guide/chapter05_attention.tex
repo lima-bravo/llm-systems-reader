@@ -226,6 +226,62 @@ on what it itself contains. Second, the researcher's question
 is asking the question its embedding has decided is appropriate,
 not the question a human reader would frame.
 
+\subsection*{What produces the weights: the learned matching mechanism}
+
+The librarian analogy tells you what attention does. It leaves
+unanswered the question of how the model knows what to attend to.
+That question has an answer, and the answer is the difference
+between an analogy and a mechanism.
+
+Each token, as it passes through an attention layer, is used to
+produce two short descriptions. The first is its \emph{query}: a
+compact signal summarising what this token is currently looking for
+in the surrounding context. The second is its \emph{key}: a compact
+signal summarising what this token has on offer to tokens that
+might be looking for something. The degree to which a query and a
+key ``match'' is measured by a single number computed from the two
+signals. When the match is high, the token pays strong attention;
+when it is low, the token mostly ignores it. The process runs in
+parallel across every pair of positions in the sequence.
+
+The crucial point is that the model \emph{learned} how to produce
+queries and keys. Nothing in the design specifies that the query
+produced by a pronoun should point toward the key produced by its
+grammatical antecedent, or that the query produced by a verb
+should point toward the key produced by its subject. The training
+procedure discovered those pairings, along with hundreds of others,
+by applying billions of gradient updates to the parameters that
+produce the query and key signals.
+
+A concrete example helps. Consider the sentence: ``The trophy did
+not fit in the suitcase because it was too big.'' When the model
+processes the word ``it'', it needs to determine the referent ---
+here, the trophy. The training procedure, having seen many
+sentences of this structure, has pushed the model to produce a
+query from ``it'' that points in the direction of keys produced by
+noun phrases that tend to serve as pronoun referents. The key
+produced by ``trophy'' points back in that same direction; the
+match is high, and ``it'' attends strongly to ``trophy''. The key
+produced by ``fit'' does not point that way; the match is low.
+
+None of this was programmed. The training procedure encountered
+countless sentences where resolving a pronoun correctly was
+necessary to predict the following words, and the gradient updates
+accumulated until the model developed query and key patterns that
+reliably match across coreference relations. The mechanism is
+arithmetic. The result looks like reading comprehension.
+
+This is also why the librarian analogy is accurate about the
+outcome but incomplete about the process. The librarian knows how
+to match researchers to books because a librarian was trained on
+that skill through years of practice with real researchers and
+real questions. The Transformer knows how to match tokens to
+relevant context because it was trained on that skill through
+billions of next-word predictions. The training procedures are
+entirely different; the result --- a learned matching process that
+generalises reliably across new inputs --- is the same kind of
+thing.
+
 \subsection*{Why parallelism mattered}
 
 The recurrent networks that came before the Transformer had a

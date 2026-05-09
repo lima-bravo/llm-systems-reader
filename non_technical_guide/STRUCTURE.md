@@ -46,6 +46,17 @@ By the end of the guide they should be able to:
    the trade-offs of a real LLM product without falling into either
    credulous techno-optimism or reflexive dismissal.
 
+The standard the guide holds itself to is what we call the
+**Feynman Standard**, after Richard Feynman's popular physics
+lectures: no equations, but genuine mechanism-level comprehension.
+Feynman insisted on the difference between knowing the name of a
+thing and knowing the thing. A reader who finishes a chapter should
+be able to reason *forward* from the mechanism — to predict,
+imperfectly but directionally, what will go wrong when the mechanism
+is stressed — not only recognise failure modes by name. A passage
+that teaches vocabulary without teaching why the thing behaves as it
+does has done half the work. The Feynman Standard is the other half.
+
 ---
 
 ## Voice anchor
@@ -66,6 +77,14 @@ guide are:
   three controlling analogies, chosen for accuracy first and
   vividness second. Analogies that mislead in any important way
   are cut even when they are pretty.
+- **Mechanism over vocabulary (the Feynman Standard).** Every
+  chapter should leave the reader able to reason forward from the
+  mechanism, not only name it. An analogy that explains what
+  something is called without explaining why it behaves as it does
+  has not met the standard. Each "plain language" section must
+  include at least one subsection that closes the gap between
+  "here is what this component produces" and "here is why the
+  training / design makes it produce that".
 - **History is foreground.** The named figures of the field
   (Markov, Shannon, Turing, McCulloch and Pitts, Rosenblatt,
   Minsky, Rumelhart, Hinton, Bengio, Mikolov, Hochreiter,
@@ -378,3 +397,8 @@ chapter introduces a forward-pointing promise.
 - [ ] Voice passes the `../VOICE.md` checklist (no exclamation
       marks, no cosmic overreach, no emojis, no italicised awe, no
       invented quotations).
+- [ ] Feynman Standard met: the "plain language" section contains
+      at least one subsection explaining *why* the mechanism
+      behaves as it does, not only *what* it produces. A reader
+      who finishes the chapter can reason directionally forward
+      from the mechanism without formulas.

@@ -220,6 +220,63 @@ right places'' is a metaphor for ``corrections in the right
 mathematical directions'', which is not a thing the human
 intuition for editing has a counterpart for.
 
+\subsection*{Why the low-rank bet is usually a good one}
+
+The editor's correction analogy tells you what LoRA does. It leaves
+open the harder question: why should restricting those corrections
+to a compact form work at all? Why would the thing you want to
+change fit into a small corner of the available change-space?
+
+The answer begins with a close look at what typical adaptation
+tasks actually require. A medical institution wants the model to
+use clinical vocabulary, hedge claims about patient outcomes, and
+decline to offer unauthorised treatment recommendations. A law firm
+wants it to follow a particular citation style and flag disputed
+facts for counsel. A customer-service department wants a particular
+tone and a particular escalation threshold.
+
+These requirements have something in common: they are changes to
+the model's behavioural \emph{defaults}, not demands that it learn
+new knowledge it has never encountered. The model already knows
+what clinical vocabulary is. It already knows what a hedged
+statement looks like. It already knows several styles of refusal.
+What the adaptation is doing is tilting the model's choices
+among things it already knows how to produce --- shifting its
+defaults along a small number of behavioural axes.
+
+Think of it this way. A 70-billion-parameter model has, in
+principle, a vast space of possible behaviours --- an almost
+unimaginably large number of ways its outputs could be different
+from what they currently are. Almost none of those possible
+differences correspond to what a real adaptation task is asking
+for. Shifting from ``general assistant'' to ``assistant that
+prefers clinical vocabulary'' requires changing something
+relatively narrow and specific. The rest of the enormous
+behaviour-space --- the model's grasp of chemistry, its knowledge
+of 19th-century history, its ability to write a sonnet --- can
+stay exactly as it is.
+
+LoRA exploits this by restricting the adaptation to exactly the
+kind of change that adaptation tasks actually require: a small
+number of adjustments to the model's default tendencies, encoded
+compactly as a product of two small matrices. Because the useful
+change is narrow, the compact encoding is adequate. The redundant
+99.9\% of the parameter space is left untouched, which is also
+why catastrophic forgetting is reduced: if you do not touch the
+parameters that encode chemistry and history, you do not degrade
+the model's knowledge of chemistry and history.
+
+The bet fails when the task requires the model to acquire
+genuinely new capabilities that were absent from pretraining ---
+not to shift its defaults among things it already knows, but to
+learn something it has never encountered. A LoRA adapter trained
+on a new symbolic reasoning framework the model has never seen
+will underperform a model that was pretrained on that framework
+from the beginning. The compact encoding cannot invent capability
+from nothing; it can only redirect capability that already exists.
+Knowing this is the engineering judgment that decides whether LoRA
+is the right tool or whether a different approach is needed.
+
 \subsection*{Quantisation as the photograph compressed to a JPEG}
 
 The most useful image for understanding quantisation is the

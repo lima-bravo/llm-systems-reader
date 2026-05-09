@@ -275,6 +275,59 @@ model's machinery work. The model does not need a separate
 look-up table that says ``cat is similar to kitten''. It can
 read the similarity off the geometry.
 
+\subsection*{Why training pressure carves meaning into the space}
+
+The claim that words appearing in similar contexts end up with
+similar vectors is not a design decision. It is a consequence.
+The training procedure makes it happen without being told to, and
+understanding why is the difference between taking the geometry
+on faith and actually seeing how it arises.
+
+Consider two words: ``dog'' and ``cat''. Both appear, in English
+text, after sentences like ``I have a'', ``she is allergic to
+her neighbour's'', and ``the vet said the''. Both appear before
+words like ``food'', ``collar'', ``chased the''. From a next-token
+prediction standpoint, these two words are nearly
+interchangeable: knowing that the next word is ``dog'' tells you
+roughly the same things about what will follow as knowing it is
+``cat''.
+
+Now suppose the model has assigned ``dog'' and ``cat'' very
+different vectors. To predict well after ``dog'', it learns one
+set of patterns. To predict well after ``cat'', it learns a
+separate set of the same patterns. The same work is done twice.
+If instead the model assigns them similar vectors, both words
+arrive at the attention and feed-forward layers looking roughly
+alike, and the model only has to learn the relevant patterns
+once to predict correctly in both cases. The training
+pressure --- the relentless push to reduce prediction error
+across billions of examples --- rewards the second arrangement.
+The gradient updates accumulate in the direction of similar
+vectors for similarly-behaving words. Nobody specified this.
+It is what minimising the loss looks like.
+
+This is the distributional hypothesis made mechanistic. Harris
+and Firth observed the correlation: similar contexts, similar
+meaning. The training procedure explains the mechanism: similar
+contexts create shared prediction targets, and the cheapest way
+to meet those targets is to produce shared internal
+representations. Over enough training examples, that
+pressure is large enough to carve the geometry the word2vec
+demonstration made famous. The direction from ``man'' to
+``woman'', the direction from ``Paris'' to ``France'', the
+cluster of animal words near one another --- none of these were
+specified. All of them were the path of least resistance for a
+system trained to predict text.
+
+One consequence worth noting: the geometry encodes whatever
+statistical regularities were present in the corpus, whether
+or not those regularities reflect the world accurately. A corpus
+that consistently associates ``nurse'' with female pronouns will
+produce a geometry in which ``nurse'' points in the direction
+of ``she'' more than ``he''. That is not the model being biased
+in some separate sense; it is the model faithfully encoding what
+the corpus said. The geometry is a mirror, not a window.
+
 \subsection*{What the embedding is and is not}
 
 It is worth being careful about what the embedding does and

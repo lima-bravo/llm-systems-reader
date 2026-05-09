@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, and NTG editorial fixes complete
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, and Feynman Standard mechanism pass complete
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. NTG now meets the Feynman Standard in all three chapters where mechanism-level understanding had been absent. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -163,6 +163,24 @@ Files changed: `chapter06_pretraining_gpt.tex`, `chapter07_scaling_efficiency.te
 
 ---
 
+### A11. ✓ Feynman Standard — mechanism pass on NTG — FIXED 2026-05-09
+
+Editorial review identified three chapters where the NTG explained *what* a component produces but not *why* the training/design makes it produce that. Identified as the gap between vocabulary-and-orientation (delivered) and mechanism-level comprehension (the Feynman Standard, not yet met in those chapters).
+
+**Standard codified:**
+- `STRUCTURE.md`: Feynman Standard added to audience contract (learning outcomes), to voice anchor as a named principle, and to the cohesion checklist as a mandatory gate.
+- `chapter00_preface.tex`: Feynman Standard named and explained in the "What this book is" section; Feynman's bird/name distinction quoted and applied.
+
+**Mechanism subsections added:**
+
+| Chapter | Subsection added | Mechanism explained |
+|---------|-----------------|---------------------|
+| `chapter04_letters_to_vectors.tex` | "Why training pressure carves meaning into the space" | Next-token prediction creates shared prediction targets for words that appear in similar contexts; the cheapest path to lower loss is similar internal representations. The geometry is the residue of that pressure, not a designed feature. Bias-as-corpus-statistics consequence follows directly. |
+| `chapter05_attention.tex` | "What produces the weights: the learned matching mechanism" | Each position produces a query (what am I looking for?) and a key (what do I have to offer?). The model learned, through gradient updates on billions of next-word predictions, to produce queries and keys that match when one token is relevant to another. Pronoun-antecedent example walked through concretely. |
+| `chapter08_adapting_giant_models.tex` | "Why the low-rank bet is usually a good one" | Adaptation tasks shift behavioural defaults among things the model already knows, not acquire new knowledge. That kind of change is narrow relative to the full parameter space. LoRA exploits the narrowness. The bet fails for tasks requiring genuinely new capability absent from pretraining. |
+
+---
+
 ### A5. LaTeX document class — production risk (still pending)
 
 `\documentclass{article}` works for a draft but produces a PDF without chapters, odd/even page handling, or standard front-matter conventions expected by publishers. Before any external submission:
@@ -263,4 +281,4 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ---
 
-*Last updated: 2026-05-09 (NTG editorial pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`, all 14 `non_technical_guide/*.tex` files. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF). NTG editorial review: full read of all 14 chapters against story consistency, Carl Sagan voice, factual correctness, and completeness criteria; seven fixes applied (see §A10).*
+*Last updated: 2026-05-09 (Feynman Standard mechanism pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`, all 14 `non_technical_guide/*.tex` files. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF). NTG editorial review: full read of all 14 chapters; seven fixes applied (see §A10). Feynman Standard: standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04 (embedding geometry), ch05 (attention weight production), ch08 (LoRA low-rank justification) (see §A11).*
