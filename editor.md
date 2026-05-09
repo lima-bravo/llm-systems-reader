@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI and verification gaps filled
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, and private corpus gaps filled
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in Chapter 12 have been addressed (2026-05-09). Verification cost erosion has been added across ch10, ch12, and ch13 (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. Agentic AI and verification cost coverage are now substantive. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. Agentic AI, verification cost, and private corpus coverage are now substantive. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -73,6 +73,22 @@ Add a **cross-reference table** at the front of `math_refresh.tex`: two columns,
 Reader files are named `weekNN`; prose inside the files sometimes says "Chapter~1" (e.g. `week03` references "Chapter~1"). Student-facing documents should pick one canonical term and apply it everywhere. Recommend **"Chapter"** since the refresher already uses it and it is more conventional in a print textbook context. If keeping "Week," the refresher section headers must be updated to match.
 
 **Action:** Grep for "Chapter~" and "Week~" cross-references in all `weeks/*.tex` files; normalize to one term.
+
+---
+
+### A8. ✓ Private corpus / vocabulary gap — ADDED 2026-05-09
+
+The "missing information problem" — deploying an LLM on a private corpus (internal communications, proprietary research, enterprise documentation) that it has never seen during training — was covered by only 8 lines in ch08. Added in three coordinated locations:
+
+| Location | Content |
+|----------|---------|
+| **ch10** new `\subsection{Private Corpus Deployment: The Vocabulary Gap}` (`\label{sec:private-corpus-vocab-gap}`) — inserted after RAG failure modes, before Tool Use | Four failure layers: (1) tokenization fragmentation with BioBERT/LegalBERT motivation; (2) embedding retrieval gap — two failure shapes (same-term verbatim and synonym gap); (3) semantic collision / false-familiar problem; (4) confident confabulation of private entities. Mitigation stack in cost order: vocabulary overlap audit → glossary injection → hybrid retrieval with RRF formula (Eq. `ch10-rrf`) → domain embedding fine-tuning → vocabulary expansion + continued pretraining |
+| **ch08** new `\paragraph{Adaptation for private corpora.}` (`\label{sec:ch8_private_vocab}`) — inserted after continued pretraining paragraph | Vocabulary expansion mechanics (mean sub-token init, unfreeze embedding matrix only); domain bi-encoder fine-tuning (synthetic query generation + spot-check); data quality notes for noisy private corpora; privacy implication (fine-tuned adapter = data access control) |
+| **ch04** extended `\section{Human Factors and Failure Modes}` (`\label{sec:ch4_oov}`) + Bridges section | New bullet: private corpus fragmentation; `\Emp` block with 15%-of-word-types-at-3+-subtokens deployment gate; forward references to ch08 and ch10. Bridges to ch08/ch10 extended with private vocab cross-references |
+
+`references.bib` updated with `biobertlee2020` (Lee et al. 2020) and `legalbert2020` (Chalkidis et al. 2020).
+
+`WORK_IN_PROGRESS.md` created during drafting (now deleted after commit).
 
 ---
 
