@@ -1,0 +1,406 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 7 -- Why Bigger Sometimes Helps
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Why Bigger Sometimes Helps}
+\label{ntg:ch7}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+A modern frontier model has hundreds of billions of parameters,
+sometimes more than a trillion. The internal arithmetic of such
+a model does not fit on a single computer chip. Neither do the
+intermediate values it produces while running, nor the
+adjustments the training procedure makes to its parameters. A
+single training run, as we noted in Chapter~2, takes weeks,
+runs on tens of thousands of accelerator chips, and costs tens
+to hundreds of millions of dollars. At inference time --- when
+a user sends a query and waits for a response --- the same
+model has to answer in seconds, often under load from thousands
+of simultaneous queries.
+
+The engineering that makes this possible is the subject of this
+chapter. None of it is glamorous. Most of it is invisible to
+the user. All of it determines whether a model trains in a
+month or in a year, and whether the deployed system serves a
+query at five cents or fifty. The same engineering, perversely,
+is also what makes it economically rational to keep building
+models larger and to keep finding cleverer ways to use them.
+The answer to the question of how big a model should be is
+inseparable from the answer to how efficiently the budget can
+be spent.
+
+\subsection*{How we got here}
+
+The first models too large to fit on a single graphics card
+were trained with a technique called \emph{data parallelism}.
+The idea is simple: every worker holds a complete copy of the
+model and processes a different slice of the training data, and
+their gradient updates are averaged across workers. Data
+parallelism is conceptually clean and runs out of room the
+moment the model itself stops fitting on a single worker.
+
+The first response was \emph{tensor parallelism}, popularised
+by NVIDIA's Megatron-LM team in 2019. The idea is to split each
+matrix multiplication across multiple workers, with the workers
+exchanging partial results between them. The cost is the
+communication between workers, which dominates how fast the
+training can run. The benefit is that the model can be larger
+than any single worker.
+
+The next response was \emph{pipeline parallelism}, refined in
+Google's GPipe work and used widely thereafter. The idea is to
+put different layers of the model on different workers and to
+run mini-batches in a staggered pipeline so that no worker sits
+idle. The benefit is the same as tensor parallelism (the model
+can be larger than a worker); the cost profile is different
+(less communication-heavy, more sensitive to pipeline-bubble
+inefficiencies).
+
+A 2019 contribution from Microsoft Research called
+\emph{ZeRO} --- the \emph{Zero Redundancy Optimizer} --- pointed
+out that the bookkeeping the optimiser needs to do (the running
+averages from Adam, for instance) was occupying more memory
+than the model parameters themselves. ZeRO showed that this
+bookkeeping could be split across workers without any loss of
+correctness, and the libraries that implement the idea
+(DeepSpeed, PyTorch FSDP) became standard tools.
+
+The list goes on. There is a parallelism for splitting the
+sequence across workers (when the context window is the
+binding constraint). There is a parallelism for splitting the
+specialist subnetworks of a Mixture-of-Experts model (which we
+discuss below). There are libraries that overlap communication
+between workers with the computation that does not depend on
+that communication. There are inference-time tricks that batch
+queries together to keep the graphics cards saturated. None of
+this was in the original Transformer paper. All of it is the
+work of the engineering community in the years since. The
+infrastructure surrounding a modern model is, by some measures,
+an order of magnitude more complex than the model it serves.
+
+The other half of the chapter is sparsity. The idea that a
+neural network could be made of specialist subnetworks, with
+only a fraction of them active for any given input, is older
+than the deep learning era. Robert Jacobs, Michael Jordan, and
+their collaborators introduced \emph{adaptive mixtures of
+experts} in 1991. The idea was to train a small number of
+specialist networks alongside a learned ``gate'' that decided
+which specialist would handle each input. The idea sat largely
+dormant during the era of dense networks. Noam Shazeer and
+collaborators at Google revived it in 2017 with the
+\emph{Sparsely-Gated Mixture-of-Experts Layer}, which scaled a
+language model to 137 billion parameters with only a small
+fraction of those parameters active for any given token. The
+\emph{Switch Transformer} in 2021 simplified the routing
+further. Mistral AI's \emph{Mixtral 8x7B} in 2024 brought
+mixture-of-experts models into wide open-weight use. The
+appeal is clean: you get the parameter count of a much larger
+dense model at the per-token compute of a much smaller one,
+because most of the experts sit out most of the time.
+
+\subsection*{Where we stand}
+
+A modern training stack composes several forms of parallelism
+at once, with the choice tuned to the specific cluster's
+network topology. Mixed-precision arithmetic --- using lower-
+precision numbers for most calculations and higher-precision
+numbers only where stability requires --- reduces memory and
+increases throughput. Mixture-of-Experts layers, in production
+designs, route each token to a small fixed number of experts
+(typically two out of eight or sixteen) with auxiliary losses
+that discourage the routing from collapsing onto a few
+favourites. Inference serving stacks --- vLLM, TensorRT-LLM,
+SGLang, and their relatives --- batch queries together,
+schedule them with continuous batching, and decode with
+techniques like speculative or parallel sampling.
+
+The combined effect is that a frontier model in 2024 trains for
+roughly the same number of weeks on a cluster of roughly the
+same size as a frontier model in 2020, while being substantially
+more capable. The gain is partly from larger and better-curated
+data, partly from architectural improvements, partly from
+algorithmic improvements in the training procedure, and partly
+from the engineering work described above. Drawing precise
+attribution between these factors is difficult; the qualitative
+point is that the field is making progress on several axes at
+once, and that ``how much compute did this cost'' is a less
+useful summary than it used to be.
+
+\subsection*{What goes wrong}
+
+The dramatic failure modes of distributed training are visible:
+a network partition that hangs a job for hours before anyone
+notices, a subtle ordering bug in the communication between
+workers that corrupts gradients silently and produces a model
+that trains badly, a mixed-precision calculation that underflows
+or overflows and produces a run that has to be restarted from
+the last checkpoint. These failures are part of the operational
+reality of running a frontier training cluster, and the teams
+that operate such clusters spend a non-trivial fraction of
+their time on monitoring, recovery, and debugging.
+
+Mixture-of-experts models bring their own failure modes. The
+routing can collapse onto a handful of experts, leaving the
+rest of the experts under-trained and the model effectively
+smaller than its parameter count suggests. The routing can
+collapse the other way, sending too many tokens to a single
+expert and forcing some of them to be dropped. The auxiliary
+loss that prevents these collapses is itself a hyperparameter
+whose tuning is delicate. None of this is unfixable, but all of
+it adds operational risk that dense models do not carry.
+
+The deeper problem is that the scaling laws of Chapter~2 are a
+description of how the loss decreases with resources, not a
+guarantee that the deployed model will be useful. A model that
+has trained to a lower loss is, on average, more capable than a
+model that has not, but the relationship between the loss and
+any specific deployment property is loose. We will see this
+again in Chapter~10 when we discuss evaluation, and in
+Chapter~13 when we discuss the gap between what the model
+optimises and what the user wants.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{The Chinchilla insight, revisited}
+
+Chapter~2 introduced the Chinchilla scaling law in passing. It
+is worth stating it more carefully here because it is the
+single most consequential empirical result in the field's
+recent history.
+
+Before the Chinchilla paper of 2022, the dominant view in the
+field --- following the Kaplan paper of 2020 --- was that, given
+a fixed compute budget, you should spend most of it on
+parameters and relatively less on training data. The largest
+models of 2020 and 2021 followed this prescription. GPT-3, at
+175 billion parameters, was trained on about 300 billion
+tokens.
+
+The Chinchilla paper, by Jordan Hoffmann and a team at
+DeepMind, ran a more careful version of the experiment and
+reached a different conclusion. They found that, given a fixed
+compute budget, you should scale parameters and tokens roughly
+together, not parameters faster than tokens. Specifically: for
+each parameter in your model, you should train on roughly
+twenty tokens. By this measure, GPT-3 had been substantially
+under-trained. A model of about 70 billion parameters trained
+on 1.4 trillion tokens (the Chinchilla model itself) would, on
+the same compute budget, outperform GPT-3 substantially. The
+prediction was tested. It held.
+
+The Chinchilla finding changed how the industry budgets compute.
+Most modern frontier models are smaller in parameter count than
+GPT-3 and trained on much more data. Llama 3, released by Meta
+in 2024, was trained on more than fifteen trillion tokens; this
+is roughly fifty times the GPT-3 training set, on a model that
+has fewer parameters than GPT-3 had. The combination produces a
+much more capable model. The qualitative point is that, in the
+post-Chinchilla world, it does not pay to brag about parameter
+count. The relevant numbers are how much data was used, of what
+quality, and what compute budget was applied to it.
+
+\subsection*{Mixture-of-experts as a design pattern}
+
+The mixture-of-experts idea is best understood as the answer to
+a specific economic question: how can you have a model with
+many parameters (which seems to help capability) without paying
+the inference cost of activating all of those parameters on
+every query?
+
+The answer is to organise some of the model's parameters into
+specialist subnetworks --- the ``experts'' --- and to put a
+small \emph{router} network in front of them whose only job is
+to decide, for each new token, which experts should be
+activated. The total number of parameters in the model can be
+very large; the number of parameters actually used in producing
+any single token's output is much smaller, because only a few
+experts are activated at a time.
+
+The design has appealing properties. The total number of
+parameters scales with the number of experts; the per-token
+compute scales with the number of experts active per token,
+which is much smaller. A model with eight experts, of which two
+are activated per token, has roughly the parameter count of an
+eight-expert model and the per-token compute of a two-expert
+one. This is a real efficiency gain.
+
+The design has corresponding costs. All the experts have to be
+held in memory at inference time, even though most of them are
+inactive on most tokens. So the memory cost of an MoE model
+scales with the parameter count, even though the compute cost
+scales with the active fraction. For deployments where memory
+is the binding constraint --- consumer hardware, mobile devices,
+cost-sensitive serving --- this is a serious limitation. For
+deployments where compute is the binding constraint --- large-
+scale serving on dedicated hardware --- the trade-off is
+favourable.
+
+The other cost is operational. The routing has to be carefully
+trained to avoid collapse, the auxiliary loss has to be tuned,
+and the inference engine has to handle the variable routing
+efficiently. These are all solved problems in the open
+literature, but they add complexity that a dense model does
+not have.
+
+\subsection*{What scaling does not buy you}
+
+It is easy, when reading announcements about new frontier
+models, to fall into the assumption that capability is a single
+dimension and that bigger is uniformly better. Both halves of
+the assumption are wrong.
+
+Capability is a multidimensional thing. A model can be better
+at translation and worse at code; better at conversation and
+worse at mathematical reasoning; better at English and worse
+at Hindi. The relative balance among these capabilities depends
+on the training data mix, on the architecture, on the post-
+training, and on a great many other choices. ``Better than X''
+is a useful summary only when the ``better at what'' is also
+specified.
+
+Bigger is uniformly better only along the axes that scale with
+the chosen training data. If the training corpus does not
+contain much Mongolian, no amount of additional parameters will
+turn the model into a competent Mongolian-language assistant.
+If the training corpus does not contain much recent biological
+research, no amount of scale will let the model reason about
+post-training-cut-off discoveries. The scaling laws describe
+how the loss falls with resources, on the distribution the
+model is trained on. They do not promise behaviour outside that
+distribution. We will return to this in Chapter~10 when we
+discuss retrieval as a way of importing information the model
+was not trained on.
+
+Bigger is also not free. The energy and water cost of frontier
+training has become a public concern; the absolute numbers are
+disputed, but the trajectory is unambiguous. The economic cost
+of training the next generation of models is, to a degree that
+the industry does not always discuss publicly, restricting the
+field of organisations that can produce frontier models to a
+handful. Both of these are second-order consequences of
+scaling, and both are likely to shape the regulatory and
+geopolitical landscape over the next decade.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{The cost of inference is dominated by serving, not
+training.} A frontier model that cost a hundred million
+dollars to train will be served to billions of queries over
+its life. The training cost is amortised. The serving cost
+per query --- the cost of running the model once --- is what
+determines the unit economics of any product built on top of
+it. For most product teams the relevant number is not ``how
+much did the training cost'' but ``how much does this query
+cost'', and the latter is mostly a function of the
+infrastructure described in this chapter.
+
+\paragraph{Mixture-of-experts is an attractive design for some
+deployments.} Where the deployment can afford the memory
+footprint of all experts but is constrained on per-query
+compute, MoE provides better quality per dollar than the dense
+alternative. Where the deployment is constrained on memory --- on
+device, on consumer hardware, on cost-sensitive serving --- a
+dense model of the same active-parameter count is usually
+preferable.
+
+\paragraph{Vendor scaling claims need translation.} A model
+that is described as ``trillion-parameter'' may be a dense
+trillion-parameter model (which would be the largest ever
+publicly disclosed) or it may be a mixture-of-experts model
+whose total parameter count includes inactive experts. The two
+have different implications for capability, cost, and the
+operational complexity the vendor will pass through to the
+customer. A non-technical reader evaluating such claims should
+ask the vendor to disaggregate the parameter count by
+``parameters total'' and ``parameters active per token''.
+
+\paragraph{Scaling-law extrapolation is risky beyond the
+measured range.} The empirical regularity that loss falls
+predictably with resources has held over many orders of
+magnitude. It need not hold over the next several. There are
+plausible reasons --- exhaustion of high-quality training
+data, diminishing returns from each doubling, fundamental
+limits of next-token prediction as a training objective ---
+why the curve might bend. There are also plausible reasons
+why it might not. The honest position is that the field's
+ability to predict the capability of the next generation from
+the current one is mediocre, and that anyone making firm
+predictions in this area has overweighted whichever piece of
+evidence supports their position.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{The data wall.} The Chinchilla recipe says that
+making models better requires more training data, in roughly
+proportional measure to the number of parameters. The supply
+of high-quality training data on the public internet is finite.
+Estimates of when the supply will be exhausted vary, but
+several recent analyses suggest that the most ambitious
+training runs of the next few years will require either
+licensed proprietary data, synthetic data generated by other
+models, or both. Each of these has its own complications.
+Licensed data is expensive and concentrates value in whoever
+holds the rights. Synthetic data risks producing a closed loop
+in which models are trained on the output of other models, with
+unknown long-term consequences. The data wall is not a single
+event; it is a slow tightening of the constraint.
+
+\paragraph{The energy and infrastructure constraint.} A
+frontier training run consumes electricity on the scale of a
+small town for the duration of the run. The data centres that
+host these runs are increasingly concentrated in regions with
+favourable electricity prices and grid capacity, and several
+recent expansions have run into local opposition over water,
+land, and grid use. These are not theoretical concerns. They
+are showing up in regulatory filings, planning disputes, and
+the financial decisions of the companies involved. The
+trajectory of the field is increasingly shaped by the
+trajectory of its physical infrastructure.
+
+\paragraph{Sparse-routing collapse.} Mixture-of-experts models
+can degrade in subtle ways if the routing is not carefully
+managed. An expert that has stopped receiving tokens has
+stopped learning; an expert that is receiving more tokens than
+it can handle has stopped being a specialist. These failures
+are not visible in the loss curve directly --- the loss may
+still decrease --- but they are visible in the model's
+deployment behaviour as uneven capability across topics. An
+operator who knows the model is MoE-based should ask whether
+the developer has audited expert utilisation post-training.
+
+\paragraph{Geopolitical concentration.} The hardware required
+to train a frontier model is, at the time of writing, almost
+exclusively produced by NVIDIA and almost exclusively
+fabricated by TSMC in Taiwan. The political ramifications of
+this concentration are out of scope for this guide, but the
+operational implications are not: an organisation whose product
+depends on a frontier model is, indirectly, depending on a
+hardware supply chain whose continuity is not guaranteed. This
+is one of the under-discussed risks in the LLM-product space,
+and a non-technical reader evaluating long-term commitments to
+LLM-based products should be aware of it.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~2 (the scaling-law framing) and
+Chapter~6 (the pretraining recipe) and described the
+engineering by which the scaling is actually realised. It also
+described the mixture-of-experts design as one of the more
+consequential recent moves to make scaling more efficient.
+Chapter~8 looks at the other half of the cost-control story:
+how to make a trained model adaptable without retraining it
+from scratch. Chapter~10 looks at how to make a trained model
+useful on data it was not trained on. Chapter~11 looks at the
+governance implications of the geopolitical and infrastructural
+concentration described above. The next chapter --- \emph{Adapting
+a Giant Model} --- explains how a model trained at industrial
+scale ends up answering questions about your specific company,
+your specific dataset, your specific tone.

@@ -16,16 +16,30 @@ Retrieval-augmented answering concatenates two stochastic modules: recall releva
 \textbf{Problem.} Fluent generators invent citations.
 \textbf{Insight.} Faithfulness metrics approximate hard logical entailment with softer overlap checks---engineering surrogate for impossible full semantics.
 
+\paragraph{Step D --- Sparse retrieval scoring and hybrid fusion.}
+\textbf{Problem.} Dense retrievers miss exact-match keywords; sparse retrievers miss paraphrases. Neither alone suffices for private or technical corpora.
+\textbf{Insight.} BM25 is a principled lexical scorer with IDF weighting, TF saturation, and length normalisation. Reciprocal Rank Fusion (RRF) combines BM25 and dense rankings without needing calibrated scores---just ordinal ranks.
+\textbf{Lineage.} BM25 (Robertson \& Walker, 1994 BM25 refinements); RRF (Cormack et al.\ 2009).
+\textbf{Mental model.} RRF's $k=60$ offset prevents a rank-1 result from dominating; both retrievers contribute robustly even when their score scales are incomparable.
+
 Decomposition honors Preface Step~5 linearity instinct: diagnose components before averaging them blindly.
 
 \section*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item $k$: retrieval cutoff.
+  \item $k$: retrieval cutoff (also used as the RRF offset constant, conventionally 60; context distinguishes the two).
   \item $R_k$: top-$k$ retrieved set.
   \item $G$: gold relevant set.
   \item Precision@$k$, Recall@$k$: standard ranking metrics.
-  \item $q$: query embedding/vector.
-  \item $d$: document/chunk embedding/vector.
+  \item $q$: query embedding/vector; also used as query term string.
+  \item $d$/$c$: document/chunk embedding/vector.
+  \item $t$: a query term.
+  \item $\mathrm{TF}(t,c)$: term frequency of $t$ in chunk $c$.
+  \item $\mathrm{IDF}(t)$: inverse document frequency of $t$.
+  \item $N$: corpus size (number of documents).
+  \item $\mathrm{df}(t)$: number of documents containing term $t$.
+  \item $|c|$: length of chunk $c$ in tokens; $\mathrm{avgdl}$: corpus average chunk length.
+  \item $k_1, b$: BM25 saturation and length-normalisation parameters (typical: $k_1\in[1.2,2.0]$, $b=0.75$).
+  \item $r_{\mathrm{bm25}}(c,q)$, $r_{\mathrm{dense}}(c,q)$: rank of chunk $c$ in BM25 and dense retrievals for query $q$.
 \end{itemize}
 
 \section*{What You Need To Recall Precisely}
@@ -37,7 +51,39 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
     \mathrm{Rec@}k=\frac{|R_k \cap G|}{|G|}.
   \]
   Precision stresses cleanliness of short rankings; recall stresses coverage of all positives---trade-offs arise whenever $|G|$ is large relative to $k$. Mean reciprocal rank (MRR) averages \(1/\text{rank of first relevant}\) across queries---rewarding systems that surface \emph{one} correct doc quickly rather than maximising exhaustive recall.
-  \item \textbf{Sparse vs dense retrieval:} lexical overlap and embedding similarity capture different relevance modes.
+  \item \textbf{BM25 scoring formula.}
+  For a query $q$ and chunk $c$, BM25 sums over query terms $t \in q$:
+  \[
+    \mathrm{BM25}(c,q) = \sum_{t\in q}
+      \mathrm{IDF}(t)\cdot
+      \frac{\mathrm{TF}(t,c)\cdot(k_1+1)}
+           {\mathrm{TF}(t,c) + k_1\!\left(1-b+b\cdot\dfrac{|c|}{\mathrm{avgdl}}\right)}.
+  \]
+  \emph{IDF term.} Measures how rare term $t$ is across the corpus:
+  \[
+    \mathrm{IDF}(t) = \log\!\left(\frac{N - \mathrm{df}(t) + 0.5}{\mathrm{df}(t) + 0.5}+1\right).
+  \]
+  Rare terms get high IDF; stop-words appearing in almost every document get IDF near zero.
+
+  \emph{TF saturation.} Raw term frequency is not linear: a document with 10 occurrences is not 10$\times$ more relevant than one with 1. The numerator $\mathrm{TF}(t,c)\cdot(k_1+1)$ divided by $\mathrm{TF}(t,c)+k_1$ is a saturating function that asymptotes at $(k_1+1)$ as $\mathrm{TF}\to\infty$; $k_1$ controls how fast saturation sets in.
+
+  \emph{Length normalisation.} Long documents contain more terms by chance. The $(1-b+b\cdot|c|/\mathrm{avgdl})$ denominator term penalises long documents proportionally, with $b=0$ disabling normalisation entirely and $b=1$ fully correcting for length.
+
+  \emph{Why it matters.} BM25 is the standard baseline for lexical retrieval in every RAG pipeline. Private corpora with specialised terminology (medical, legal, engineering) benefit from BM25's IDF weighting, which down-weights corpus-wide common terms and up-weights rare domain terms without any learned representation.
+
+  \item \textbf{Reciprocal Rank Fusion (RRF).}
+  Given a BM25 ranked list and a dense-embedding ranked list, the hybrid score for chunk $c$ against query $q$ is:
+  \[
+    \mathrm{RRF}(c,q) = \frac{1}{k + r_{\mathrm{bm25}}(c,q)} + \frac{1}{k + r_{\mathrm{dense}}(c,q)},
+    \qquad k = 60.
+  \]
+  Only the ordinal ranks matter---no score calibration required. The offset $k=60$ prevents rank-1 from contributing a disproportionately large $1/1$ term; it acts as a floor that smooths the contribution of highly-ranked items.
+
+  \emph{Why $k=60$?} Cormack et al.\ (2009) found empirically that $k=60$ is robust across many collection types; larger $k$ gives equal weight to all results, smaller $k$ amplifies top-ranked items. 60 is a practical default, not a derived constant.
+
+  \emph{When to use RRF.} Whenever BM25 and dense retrieval are both available (the common hybrid RAG architecture). RRF is parameter-free beyond $k$, requiring no score normalisation---scores from BM25 (typically 0--30) and dense retrievers (cosine similarity, 0--1) are on incompatible scales but ranks are not.
+
+  \item \textbf{Sparse vs dense retrieval:} lexical overlap and embedding similarity capture different relevance modes; hybrid retrieval via RRF combines both without score calibration.
   \item \textbf{Fusion methods:} rank fusion stabilizes retrieval when signals disagree.
   \item \textbf{Evaluation decomposition:} retrieval-stage errors and generation-stage errors require separate diagnostics.
   \item \textbf{Grounding metrics:} answer support must be checked against retrieved evidence, not linguistic plausibility.
@@ -46,7 +92,10 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
 \section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
   \item Define relevance and evidence assumptions.
-  \item Measure retrieval coverage/precision.
+  \item BM25 scores each chunk by IDF-weighted, length-normalised term frequency.
+  \item Dense retrieval scores each chunk by embedding cosine/dot product.
+  \item RRF fuses both ranked lists via reciprocal rank sum, no calibration required.
+  \item Measure retrieval coverage/precision (Precision@k, Recall@k, MRR).
   \item Measure generation quality conditioned on retrieved context.
   \item Measure grounding/faithfulness of final claims.
   \item Localize failure stage before proposing fix.
@@ -57,9 +106,59 @@ Decomposition honors Preface Step~5 linearity instinct: diagnose components befo
   \item \textbf{Gold relevance set:} trusted set of truly relevant items.
   \item \textbf{Precision@k:} fraction of top-$k$ retrieved items that are relevant.
   \item \textbf{Recall@k:} fraction of relevant items captured in top-$k$.
+  \item \textbf{MRR (Mean Reciprocal Rank):} average of $1/\text{rank of first relevant doc}$ across queries; rewards surfacing one correct result quickly.
+  \item \textbf{BM25:} Best Match 25; probabilistic term-weighting retrieval model with IDF, TF saturation, and length normalisation. The default sparse baseline.
+  \item \textbf{IDF (Inverse Document Frequency):} log-scaled measure of term rarity; rare terms receive higher weight.
+  \item \textbf{TF saturation:} BM25's sub-linear treatment of term frequency; a term repeated 10 times scores less than 10$\times$ a single occurrence.
+  \item \textbf{Length normalisation ($b$):} BM25 parameter controlling penalty for longer documents; $b=0.75$ is the standard default.
+  \item \textbf{Dense retrieval:} embedding-based retrieval scoring chunks by dot product or cosine similarity to a query vector.
+  \item \textbf{RRF (Reciprocal Rank Fusion):} rank-combination formula $1/(k+r_1) + 1/(k+r_2)$ that merges two ranked lists without score calibration; $k=60$ default.
+  \item \textbf{Hybrid retrieval:} architecture running both BM25 and dense retrieval in parallel, fusing results (typically via RRF).
   \item \textbf{Reranker:} second-stage scoring model for refined ranking.
   \item \textbf{Faithfulness:} proportion of answer claims supported by context.
 \end{itemize}
+
+\section*{Worked Mini Example (BM25 Single Term)}
+Corpus of $N=1000$ documents; term ``\texttt{fiduciary}'' appears in $\mathrm{df}=5$ of them. Query $q=\{\texttt{fiduciary}\}$, chunk $c$ has $\mathrm{TF}(t,c)=2$, $|c|=80$ tokens, $\mathrm{avgdl}=100$. Parameters: $k_1=1.5$, $b=0.75$.
+
+\[
+  \mathrm{IDF} = \log\!\left(\frac{1000 - 5 + 0.5}{5 + 0.5}+1\right)
+              = \log(182.4) \approx 5.21.
+\]
+\[
+  \text{length-norm denom} = 1 - 0.75 + 0.75\cdot\tfrac{80}{100} = 0.25 + 0.60 = 0.85.
+\]
+\[
+  \text{TF factor} = \frac{2 \cdot (1.5+1)}{2 + 1.5\cdot 0.85} = \frac{5.0}{3.275} \approx 1.53.
+\]
+\[
+  \mathrm{BM25}(c,q) = 5.21 \times 1.53 \approx 7.97.
+\]
+Key observations: the rare term (\texttt{fiduciary} in only 5/1000 docs) earns high IDF; the TF factor is saturated at 1.53 rather than the raw 2; the shorter-than-average chunk ($|c|/\mathrm{avgdl}=0.8$) receives a slight length bonus.
+
+\section*{Worked Mini Example (RRF Fusion)}
+Three chunks retrieved by BM25 and a dense encoder. Ranks (1-indexed):
+
+\begin{center}
+\begin{tabular}{lcc}
+Chunk & $r_{\mathrm{bm25}}$ & $r_{\mathrm{dense}}$ \\ \hline
+A & 1 & 3 \\
+B & 2 & 1 \\
+C & 3 & 2 \\
+\end{tabular}
+\end{center}
+
+RRF scores with $k=60$:
+\[
+  \mathrm{RRF}(A) = \tfrac{1}{61} + \tfrac{1}{63} \approx 0.0164 + 0.0159 = 0.0323,
+\]
+\[
+  \mathrm{RRF}(B) = \tfrac{1}{62} + \tfrac{1}{61} \approx 0.0161 + 0.0164 = 0.0325,
+\]
+\[
+  \mathrm{RRF}(C) = \tfrac{1}{63} + \tfrac{1}{62} \approx 0.0159 + 0.0161 = 0.0320.
+\]
+Final ranking: $B > A > C$. Chunk $B$ wins by being rank-1 in dense retrieval---even though it was rank-2 in BM25---because the fusion treats both signals symmetrically. The margin is small: rank differences of 1--2 near the top of the list yield very similar RRF scores due to the $k=60$ offset.
 
 \section*{Worked Mini Example (Precision and Recall@k)}
 Suppose the gold relevant set has 4 items. Top-5 retrieval returns 3 relevant items.
@@ -84,6 +183,10 @@ Action: fix retrieval stage rather than over-tuning generation prompts.
   \item Better answer fluency can hide retrieval failures.
   \item High retrieval recall can coexist with poor final answers if synthesis is weak.
   \item Metric definitions require explicit edge-case conventions.
+  \item BM25 is not a neural model --- it has no learned parameters, runs in microseconds, and degrades gracefully on unseen terminology (the term just gets zero TF). That makes it robust for cold-start private corpora before any fine-tuning is possible.
+  \item The TF saturation in BM25 is a deliberate design choice grounded in probability theory (Robertson--Sp\"{a}rck Jones weighting). It prevents one heavily repeated term from swamping the entire score.
+  \item RRF's $k=60$ offset means that rank 1 contributes $1/61$ rather than $1/1$: a roughly 60$\times$ smaller maximum score. This prevents any single system from dominating when results disagreeing strongly near the top.
+  \item Hybrid retrieval (BM25 + dense + RRF) is the practical default for RAG systems because neither modality alone is sufficient: BM25 misses paraphrases; dense retrieval misses exact-match keywords and OOV terms.
 \end{itemize}
 
 \section*{Further Refresh}

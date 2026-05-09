@@ -1,0 +1,396 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 8 -- Adapting a Giant Model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Adapting a Giant Model}
+\label{ntg:ch8}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+Picture a small product team that has just downloaded an
+open-weight 70-billion-parameter language model from one of
+the major laboratories. The model writes Python, summarises
+French literature, drafts polite refusals to requests for
+medical advice, and produces plausible recipes for cassoulet.
+What it cannot do is reliably speak in the company's tone of
+voice, follow the company's terminology conventions, or honour
+the regulatory constraints of the jurisdiction the company will
+be deploying it in.
+
+The team has neither the budget nor the hardware to retrain the
+model from scratch. They have a handful of accelerator cards
+and a directory of labelled examples particular to their
+domain. The chapter that follows is about the methods that turn
+that handful of cards and that small directory into a deployable
+adaptation.
+
+The picture is not a special case. Almost no organisation
+trains a base model from scratch; the cost is too high and the
+expertise too specialised. Almost every organisation that
+deploys a Large Language Model adapts one. The economic logic
+of the field is shaped by this fact. The frontier laboratories
+sell or release base models. Everyone else builds on top of
+them. The chapter is about the techniques --- some technical,
+some operational --- that make that building possible at the
+budget of an ordinary product team.
+
+\subsection*{How we got here}
+
+The original idea, which the field tried first and largely
+abandoned, was \emph{full fine-tuning}: take the pretrained
+model, continue training it on your domain-specific data, and
+ship the result. Full fine-tuning has the virtue of conceptual
+simplicity. It also has several practical problems. The cost
+is enormous, because the entire model has to be in memory and
+every parameter has to be updated. The result is a full-sized
+checkpoint per task, which is expensive to store and serve.
+And the procedure has a tendency to overwrite useful general-
+purpose knowledge with task-specific noise --- a phenomenon
+called \emph{catastrophic forgetting}, after the visual image
+of carefully accumulated capability being wiped out by a brief
+adaptation pass.
+
+The first response was \emph{adapters}. Neil Houlsby and his
+collaborators at Google, in 2019, proposed inserting small
+trainable layers --- so-called bottleneck layers --- into a
+pretrained Transformer and freezing everything else. The
+adapter parameters were a small fraction of the total but were
+enough to recover most of what full fine-tuning would have
+achieved. The adapter idea was good but architecturally
+invasive: it required modifying the model's structure to make
+room for the new layers.
+
+The decisive idea came in 2021 from Edward Hu and his
+collaborators at Microsoft. They called it \emph{Low-Rank
+Adaptation}, or LoRA. The technical content rests on an
+empirical observation that has held up well across many
+settings. When a pretrained model is fine-tuned on a downstream
+task, the changes to the model's weights are concentrated along
+a small number of ``directions'' in weight space --- far fewer
+than the model's parameter count would suggest. The technical
+name for this is \emph{intrinsic dimensionality}, and the
+empirical claim is that intrinsic dimensionality is small. LoRA
+exploits this by parameterising the change to each weight
+matrix as a product of two much smaller matrices, with the
+total number of trainable parameters being a tiny fraction of
+the original. The original weights are frozen; only the small
+matrices are trained.
+
+LoRA had two virtues that made it the field's default within
+about eighteen months. The first was efficiency: a LoRA
+adaptation of a 70-billion-parameter model uses on the order of
+ten million trainable parameters --- about one ten-thousandth
+of the full count. The second was modularity: a LoRA adapter
+is a small file (tens of megabytes) that can be loaded onto
+the base model at serve time, without touching the base
+weights. An organisation that has trained a hundred different
+adapters for a hundred different customers can serve all of
+them from a single base model in memory, switching between
+adapters per request. This is a clean operational picture, and
+it is the production default for most organisations adapting
+open models today.
+
+The other thread came from below. As models grew, simply
+\emph{loading} them onto an accelerator card became a problem.
+A 70-billion-parameter model in standard 16-bit precision is
+about 140 gigabytes; a single accelerator card typically has
+40 to 80 gigabytes of memory. The remedy was \emph{quantisation}:
+store the parameters in fewer bits, with some loss of precision.
+Tim Dettmers and his collaborators at the University of
+Washington showed in 2022, in a paper they called LLM.int8(),
+that with careful per-channel scaling and outlier handling an
+LLM could be served in 8-bit integers with negligible quality
+loss. Subsequent methods --- GPTQ, AWQ, SmoothQuant --- pushed
+the precision lower while preserving quality. By 2023 a
+70-billion-parameter model could be served in 4 bits at
+roughly 35 gigabytes, which fits on the cards a small team can
+plausibly afford.
+
+In 2023 Dettmers's team unified the two threads in a method
+called \emph{QLoRA}. The recipe is to quantise the base model
+to 4 bits, freeze it, and train a LoRA adapter on top of it in
+higher precision. The combination made the adaptation of
+70-billion-parameter models tractable on a single workstation-
+class graphics card. It is the production default for most
+adaptation work today.
+
+\subsection*{Where we stand}
+
+The modern view treats a deployed model not as a single
+monolithic artefact but as a pair: a large, rarely-changing
+base model stored in compressed form, and a small, frequently-
+changing adaptation stored separately. The base is shared
+across tasks and customers. The adaptation is what makes any
+particular checkpoint specific. The adaptation can be a LoRA
+adapter, a fine-tuned subset of the model's parameters, or
+sometimes just a carefully designed prompt template.
+
+Engineers at organisations that deploy adapted models manage
+their adapters the way they once managed model checkpoints --- a
+registry of versioned artefacts, with metadata about which base
+model they were trained against, which dataset, and which
+evaluation suite they passed. A serving system might host a
+dozen LoRA adapters in front of a single base, with a router
+selecting among them per request based on which customer is
+calling.
+
+Quantisation formats now include 16-bit, 8-bit, and 4-bit
+variants, each with several flavours optimised for different
+properties of the model. Newer formats explicitly designed for
+LLM serving --- the so-called NF4, for instance --- are
+information-theoretically motivated to preserve as much of the
+model's behaviour as possible at low bit depth. The choices in
+this area have stabilised enough that picking the right
+quantisation for a given deployment is more an engineering
+question than a research one.
+
+\subsection*{What goes wrong}
+
+The mathematical assumption behind LoRA --- that the directions
+of useful adaptation are few --- is empirical. For some tasks
+the assumption holds well and a small adapter recovers nearly
+all of full fine-tuning. For other tasks, especially those that
+require the model to learn substantially new behaviour rather
+than to refine existing behaviour, the small adapter
+underperforms in ways that may not show up on the benchmarks
+the team chose. Diagnosing this requires evaluation that goes
+beyond the headline numbers, which not every team does.
+
+Quantisation introduces rounding errors that are, in
+expectation, small but that can be decisive on rare or
+unusual inputs. A model that scores within a small margin of
+its full-precision counterpart on a standard benchmark may
+give noticeably worse answers on the inputs that lie outside
+the benchmark's distribution. The qualitative pattern is that
+quantisation errors disproportionately affect the model's
+behaviour on edge cases --- which is to say, on exactly the
+inputs where careful behaviour matters most.
+
+There is an operational class of failure that has nothing to
+do with the math. An adapter trained on out-of-date documents
+will produce out-of-date answers, gracefully and confidently.
+An adapter trained without a regression test suite will
+silently regress capabilities the base model had. An adapter
+trained on a dataset that was, unbeknownst to the team,
+contaminated with the test set will appear to perform much
+better than it does. None of these failures are visible from
+inspecting the adapter file. All of them are visible from
+careful evaluation, which is why the engineering practice
+around adapter management is at least as important as the
+mathematical apparatus that makes the adapters cheap.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{LoRA as the editor's correction}
+
+The most useful image for understanding LoRA is the editor's
+correction to a manuscript. The base model is the manuscript:
+hundreds of pages of carefully written prose, the work of
+months. Full fine-tuning would be rewriting the manuscript from
+scratch. LoRA is what an editor does: a few hundred small
+margin notes that, applied at the right places, change the
+manuscript's tone, its terminology, its emphasis, without
+touching most of the text.
+
+The image is faithful in its key features. The base model is
+unchanged after LoRA training; the adapter is a small set of
+corrections that overlay it. The corrections can be applied or
+removed at will, just as an editor's notes can be accepted or
+rejected. Multiple sets of corrections can be maintained
+separately --- one editor's notes for the legal version, another
+editor's notes for the marketing version, a third editor's
+notes for the version going to the regulator --- and the same
+underlying manuscript can be served with any of them, depending
+on who is asking.
+
+The image is also misleading in two ways worth noting. First,
+the corrections in LoRA are not localised to particular
+passages of the model the way an editor's notes are localised
+to particular passages of a manuscript. The corrections are
+distributed across all the model's weights, in a structured
+mathematical form that makes them small in total size but
+diffuse in influence. Second, the model is not a manuscript
+that humans read; it is a procedure that produces output, and
+the corrections affect the procedure. ``Corrections at the
+right places'' is a metaphor for ``corrections in the right
+mathematical directions'', which is not a thing the human
+intuition for editing has a counterpart for.
+
+\subsection*{Quantisation as the photograph compressed to a JPEG}
+
+The most useful image for understanding quantisation is the
+photograph compressed to a JPEG file. A high-resolution
+photograph stored in raw format is large but precise: every
+pixel's colour is recorded with full precision. The same
+photograph saved as a JPEG is much smaller, because the JPEG
+algorithm replaces the precise values with approximations
+chosen to be visually close. The JPEG is, on the whole,
+indistinguishable from the original to a casual viewer. On
+careful inspection it has visible artefacts: jagged edges
+around sharp transitions, slight banding in smooth gradients,
+loss of fine texture in high-frequency areas.
+
+Quantising a Large Language Model is the same trick. The
+parameters of the model are stored, after quantisation, in
+fewer bits per parameter, with some loss of precision. The
+loss of precision is, on the whole, indistinguishable in the
+model's typical behaviour. On careful inspection it has visible
+artefacts: degraded performance on rare inputs, reduced
+calibration, occasional surprising answers in places where the
+unquantised model would have done better. The JPEG analogy
+even extends to the trade-off curve: more aggressive
+compression saves more space but produces more visible
+artefacts, and there is a sweet spot for any given application.
+
+The cleverness of the recent quantisation work is in the
+choice of which precision to throw away where. A naive
+implementation that simply rounded all parameters to four bits
+would produce a model that did not work. The methods that work
+well --- LLM.int8(), GPTQ, AWQ, NF4, and others --- preserve
+precision in the parameters that matter most, accept loss in
+the parameters that matter less, and handle the few outlier
+parameters that have to be kept in higher precision separately.
+The result is a 4-bit model whose behaviour is much closer to
+the unquantised baseline than naive 4-bit rounding would
+suggest.
+
+\subsection*{When adaptation is appropriate, and when it is not}
+
+Several situations call for adaptation. A company that wants
+the model to use its terminology consistently --- replacing
+``client'' with ``patient'' in a medical setting, for instance,
+or honouring a particular product naming convention --- can
+adapt a model on a corpus that uses the desired terminology. A
+company that wants the model to refuse requests outside its
+domain, with a particular wording, can adapt a model on
+examples of the desired refusal. A company that wants the model
+to follow a particular response format --- always ending with a
+disclaimer, always citing sources, always producing structured
+JSON --- can adapt a model on examples of the desired format.
+
+Several situations do not call for adaptation. A company that
+wants the model to know its product manual is usually better
+served by retrieval (Chapter~10) than by adaptation: retrieval
+gives the model fresh access to the document, where adaptation
+would freeze the document into the weights and require
+retraining whenever the document changes. A company that wants
+the model to know who the current CEO is should not put that
+into the weights at all; it should put it into the prompt or
+into a tool the model can call. The general rule is that
+adaptation is appropriate for stable patterns of behaviour and
+inappropriate for rapidly-changing facts.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{The base model and the adapter are separable
+artefacts.} A team that has trained an adapter against one
+version of a base model usually has to retrain it against the
+next version. Vendors sometimes change the base model they
+serve under the same API name --- ``GPT-4'' has, over the past
+two years, referred to several different underlying models with
+different post-training. An adaptation built against one
+version of a vendor-served model can drift in behaviour when
+the vendor updates the underlying model. This is a real
+operational concern for any team building a long-lived product
+on top of a vendor-served model.
+
+\paragraph{Adapter composition is not what it appears.} An
+adapter for tone of voice and an adapter for terminology
+cannot, in general, be combined by addition: the resulting
+weights do not faithfully represent the union of behaviours.
+There is research on adapter composition; there is no clean
+recipe that works in all cases. A team that needs multiple
+behaviours from one model is usually better served by training
+a single adapter on a combined dataset than by training
+specialised adapters separately and combining them at serve
+time.
+
+\paragraph{Quantisation degrades behaviour at the tails, not
+in the middle.} Standard benchmarks usually evaluate models on
+distributions close to the training distribution. Quantisation
+errors are, in expectation, small on such distributions. They
+are, in expectation, larger on rare or out-of-distribution
+inputs. A team evaluating a quantised model should test it on
+the distribution it will actually face in deployment, not on
+the standard benchmarks alone. The quantisation budget is one
+of the more under-evaluated decisions in deployment.
+
+\paragraph{The cost story is now in serving, not in training.}
+For a team adapting an open base model, the upfront cost of
+adaptation is small (a single workstation-class GPU for a few
+hours to a few days). The ongoing cost is in serving: every
+query consumes some amount of GPU time. The unit economics of
+the resulting product depend on how aggressively the model can
+be quantised, how efficiently it can be served, and how many
+queries the model can process per second per GPU. The
+infrastructure work of Chapter~7 is what determines those
+numbers.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Catastrophic forgetting.} A model that is fine-tuned
+on a narrow corpus can lose capability that was present in the
+base model but not represented in the adaptation corpus. A
+model that is adapted on legal documents can become measurably
+worse at conversational helpfulness; a model adapted on code
+can become worse at prose. LoRA is partly designed to mitigate
+this --- by freezing the base weights, it limits the damage --- but
+it does not eliminate the problem. The fix is regression
+testing: maintaining a suite of evaluations that exercise
+capabilities that are not the target of the adaptation, and
+running them every time an adapter is updated.
+
+\paragraph{Quiet quality regressions.} A team that ships a
+quantised version of a model in place of an unquantised one,
+without testing on the deployment distribution, can introduce
+quality regressions that are invisible in the benchmark numbers
+but visible to users. The regressions tend to be at the
+edges --- on rare inputs, on long sequences, on tasks that
+require precise reasoning. The fix is, again, evaluation on
+the deployment distribution.
+
+\paragraph{Adapter drift over base updates.} An adapter trained
+against one version of a base model may behave subtly
+differently when the base is updated. Vendors that update their
+base models without notification put their customers in the
+position of debugging changes they did not make and cannot
+investigate. The fix, where possible, is to pin to a specific
+base model version and to test before any update. The fix is
+not always possible, because not all vendors expose version
+pinning.
+
+\paragraph{Confidentiality concerns in adaptation data.} The
+data used to adapt a model becomes, in a precise sense,
+encoded in the adapter. A model adapted on internal documents
+can, under the right prompts, reveal the contents of those
+documents. A team adapting a model on confidential data should
+treat the resulting adapter with the same security posture as
+the data itself --- not as a derivative work. Several of the
+high-profile data-leak incidents in LLM products have been
+adaptation-data leaks dressed up as model leaks.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~3 (the deep neural network whose
+parameters we are now adapting), Chapter~6 (the pretraining
+procedure that produced the base model), and Chapter~7 (the
+serving infrastructure within which adapters are deployed). It
+described how organisations other than the frontier laboratories
+turn open base models into products. Chapter~9 describes a
+particular kind of adaptation --- the alignment work --- that the
+frontier laboratories themselves do to turn a base model into
+an assistant. Chapter~10 describes an alternative to adaptation
+for many use cases, retrieval, which avoids freezing rapidly-
+changing knowledge into the model. Chapter~12 returns to the
+deployment of adapted models from the perspective of the
+developer who is calling them through an API. The next chapter
+--- \emph{Teaching Manners and the Cost of Doing So} --- explains
+how the alignment that turned the GPT-3 base model into ChatGPT
+actually works, and what it costs.

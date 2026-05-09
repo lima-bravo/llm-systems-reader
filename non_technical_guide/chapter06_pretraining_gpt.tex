@@ -1,0 +1,477 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 6 -- Pretraining and the Birth of GPT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Pretraining and the Birth of GPT}
+\label{ntg:ch6}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+Picture an engineer in 2018, holding a fresh implementation of
+the Transformer architecture from the previous chapter and a
+hard drive full of crawled web text. The model runs. The text
+is there. The question is what to do with the text in order to
+get a model that is, in some useful sense, fluent.
+
+The classical answer was to pick a narrow task --- machine
+translation, sentiment classification, summarisation --- and
+train the model on labelled examples of that task. The trouble
+with this answer was that labelled examples are expensive (a
+human has to produce them), that any single task is a thin
+slice of what language can be used for, and that a model
+trained only on translation has no obvious reason to be good at
+anything else. What you would want, instead, is a single
+training procedure that produced a single model that was good
+at many things --- ideally, things you had not specifically
+asked it to be good at.
+
+The procedure that emerged is now called \emph{pretraining}. It
+is the procedure of Chapter~1 (predict the next token) and
+Chapter~2 (gradient descent) and Chapter~5 (Transformer),
+applied at a scale almost no one anticipated. The result is a
+single model that is, in some broad sense, capable of being
+talked to about almost any subject the training data covered.
+The same model, after the additional steps of Chapter~9, is
+the assistant on the other side of every chat interface you
+have used in the last three years.
+
+\subsection*{How we got here}
+
+The connection between language modelling and information
+theory is older than the field. Claude Shannon, in a 1951
+paper called \emph{Prediction and Entropy of Printed English},
+estimated the predictability of the language by playing a
+guessing game with human subjects. He showed them passages of
+text with the next letter withheld, and recorded how often they
+guessed correctly. The performance of the guessers gave him a
+lower bound on how surprising the language is, and therefore on
+how well any language model could ever do. He treated the human
+guessers as the model. The connection between predicting the
+next symbol and modelling the language has been with us ever
+since.
+
+What was missing, for half a century after Shannon, was a
+sufficiently expressive learner and a sufficiently large
+corpus. Both arrived together in the 2010s. Bengio's 2003 paper
+demonstrated the principle of a neural language model. The
+2013 word2vec work demonstrated that learned representations
+of words could capture meaning in their geometry. The 2017
+Transformer demonstrated that the attention mechanism could
+support models large enough to use billions of parameters
+productively. By 2018 the pieces were on the table.
+
+The first GPT model --- the name stands, prosaically, for
+Generative Pre-trained Transformer --- was published by Alec
+Radford and his collaborators at OpenAI in June 2018. The
+architecture was a Transformer decoder. The training procedure
+was pretraining on a corpus called BookCorpus (about seven
+thousand unpublished books). The model had a hundred and ten
+million parameters. By modern standards it was tiny. The point
+of the paper was that, once the model had been pretrained on
+the books, fine-tuning it on a small amount of labelled data
+for a downstream task gave better results than training a
+specialist model from scratch on the same labelled data.
+Pretraining had become the recommended starting point.
+
+GPT-2, in February 2019, was the same idea at fifteen times the
+parameter count and several times the data. Its release was
+notable for what OpenAI did not do: they declined, for several
+months, to release the largest version of the model, citing
+concerns about possible misuse. The decision was widely
+discussed and is, in retrospect, one of the early markers of the
+field's growing sense that the artefacts it was building had
+implications beyond the academic literature. They eventually
+released the full model. Critics observed that the misuse
+predictions had largely not materialised. The episode set a
+precedent for a long series of similar decisions to come.
+
+GPT-3, in May 2020, was the same idea at a hundred and fifteen
+times the parameter count of GPT-2 --- one hundred and seventy-
+five billion parameters --- trained on hundreds of billions of
+tokens. The paper, by Tom Brown and a long list of coauthors,
+was the one that made the rest of the field sit up. It
+documented something that had not been the explicit aim of the
+training: GPT-3, simply by being shown a few examples of a task
+in its prompt, could perform that task without any further
+training. It could do arithmetic. It could translate between
+languages it had not been specifically trained to translate. It
+could solve simple word problems. The effect was not perfect,
+and it was much better at large scales than at small ones, but
+it was robust enough to be reproduced and dramatic enough to
+shift the field's expectations of what a pretrained model
+could do. The authors called the phenomenon \emph{in-context
+learning}. Two years later, the same model would be wrapped in
+the alignment work of Chapter~9 to produce ChatGPT.
+
+ChatGPT was released on 30 November 2022 as a research
+preview. It crossed a hundred million users in two months ---
+the fastest consumer product adoption of any kind in recorded
+history. The release was, in a sense, the moment a
+twenty-five-year arc of academic work suddenly became visible
+to the public. GPT-4 followed in March 2023. Claude 1, 2, and
+3 from Anthropic, Gemini from Google, Llama 1, 2, and 3 from
+Meta, and DeepSeek and Qwen from Chinese labs filled out the
+landscape over the following two years. The architectural
+ideas in all of them are, with very few exceptions, the
+Transformer of Chapter~5 trained by the procedure described in
+this chapter.
+
+\subsection*{Where we stand}
+
+A modern pretraining run has the following character. The data
+is a curated corpus on the order of trillions of tokens,
+assembled from the public web, books, code repositories,
+academic papers, and a varying mix of licensed proprietary
+sources. The data has been filtered for quality (a great deal
+of the web is repetitive, machine-generated, or simply low
+information) and deduplicated (many documents on the web are
+near-copies of one another). The data has been mixed in
+proportions that the model's developers believe will produce
+the desired balance of capabilities --- more code if the model
+is meant to be good at programming, more academic text if the
+model is meant to be good at scientific reasoning, more
+conversational data if the model is meant to be good at
+dialogue.
+
+The model is a Transformer of the kind described in Chapter~5,
+sized according to the Chinchilla scaling law of Chapter~2 to
+match the available compute and data. It is trained, for
+several weeks to several months, on a cluster of thousands of
+graphics processors. The training procedure is the gradient
+descent of Chapter~2 with the cross-entropy loss of Chapter~1.
+At the end of the training, the model is a \emph{base model}:
+fluent at completing text in the style of its training corpus,
+capable of in-context learning, but not yet capable of behaving
+as an assistant.
+
+The transformation from a base model into an assistant is the
+subject of Chapter~9. The base model is the raw material; the
+assistant is the manufactured product. The two are different
+artefacts, with different behaviours, and the language we use
+to discuss them should reflect the difference.
+
+\subsection*{What goes wrong}
+
+Pretraining on internet-scale text has costs that the loss
+function does not see.
+
+The training data contains copyrighted material, which the
+model can be induced to reproduce verbatim under the right
+prompt. The training data contains personal information, which
+the same is true of. The training data contains the prejudices
+of its authors, which the model will reproduce fluently. The
+training data contains misinformation, which the model will
+sometimes reproduce confidently. The model has no native means
+of distinguishing reliable from unreliable sources within its
+training corpus, because the training procedure does not
+include any signal about reliability --- only about how often a
+given continuation appears.
+
+The training corpus has a cut-off date. After that date, the
+model knows nothing. The world continues to change. A model
+trained on data up to October 2023 that is asked, in 2025,
+about events after that date will produce a confident answer
+that is, with respect to those events, fictional. The model has
+no native means of telling the user that the question lies past
+its cut-off. We will see in Chapter~10 how retrieval can fill
+the gap, with caveats.
+
+The phenomenon of in-context learning, while striking, is
+poorly understood. We do not have, at this writing, a settled
+account of why showing a model a handful of examples in its
+prompt can change its behaviour as much as it does. We have a
+few candidate explanations and a continuing argument among them.
+The practical implication is that designing prompts that
+reliably produce good in-context behaviour is more art than
+science, and prompts that work well in one context can fail in
+seemingly identical ones.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{What ``pretraining'' actually means}
+
+The word \emph{pretraining} is a tell. It implies that there is
+a later stage, sometimes called fine-tuning or alignment, that
+follows. Both implications are correct. The flow goes:
+
+\begin{enumerate}
+  \item \textbf{Pretraining.} A Transformer of the appropriate
+        size is trained on an enormous unlabelled corpus to
+        predict the next token. This is the longest, most
+        expensive step. The output is a \emph{base model} that
+        is fluent at completing text but does not yet behave as
+        an assistant.
+  \item \textbf{Instruction tuning.} The base model is shown a
+        much smaller corpus of high-quality examples of the kind
+        of behaviour it is meant to exhibit --- prompt-and-
+        response pairs in which the response is the kind a good
+        assistant would give. This step is much shorter and
+        cheaper than the pretraining and produces a model that
+        responds to instructions rather than continuing the text
+        that the instructions appeared in.
+  \item \textbf{Preference tuning.} The instruction-tuned model
+        is shown pairs of possible responses to the same prompt,
+        with a human (or, increasingly, another model) preferring
+        one over the other. The model is updated to produce
+        responses more like the preferred ones. This is the
+        RLHF, DPO, and Constitutional AI work of Chapter~9.
+\end{enumerate}
+
+The pretraining is roughly 90\% of the compute and produces
+roughly 90\% of the model's capability. The two later stages
+adjust the surface behaviour in ways that, at the cost of some
+capability, make the model usable. We will look at the later
+stages in Chapter~9. The rest of this chapter is about
+pretraining itself.
+
+\subsection*{What is in the training data}
+
+The training corpora used for modern Large Language Models are
+not published. The general categories are widely understood,
+even when the exact composition is not.
+
+Common Crawl, an open project that has been scraping the
+public web since 2008, contributes some hundreds of billions of
+words once filtered and deduplicated. The model sees ordinary
+prose, news articles, blog posts, technical documentation,
+forum discussions, and a long tail of less reputable material.
+The filtering and deduplication remove the most obviously low-
+quality content, but they cannot remove everything, and the
+model's behaviour reflects what made it through.
+
+Books contribute another tens to hundreds of billions of words,
+depending on how the corpus was assembled. The composition of
+the book corpus has been the subject of considerable legal and
+ethical controversy --- many of the books in widely-used
+training corpora were obtained without the publishers' or
+authors' permission, and several lawsuits over this issue are
+proceeding through the courts as of this writing.
+
+Code repositories, primarily from GitHub, contribute tens to
+hundreds of billions of tokens of source code. This explains
+why modern Large Language Models are surprisingly capable
+programmers --- they have read more code, in absolute terms,
+than any human ever could.
+
+Academic papers, technical documentation, and reference works
+contribute a smaller volume but are weighted more heavily in
+the training mix because of their per-token information
+density. A model that has read the entirety of Wikipedia and
+much of arXiv has access to a non-trivial fraction of the
+formal knowledge of the species.
+
+The model's capabilities reflect the proportions in this mix.
+A model trained on more code is better at code; a model trained
+on more academic text is better at academic prose; a model
+trained on more conversational data is better at conversation.
+Vendors do not, in general, publish the exact proportions, but
+the qualitative differences between models in the same
+generation are largely traceable to differences in the corpus.
+
+\subsection*{What in-context learning looks like}
+
+The phenomenon Brown and his coauthors named in 2020 is worth
+seeing in concrete form, because it is genuinely unusual.
+
+If you take a base model that has been pretrained on next-token
+prediction and you give it a prompt that says, in roughly these
+words:
+
+\begin{quote}
+sea otter $\to$ loutre de mer\\
+plush giraffe $\to$ girafe en peluche\\
+cheese $\to$
+\end{quote}
+
+\noindent the base model will continue the pattern and produce
+``fromage''. It will do this even though it was never explicitly
+trained on a translation task and even though it has not been
+told what the arrows mean. It has, somewhere in its many
+billions of parameters and after seeing the pattern in its
+training corpus, learned to recognise the format and to produce
+a continuation consistent with it. The same trick works for
+arithmetic, for word transformation, for question answering, and
+for many other tasks if you supply a few examples of the format.
+
+This is the phenomenon that made the field take pretraining
+seriously as a path to general capability. A pretrained model
+is not a translator, but it is a translator under the right
+prompt. It is not a calculator, but it is a calculator under the
+right prompt. The same model, with no architectural change and
+no further training, performs many tasks. Whatever the model
+learned during pretraining, it learned something usefully
+broader than ``predict the next word in this corpus''.
+
+We do not, at this writing, have a settled account of why this
+works. The leading hypotheses involve some combination of
+\emph{induction heads} (specific patterns of attention that the
+model develops which copy and continue local patterns),
+\emph{implicit Bayesian inference} (the model behaving as if it
+is reasoning about which task it is being asked to perform),
+and the simple fact that the training corpus contained many
+examples of similar pattern-continuation tasks. The honest
+position is that we do not know, in any deep sense, why the
+trick works as well as it does.
+
+\subsection*{Sampling at the output}
+
+We met the sampling step briefly in Chapter~1. It is worth
+revisiting in the context of pretraining because the sampling
+choices are part of how the model presents itself to a user.
+
+The pretrained model, given a prompt, produces a probability
+distribution over the next token. To produce an actual response,
+the model samples from that distribution. The sampling has
+several knobs the engineer can turn:
+
+\begin{itemize}
+  \item \textbf{Temperature.} A number that, very loosely,
+        controls how aggressively the model favours the most
+        likely tokens. At temperature zero, the model always
+        picks the top of the list (which makes the output
+        deterministic but often dull). At temperature one, the
+        model samples from the distribution as it stands. Above
+        one, the model gives more weight to less likely
+        continuations (which makes the output more varied but
+        also more error-prone).
+  \item \textbf{Top-$k$.} The sampling is restricted to the $k$
+        most likely tokens, with everything else zeroed out.
+  \item \textbf{Top-$p$ (nucleus).} The sampling is restricted
+        to the smallest set of tokens whose combined
+        probability exceeds $p$. (This is a more adaptive
+        variant of top-$k$.)
+\end{itemize}
+
+The default sampling settings of an API have a real effect on
+the model's behaviour. A user who cares about reproducibility
+should set the temperature to zero or near it. A user who cares
+about variety should leave it higher. The same model with
+different sampling settings will produce different distributions
+of behaviour, and it is reasonable for vendors to tune the
+defaults differently for different products.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{The training data is the model's worldview.} Almost
+every interesting property of a Large Language Model is, in some
+sense, a property of its training corpus. A model trained on a
+corpus that overrepresents English, the United States, and the
+last decade will be best at the kinds of question those subjects
+imply. A model trained on a corpus that contained a lot of code
+will be better at code. A model trained on a corpus assembled
+in 2023 will know nothing of events after 2023. A model trained
+on a corpus that included many copies of a particular conspiracy
+theory will, when asked, sometimes reproduce it. There is no
+fix for this at the model level. The fix is either better data,
+later interventions (Chapter~9), or external knowledge sources
+(Chapter~10).
+
+\paragraph{The cost of pretraining is structural.} A frontier
+pretraining run is a multi-hundred-million-dollar undertaking.
+This is not a thing one does lightly. Once a base model is
+trained, the economic incentive is to amortise it across as
+many products as possible, which is why the same underlying
+model often appears under several brand names with different
+post-training. A non-technical reader evaluating two LLM
+products should ask whether they share a base model; if they
+do, the relevant differences are in the post-training and the
+deployment, not in the underlying capability.
+
+\paragraph{The base model and the deployed assistant are
+different artefacts.} The model OpenAI publishes as ``GPT-4''
+in its API is not the GPT-4 base model, but a chain of post-
+training steps applied to that base. The assistant's refusals,
+its tone, its tendency to add safety disclaimers, its
+willingness to perform certain tasks --- all of these are
+properties of the post-training, not of the base. A base model,
+which OpenAI does not release, would behave differently. This
+distinction matters when, for example, a researcher wants to
+compare ``what does the model know'' against ``what is the
+model willing to say''. The two are, by design, no longer the
+same.
+
+\paragraph{Sampling is a product decision.} The defaults for
+temperature and other sampling parameters in a vendor's API
+shape how the model appears to its users. A vendor who wants
+the model to feel ``creative'' will use a higher default
+temperature; a vendor who wants the model to feel ``reliable''
+will use a lower one. Neither setting is wrong. Both are
+choices, and the user of the API can override them. A product
+team should think about its sampling defaults the way it would
+think about any other user-facing configuration choice.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Knowledge cut-off.} The model's training data ends
+at a particular date. Anything that happened after that date
+is, to the model, fiction. A user who asks the model about a
+recent event, a recent law, a recently released product, a
+recently elected official, will receive an answer that is
+plausible but unmoored from the world after the cut-off. The
+model usually does not flag this. The fix is either to ask the
+model only about pre-cut-off topics or to use a retrieval
+system (Chapter~10) that supplies post-cut-off information.
+
+\paragraph{Memorisation and leakage.} The model can, under the
+right prompt, reproduce passages from its training corpus
+verbatim. For copyrighted material this is a copyright concern.
+For personal information this is a privacy concern. For
+proprietary data --- in cases where a user has fine-tuned the
+model on their own corpus --- this is a confidentiality
+concern. There are mitigations (training-time filtering,
+output-time filtering, regular auditing), and there is a
+research literature that quantifies the risks. The mitigations
+are partial, and the risks are not zero.
+
+\paragraph{In-context learning is brittle.} The phenomenon that
+gave pretrained models so much of their apparent generality is
+also a major source of frustration in production. A prompt that
+includes a few examples to specify a format is sensitive to the
+choice of examples, the order in which they appear, the
+formatting conventions, and the labels. Two prompts that a
+human would read as equivalent can produce qualitatively
+different outputs. There is a research literature on
+\emph{prompt engineering} that catalogues which choices matter,
+but no general theory that lets you predict in advance which
+prompts will work. The practical advice is to test extensively.
+
+\paragraph{Emergence claims need scrutiny.} Researchers have
+reported that certain capabilities --- multi-step arithmetic,
+chain-of-thought reasoning, code synthesis --- appear
+\emph{suddenly} as the model crosses a threshold of scale,
+rather than improving smoothly. The 2022 paper by Jason Wei
+and his coauthors, titled \emph{Emergent Abilities of Large
+Language Models}, popularised the phrase. A 2023 paper by
+Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo, titled
+\emph{Are Emergent Abilities of Large Language Models a
+Mirage?}, argued that the apparent suddenness is in many cases
+a consequence of how the capability is being measured rather
+than of how the model is changing. The honest summary is that
+some capabilities do appear to scale smoothly when measured
+properly, that some still appear to emerge sharply, and that
+extrapolating from the current generation to the next on the
+basis of either picture is risky.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~1 (the cross-entropy objective),
+Chapter~2 (the optimisation procedure), Chapter~3 (the deep
+neural network), Chapter~4 (the tokenizer and embeddings), and
+Chapter~5 (the Transformer architecture). It described what
+gets done with all of those components when they are combined
+at scale. Everything that follows assumes a pretrained base
+model: Chapter~7 discusses what to do when the budget for
+pretraining is binding, Chapter~8 discusses how to adapt a
+trained base model cheaply, Chapter~9 turns the base model into
+an assistant, and Chapter~10 wraps the assistant in retrieval
+and tool use. The next chapter --- \emph{Why Bigger Sometimes
+Helps} --- is the closer look at the scaling laws and the
+recent moves to make them less expensive that we have, so far,
+only sketched.

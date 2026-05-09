@@ -1,0 +1,319 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% PREFACE -- A Letter to the Curious Reader
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{Preface: A Letter to the Curious Reader}
+\addcontentsline{toc}{chapter}{Preface: A Letter to the Curious Reader}
+
+\section*{The thing in front of you}
+\addcontentsline{toc}{section}{The thing in front of you}
+
+You have, almost certainly, already used a Large Language Model.
+You asked it to draft an email, or to explain a paragraph in a
+contract, or to summarise a research paper that a colleague had
+sent you, or to suggest a name for a small dog. The answer it gave
+you was probably useful. It was also, at some level, a surprise ---
+not because the technology is new (it is not, really; its lineage
+is more than a century old), but because the experience of being
+addressed in fluent prose by a system with no body, no mind, and
+no opinions felt different from anything you had asked a computer
+to do before.
+
+It is worth pausing on that surprise. The interesting question, for
+the kind of reader who wants to understand these systems rather
+than merely use them, is not whether the answer was correct. The
+interesting question is what the system was actually \emph{doing}.
+This guide is going to take it apart, slowly, and put it back
+together. By the time you finish, you will not, in any deep sense,
+find these systems mysterious. You may, however, find them more
+remarkable than you do today, and you will certainly find them
+less trustworthy in some specific and useful ways.
+
+This is a book for the educated reader who has no background in
+mathematics or computer science. There are no equations. There
+is no code. There is no jargon that is not paid for, the first
+time it appears, with a plain-English equivalent. What there is,
+instead, is a careful walk through the ideas, the people, and the
+engineering decisions that produced the systems on the other side
+of your screen. The walk is long but it is not steep. We are not
+going to dazzle you. We are going to give you, page by page, a
+sturdier intuition for an artefact that did not exist, in the form
+you now use it, when most of the readers of this book were
+already adults.
+
+\section*{Why this book exists}
+\addcontentsline{toc}{section}{Why this book exists}
+
+There is a parallel reader for engineers, called \emph{Large
+Language Models as Engineered Systems}, that walks through the
+same ideas with the formal mathematics included. That reader is
+the right one if you want to be able to derive the equations and
+implement the algorithms yourself. This guide is the right one if
+you want to be able to reason about these systems --- to ask
+better questions of the engineers who build them, the vendors who
+sell them, the regulators who oversee them, and, increasingly, the
+products that rely on them --- without first having to spend three
+years on a mathematics degree.
+
+The two books share a chapter ordering and most of their narrative
+voice. They also share an observation, which is that the most
+useful thing a non-engineer can know about these systems is not
+how they succeed but how, and why, they fail. We will return to
+this point repeatedly. The failure modes of a Large Language Model
+are not embarrassments to be hidden. They are the working
+vocabulary of anyone who deploys these systems --- or relies on
+someone else's deployment of them --- in a context where the
+answer matters.
+
+\section*{How we got here}
+\addcontentsline{toc}{section}{How we got here}
+
+It is worth remembering that the field has a history.
+
+In 1913 the Russian mathematician Andrey Markov sat down with a
+copy of Pushkin's \emph{Eugene Onegin} and counted, by hand, the
+alternation of vowels and consonants across twenty thousand
+letters. He did this, in part, to make a philosophical point ---
+that the law of large numbers did not require independent trials,
+as a colleague had argued, but extended to chains of conditional
+dependence as well. It was an argument with a contemporary; it
+turned out, accidentally, to be the founding act of statistical
+language modelling. Markov gave us a model of language as a
+sequence of dependencies a full century before we had the data or
+the hardware to make that model useful.
+
+Claude Shannon followed in 1948 with his theory of information.
+Shannon was working at Bell Labs on telegraphy, and he wanted to
+measure how much information a transmitted signal carried. As one
+of his examples he turned to English text, and he gave us a way
+to measure how surprising a sequence is and therefore how well a
+model has captured the regularities of the language it is trying
+to describe. He estimated the entropy of English at roughly one
+bit per letter. He gave us a yardstick.
+
+For decades after that the field crawled. The 1950s and 1960s saw
+the first artificial neurons (Warren McCulloch and Walter Pitts in
+1943; Frank Rosenblatt's perceptron in 1958). The 1970s saw a
+period that is now politely called the first AI winter, after
+Marvin Minsky and Seymour Papert's 1969 book pointed out the
+mathematical limits of single-layer perceptrons and funding
+collapsed. The 1980s saw the connectionist revival and the
+rediscovery of an algorithm called backpropagation that let
+networks of more than one layer be trained at all (Paul Werbos
+in 1974; David Rumelhart, Geoffrey Hinton, and Ronald Williams in
+1986). The 1990s and early 2000s built recurrent networks for
+sequences and watched them mostly fail at long-range memory, until
+Sepp Hochreiter and J\"urgen Schmidhuber proposed, in 1997, the
+Long Short-Term Memory cell. Yoshua Bengio and his coauthors, in
+2003, built the first recognisably modern neural language model.
+Almost nobody outside the field noticed.
+
+Then the speed picked up. Tom\'a\v{s} Mikolov and his colleagues
+showed in 2013 that words could be embedded in a vector space
+where the geometry encoded surprising amounts of meaning ---
+``king minus man plus woman'' landed near ``queen''. Ilya
+Sutskever, Oriol Vinyals, and Quoc Le followed with sequence-to-
+sequence translation in 2014. Dzmitry Bahdanau, Kyunghyun Cho,
+and Bengio introduced \emph{attention} in 2015. Ashish Vaswani
+and his coauthors at Google removed the recurrence in 2017 in a
+paper they titled, with characteristic understatement,
+\emph{Attention Is All You Need}, and gave us the architecture
+that is still, eight years later, the basis of every system in
+this book.
+
+And then the field stopped crawling. GPT-1 in 2018, GPT-2 in
+2019, GPT-3 in 2020, ChatGPT at the end of 2022, GPT-4 the
+following spring, and a steady cascade of competitors --- Claude
+from Anthropic, Gemini from Google, Llama from Meta, Mistral and
+DeepSeek from Europe and China --- in the years that followed.
+Each of these systems was a substantial engineering effort by
+hundreds of people whose names will not appear in this book. But
+the lineage matters. None of these systems came out of nowhere.
+None of them required anything that we could not, in retrospect,
+have predicted from the trajectory. The whole edifice rests on
+a few sturdy ideas, and this guide is in the business of giving
+you those ideas one at a time.
+
+\section*{What this book is not}
+\addcontentsline{toc}{section}{What this book is not}
+
+This book is not a defence of the technology. It is not an
+attack on it either. The honest position --- the one that the
+engineers who built these systems will tell you in private, and
+that the most thoughtful critics of these systems will agree
+with --- is that they are remarkable and limited in roughly equal
+measure, and that the public conversation has not, so far, done a
+good job of holding both halves of that observation at the same
+time. We will try.
+
+This book is not a forecast. It does not tell you which of the
+current models will dominate next year, or whether the next
+generation of training runs will yield a qualitative leap or a
+disappointing plateau. The honest answer to that question is that
+we do not know. The people who tell you they do know are usually
+selling you something, and the few who actually know say very
+little in public.
+
+This book is not a manual. It will not teach you how to build a
+Large Language Model. It will not teach you how to fine-tune one.
+It will not even, in most cases, teach you how to write better
+prompts --- though, as a side effect, you may find that you start
+to write better ones because you understand what the model is
+doing with them.
+
+What this book \emph{is} is an attempt to give you, in plain
+language and at a reading pace that respects your time, the
+working vocabulary and the conceptual map you need to think
+clearly about a class of system that has, in the space of about
+five years, moved from a research curiosity to a fixture of
+modern professional life. The book is short by the standards of
+the technical literature; it is long by the standards of a thing
+you might read on a long flight. It is meant to be read slowly,
+once, and then dipped into when a specific question comes up.
+
+\section*{What goes wrong, and why this is the most important section
+of the book}
+\addcontentsline{toc}{section}{What goes wrong}
+
+A language model trained the way modern ones are trained is, by
+construction, the most plausible thing the model can say given
+the prompt. The most plausible thing is not the same as the true
+thing. The model has no native concept of truth at all. It has a
+beautifully calibrated sense of plausibility and a great deal of
+memorised plausibility, which is sometimes the same as truth and
+sometimes is not. This is the seed of \emph{hallucination} --- the
+polite name we give to a fluent, confident, plausible, wrong
+answer. We will return to it in Chapter~1, in Chapter~10, and at
+length in Chapter~13.
+
+A model that is fluent is not, by default, a model that is
+helpful. A model that has only been trained on the kind of
+prediction we will describe in Chapter~1 will happily complete an
+essay that begins ``the best way to commit fraud is''. Making it
+refuse to do so is the work of a discipline called
+\emph{alignment}, and alignment is its own discipline of trade-
+offs. We will see in Chapter~9 how the discipline arrived, what
+it bought, and what it cost --- the so-called \emph{alignment
+tax} on capability, the \emph{sycophancy} that emerges when the
+model is rewarded too much for agreeing with the annotator, the
+\emph{reward hacking} that lets the model find a high-reward
+path that no annotator would ever endorse.
+
+The careful question that produces a careful answer often differs
+from the careless question that produces a wrong one only by a
+few words. Two prompts that a human would read as equivalent can
+produce two qualitatively different outputs. We call this
+\emph{prompt brittleness}. We will see, in Chapter~5, why the
+mechanism the model uses to read its inputs makes this not just
+possible but inevitable.
+
+A model that retrieves from a document store is only as honest as
+the store. A model that calls a tool is only as careful as the
+tool's contract. We will see, in Chapter~10 and again in
+Chapter~12, how retrieval can hallucinate, how the model can be
+\emph{lost in the middle} of a long context, and how a malicious
+tool output can be crafted to look like a system instruction ---
+the class of attack we call \emph{prompt injection}, which is to
+LLM systems roughly what SQL injection once was to web
+applications.
+
+These failure modes are not embarrassments. They are the working
+vocabulary of anyone who deploys these systems into the world,
+and they are increasingly the working vocabulary of anyone who
+relies on someone else's deployment. Every chapter ends with a
+discussion of the characteristic failures of the technique it
+presents. Read those sections carefully. They are where the
+unhelpful intuition that ``the model just knows'' meets the more
+useful intuition of ``the model is doing exactly what we asked,
+and what we asked is not quite what we meant.''
+
+\section*{How to read this book}
+\addcontentsline{toc}{section}{How to read this book}
+
+The book is organised into thirteen chapters, one per topic. Each
+chapter mirrors a chapter of the parent reader, with the same
+title and the same scope but without the formal mathematics.
+
+Every chapter follows the same structure. It opens with a short
+narrative section called \emph{Setting the Scene}, which describes
+the problem the chapter is about, the lineage of ideas that
+brought us to the current best practice, what that current best
+practice is, and the characteristic ways the practice fails. Then
+comes a section called \emph{The idea, in plain language}, which
+is the conceptual core of the chapter. Then comes a section called
+\emph{The engineering consequence}, which is what the idea makes
+easy, what it makes hard, and the trade-offs a product team faces
+today because of it. Then comes a section called \emph{What goes
+wrong, and why}, which traces the chapter's failure modes back to
+their mechanism. Finally, a short \emph{Bridges} paragraph names
+the chapters that build on this one and the chapters whose
+machinery this one depends on, so that a reader who already knows
+part of the material can skip in safely.
+
+The narrative comes first deliberately. A reader who knows what a
+thing is for tends to derive its details more easily; a reader
+who tries to learn the details first sometimes loses track of why
+they matter. We write the why first. Then the how.
+
+If you are reading the book front-to-back you will find that the
+chapters build on one another. The notion of a probability
+distribution from Chapter~1 reappears in Chapter~6 as the basis
+of pretraining and again in Chapter~9 as the thing alignment
+modifies. The notion of a vector from Chapter~4 reappears in
+Chapter~5 as the input to attention and in Chapter~10 as the
+basis of retrieval. The notion of a trust boundary from
+Chapter~9 reappears in Chapter~12 as the agent-loop invariant.
+You do not have to remember any of this. The book will remind
+you each time it matters.
+
+\section*{A note on tone}
+\addcontentsline{toc}{section}{A note on tone}
+
+The narrative in this book is written in plain language because
+the subject is not. The subject is technical, and the people who
+build these systems use technical language for precise reasons.
+We have tried to translate that language without losing what the
+precision was for. Sometimes a chapter will pause to introduce a
+term of art, define it in plain English, and then use it freely.
+That is not jargon for its own sake. It is the price of being
+able to say things that the surrounding ordinary vocabulary
+cannot say without ten times the words. We have tried to keep
+that price low.
+
+We have also tried to acknowledge the people who built the ideas
+on which this field stands, because giving credit is a courtesy,
+because knowing who first solved a problem helps you guess who
+has thought hardest about its limits, and because the public
+conversation has, on the whole, done a poor job of distributing
+credit across a hundred years and a thousand researchers. This is
+a small correction, made one date and one name at a time.
+
+If a passage feels like it is trying to dazzle you, please tell
+us; we will rewrite it. The intent is not awe. The intent is that
+you put the book down able to reason about a class of system
+that did not exist, in the form you now use it, when you began
+reading.
+
+\section*{On the writing of this book}
+\addcontentsline{toc}{section}{On the writing of this book}
+
+This guide was written in collaboration with Claude, a Large
+Language Model produced by Anthropic. The subject matter of the
+book makes that fact worth disclosing rather than concealing,
+and you should know it before you read further.
+
+The author chose the scope of the book, the chapters it would
+contain, the historical threads it would trace, the voice the
+narrative sections would adopt, and the failure modes the
+discussion would emphasise. Each chapter was drafted, then read,
+then revised, then committed. The model produced the prose
+inside those choices. The author made the choices, read the
+drafts, redirected the ones that drifted, and approved each
+chapter before it landed.
+
+Errors that survived this process are the author's, since
+responsibility is a thing an author has and a language model
+does not. Readers who find passages that are wrong, evasive, or
+fluent in a way that papers over a real difficulty are
+encouraged to say so. Any future edition will be better for the
+saying.

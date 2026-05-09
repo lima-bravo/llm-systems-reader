@@ -1,0 +1,475 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 1 -- The Idea That a Word Predicts the Next Word
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{The Idea That a Word Predicts the Next Word}
+\label{ntg:ch1}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+Consider for a moment what it means to predict the next word. You
+are reading this sentence. Your eye has not yet reached its end,
+and yet some part of you is already guessing how it will finish.
+The guess is not certain. It is not arbitrary either. It is
+shaped by everything you have ever read, and by the few words
+that came just before. If we wanted to teach a machine to do the
+same, we would need to give it a way to assign, to each possible
+continuation, a number that captures \emph{how likely} that
+continuation is given everything it has seen so far.
+
+That is the entire problem of language modelling, written in a
+single sentence. Everything in this guide is, in one way or
+another, the elaboration. The Transformer of Chapter~5 is a
+particular machinery for assigning those numbers. The training
+process of Chapter~6 is what taught the machinery which numbers
+to assign. The alignment work of Chapter~9 is what later
+intervened to keep the machinery from assigning high numbers to
+sentences nobody would want it to produce. The failure modes of
+Chapter~13 are, almost without exception, traceable to the gap
+between what makes a continuation \emph{likely} and what makes
+it \emph{true}.
+
+It is worth being precise about what ``predict the next word''
+does and does not mean. It does not mean the machine knows what
+the writer intended. It does not mean the machine knows what the
+sentence is about. It means, narrowly, that the machine has been
+shown enough text to have built up a sense of which sequences of
+words have, in the past, been followed by which other words ---
+and that it can, when given a new prefix, hand back a list of
+candidate continuations with a number attached to each. The
+number is meant to capture how often a continuation like this
+has, in the machine's experience, followed a prefix like that.
+Nothing more. Nothing less.
+
+\subsection*{How we got here}
+
+The idea that one symbol in a sequence depends on the symbols
+before it is older than the computer.
+
+In 1913 the Russian mathematician Andrey Markov sat down with a
+copy of Pushkin's verse novel \emph{Eugene Onegin} and counted,
+by hand, the alternation of vowels and consonants across twenty
+thousand letters. He did this for a reason that was, by the
+standards of the time, philosophical. A colleague had argued
+that the law of large numbers --- the principle that says a
+sufficiently long sequence of dice rolls will average out to the
+expected value --- required the dice to be independent of one
+another. Markov wanted to show that one could relax independence
+into a chain of conditional dependence and still do useful
+mathematics. He picked Pushkin because the alternation of vowels
+and consonants in a poem is obviously not independent (a
+consonant is more often followed by a vowel than by another
+consonant) and because Pushkin was conveniently long. He
+published his result and gave us, almost as a side effect, a
+model of language as a sequence of dependencies.
+
+He gave it to us a full century before we had the data or the
+hardware to make it useful.
+
+Claude Shannon, in 1948, wrote the paper that founded
+information theory. He was working at Bell Labs on the problem of
+sending telegraphs and telephone calls efficiently across
+imperfect wires. As one of his running examples he chose English
+text. Shannon estimated the entropy of English at roughly one bit
+per letter --- meaning, in plain language, that each letter of an
+English string carries about as much information as a single
+flip of a fair coin, after you take into account everything you
+already knew from the letters before it. He observed that a model
+that captures more of this structure will, by definition, assign
+higher probability to natural text than to random text. He gave
+us a yardstick by which to measure how good any future language
+model would be.
+
+For half a century after Shannon the field crawled. The n-gram
+era of speech recognition counted word triples on hard drives
+that filled rooms. ``N-gram'' is a piece of jargon that means,
+simply, ``a sequence of $n$ consecutive words'' --- so a
+trigram is three words, a four-gram is four, and so on. The
+recipe was to scan an enormous corpus of text, count how often
+each trigram appeared, and use the counts to estimate the
+probability that the third word followed the first two. This
+worked well enough to enable the first generation of practical
+speech recognition, and it worked badly enough that the field
+acquired a reputation for being a graveyard of careers. Frederick
+Jelinek, working at IBM in the 1980s, gave us the catchphrase
+``every time I fire a linguist my speech recognizer's performance
+improves.'' It was a remark about the willingness of mere counts
+to do the work that elaborate linguistic theory had failed to do.
+
+The neural turn came in 2003. Yoshua Bengio and his coauthors
+built a small neural network that learned a continuous
+representation of words --- a list of numbers per word, of the
+sort we will spend Chapter~4 understanding --- and used those
+representations to predict the next one. The network was not
+much better than the n-gram models of the day, and the paper
+went largely unnoticed outside its specialist community. But
+the idea had been planted: instead of treating each word as a
+separate symbol whose only relationship to other words was the
+co-occurrence count in the corpus, you could give each word a
+position in a high-dimensional space and let the geometry of
+that space carry meaning.
+
+Tom\'a\v{s} Mikolov and his colleagues, in 2013, simplified
+Bengio's idea into something called \emph{word2vec}. The
+geometry of the resulting word vectors --- in which ``king minus
+man plus woman'' landed near ``queen'' --- caught public
+attention in a way that the underlying technology, by then ten
+years old, had not. We will spend Chapter~4 unpacking what this
+means. For now it is enough to say that the trick was real, the
+trick had limits, and the trick has now been absorbed into the
+foundations of every model we will discuss.
+
+After 2013 the decade compressed. Sequence-to-sequence
+translation arrived in 2014 (Sutskever, Vinyals, Le).
+\emph{Attention} arrived in 2015 (Bahdanau, Cho, Bengio). The
+Transformer arrived in 2017 (Vaswani and seven coauthors, in a
+Google paper titled \emph{Attention Is All You Need}). And then
+the GPT line picked up. By the end of 2022 the kind of model
+that had been a research curiosity for fifty years was a
+consumer product. Almost everyone reading this book has by now
+spoken to one.
+
+\subsection*{Where we stand}
+
+The lineage converged on a remarkably simple recipe. Take a
+neural network --- we will see in Chapter~3 what one of those is.
+Show it a long sequence of words. Ask it to predict, at each
+position in the sequence, what the next word is going to be ---
+not as a single guess, but as a relative weighting over every
+word in its vocabulary. Compare its weighting to the word that
+actually came next. Penalise the network in proportion to how
+\emph{surprised} it was by the truth: a small penalty if the true
+word was high on its list, a large penalty if the true word was
+low. Average that penalty over a corpus of billions of words.
+Adjust the network, in tiny increments, to reduce the penalty.
+Repeat for months, on machines that cost more than airliners.
+
+That is, in cartoon form, what the training of a Large Language
+Model is. The technical name for the penalty we just described is
+\emph{cross-entropy}. We will not need to compute it, and we will
+not write down its formula. What we need to remember is what it
+is for. The cross-entropy penalty is the number a training run
+spends months trying to make smaller. Every other technical
+choice in this book --- the architecture, the data mix, the
+optimiser, the learning rate, the size of the model --- is, in
+the end, a choice in service of getting that single number down.
+
+A model that has been trained to make this number small has
+learned to assign high probability to the kinds of continuation
+that actually appeared in its training data, and low probability
+to the kinds that did not. That is the entire content of the
+training. Everything else --- the apparent reasoning, the
+apparent helpfulness, the apparent personality --- is a
+consequence of the data the model was trained on, the way the
+data was filtered and ordered, and the additional steps we will
+describe in Chapter~9 that turned a fluent autocomplete into
+something that resembles an assistant.
+
+\subsection*{What goes wrong}
+
+A model trained the way we just described is, by construction,
+the most plausible thing the model can say given the prompt. The
+most plausible thing is not the same as the true thing. It is
+not the same as the most useful thing. It is not the same as
+the thing the user wanted, or the thing the user would have
+wanted if they had thought about it longer. It is, narrowly, the
+continuation that the training corpus would on average have
+produced. We give a polite name to the gap between this and the
+truth: we call it \emph{hallucination}. Hallucination is not a
+bug. It is the training procedure doing exactly what we asked of
+it. We will see this point repeated, in different language, in
+nearly every chapter that follows.
+
+There is a second consequence worth stating now, because we will
+return to it under different names many times. The model does
+not have, in any meaningful sense, a sense of how confident it
+should be. What it has is a probability distribution over the
+next word. Those two things are not the same. A weather forecast
+that says ``70\% chance of rain tomorrow'' is meaningful only if
+the forecaster is right about the rain roughly seventy times out
+of a hundred when they make that call; a forecaster who says
+``70\%'' on every cloudy day, regardless of whether it actually
+rains, is producing numbers but not producing information. The
+technical name for the property of a forecaster being right
+about how often they are right is \emph{calibration}, and Large
+Language Models are, in general, only weakly calibrated. We can
+measure how poorly. We can sometimes correct it. We cannot
+eliminate it.
+
+The reader who began this chapter with the intuition that an LLM
+``just predicts the next word'' will, by the end of the next few
+chapters, have a sturdier intuition: an LLM produces, at each
+step, a relative weighting over possible continuations, and the
+weighting reflects what its training data said was likely. That
+is all it does. The remarkable thing is how much of what feels
+like intelligence falls out of that single mechanism. The
+worrying thing is how much does not.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{Probability, in the sense the model uses it}
+
+A Large Language Model does not produce a single answer. It
+produces, at each step, a list of possible next words and a
+number for each one. The number is a relative weight that the
+model would put on that word, given everything before it. The
+weights add up to one across all the possible words in the
+model's vocabulary. So a typical pattern, after the prefix ``the
+cat sat on the'', might look something like:
+
+\begin{itemize}
+  \item ``mat'' --- weight 0.31
+  \item ``floor'' --- weight 0.18
+  \item ``couch'' --- weight 0.11
+  \item ``windowsill'' --- weight 0.06
+  \item \ldots and a long tail of much smaller weights
+\end{itemize}
+
+The model, in producing a response, almost never just picks the
+top of the list. It usually samples from the list according to
+the weights, with a temperature setting --- which we will meet
+in Chapter~6 --- that controls how aggressively it favours the
+top. Sampling from the list is what gives the model its apparent
+creativity, and it is also what gives it its variability: ask
+the same prompt twice and you may get two different answers,
+because the model rolled a different weighted die.
+
+This is the first piece of intuition worth holding onto. The
+model is not making a decision. It is sampling from a
+distribution. The distribution is what the model knows. The
+single answer you see is one draw from it. The fact that you
+see only one draw is the fact that lets the model feel
+authoritative when it should feel uncertain.
+
+\subsection*{What the training is, in plain language}
+
+We have already described the training in cartoon form. It is
+worth restating, slightly less briefly, because almost
+everything in the rest of the guide is downstream of this
+description.
+
+The training corpus is a very large body of text. For modern
+models it consists of most of the public English-language web
+(filtered, deduplicated, and otherwise cleaned), large
+collections of books, large collections of source code, and
+varying amounts of text in other languages. Estimates of the
+size of the training corpora used for the largest current
+models run from one to ten trillion words, depending on which
+model and how you count. By comparison, an English-speaking
+adult who reads voraciously for sixty years might read on the
+order of one to two hundred million words --- four to five
+orders of magnitude less.
+
+The training procedure walks through this corpus, again and
+again, position by position. At each position, the model is
+shown the words up to that point and asked to predict the next
+one. Its prediction is compared to the actual next word, and a
+small adjustment is made to its internal numbers (its
+\emph{parameters} --- a modern model has somewhere between
+a few billion and a few trillion of them) to make it slightly
+less surprised the next time it sees a similar prefix. The
+adjustments are tiny. They have to be: a single corpus pass
+applies the adjustment trillions of times, and if any one of
+them were large the model would oscillate wildly.
+
+The penalty being minimised --- the surprise --- is what
+we earlier called cross-entropy. It has several equivalent
+descriptions, each of which is useful for a different purpose.
+It is the number of bits, on average, the model is using to
+encode each word it sees. It is the negative logarithm of the
+probability the model assigned to the truth. It is a measure of
+how far the model's distribution is from the distribution the
+training data appears to have been drawn from. We will not
+need any of these formal descriptions, but it is worth knowing
+they exist, because every paper you will ever read about
+language modelling reports its results in one of them.
+
+\subsection*{Why this works at all}
+
+It is reasonable to ask, on first encounter, why a procedure as
+crude as ``predict the next word a few trillion times'' produces
+a system that can answer complex questions, write working code,
+or hold a passable conversation. The honest answer is that the
+field did not, for most of its history, expect that it would.
+The early generations of next-word predictors were good at
+imitating the surface texture of language and bad at almost
+anything else. Even Bengio's 2003 paper, in retrospect a
+foundational work, was not received as such at the time.
+
+What changed was scale. As the corpora got larger and the models
+got bigger, a series of capabilities began to appear that had
+not been explicitly designed in. The model started to be able to
+complete arithmetic problems. It started to be able to write
+syntactically correct code in languages it had been shown. It
+started to be able to translate between languages without
+having been trained on translation pairs. None of this was
+anticipated. All of it appears to be a consequence of the fact
+that a sufficiently large model trained on a sufficiently large
+amount of text has, in order to predict next words well, had to
+build internal representations that are useful for a great many
+tasks the training never asked about. We will return to this in
+Chapter~6 under the name \emph{in-context learning}, and in
+Chapter~7 under the name \emph{scaling laws}.
+
+The honest answer to the question ``why does this work'' is
+that we have a partial empirical understanding and a poor
+theoretical one. We know that scale helps. We know roughly
+\emph{how much} it helps, in a way we will quantify in Chapter~7.
+We do not know, in any deep sense, why next-word prediction
+should produce the breadth of behaviour it does. The most
+useful posture for a non-technical reader is to take this as
+an empirical fact about the universe and to remain
+appropriately humble about predicting which capabilities will
+or will not survive in the next generation of models.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+If everything an LLM does is downstream of next-word prediction,
+several practical consequences follow that anyone reasoning
+about LLM products should hold in mind.
+
+\paragraph{The model's outputs are samples, not statements.}
+Because the model produces a distribution and then samples from
+it, the same prompt can produce different answers on different
+runs. This is a feature for creative tasks, where it is what
+gives the model its apparent imagination. It is a problem for
+tasks where reproducibility matters --- a clinical decision
+support tool, say, or a legal review --- and the standard fix
+is to lower the temperature so that the model almost always
+picks the top of its list. Lowering the temperature does not
+make the model more correct. It makes it more consistent, which
+is not the same thing.
+
+\paragraph{The model's training data is its world.}
+The model knows what was in its corpus, in roughly the
+proportions in which it appeared. Topics that are rare in the
+corpus --- minority languages, specialist subfields, the
+contents of paywalled databases, anything published after the
+training cut-off --- are correspondingly underrepresented in
+what the model knows. A model trained mostly on English-language
+text will be measurably worse at Estonian; a model trained
+without access to a particular pharmacology textbook will not
+have memorised it. This is not a moral failing of the model. It
+is a property of the training data, and it can only be
+addressed by changing the data, by retrieval (Chapter~10), or
+by accepting the limit.
+
+\paragraph{Bigger is not always better, but bigger usually
+helps.} The relationship between model size, training data
+size, training compute, and resulting capability is not
+mysterious. It has been quantified, for the most part, by the
+papers we will discuss in Chapter~7, beginning with the work
+of Jared Kaplan and his colleagues at OpenAI in 2020 and
+sharpened by the work of Jordan Hoffmann and his colleagues at
+DeepMind in 2022 (the so-called \emph{Chinchilla} paper). The
+relationship is roughly: capability improves as a slow,
+predictable function of compute, until the compute is no longer
+the binding constraint, after which it stops improving and
+sometimes regresses. Many vendor announcements in this field
+are best understood as movements along, or away from, that
+curve.
+
+\paragraph{The penalty being minimised is the wrong one for many
+real tasks.} Cross-entropy on next-word prediction is a proxy
+for ``does the model speak like a human''. It is not a proxy
+for ``does the model give correct answers'', or ``does the
+model behave safely'', or ``does the model help the user
+accomplish their goal''. Each of those is a separate property
+that has to be added on top, and adding each of them costs
+something in the original capability. Chapter~9 is devoted to
+the trade-offs of doing this.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+The failure modes that come from the mechanism described in this
+chapter are the ones that will appear, in different forms, in
+every later chapter. It is worth stating them once now, in
+plain language, so that we can refer back to this section when
+they reappear.
+
+\paragraph{Hallucination.} The model produces a fluent,
+confident, plausible answer that is in fact wrong. Sometimes
+this is a fact (``Python was created in 1989'' --- it was 1991);
+sometimes a citation (``as Smith and Jones (2018) showed'' ---
+no such paper exists); sometimes a chain of reasoning that goes
+wrong in the middle without the model noticing. The mechanism
+is the one we have just described. The model assigns weight to
+plausible continuations. In the parts of its training corpus
+where it has seen a fact stated many times, the most plausible
+continuation is the true one. In the parts where it has seen a
+fact stated once or never, the most plausible continuation is
+whatever the surrounding pattern suggests, which is often
+right and is sometimes spectacularly wrong. The model has no
+way of telling these two cases apart from the inside. It treats
+them identically. This is the central, irreducible failure mode
+of the technology, and Chapter~10 (retrieval) and Chapter~13
+(the error model) are largely about how the engineering works
+around it.
+
+\paragraph{Miscalibration.} The model's expressed confidence
+does not reliably match its accuracy. A vanilla pretrained
+model is, in fact, reasonably well-calibrated on next-word
+prediction itself. The trouble is that the alignment training
+of Chapter~9 tends to make the model both more helpful and less
+calibrated --- it learns to sound confident because users
+prefer confident-sounding answers, and the result is a model
+that sometimes asserts things it should hedge and sometimes
+hedges things it should assert. This is one of the costs of
+the alignment work, and it has not, as of this writing, been
+fully solved.
+
+\paragraph{Probability, confidence, and correctness are three
+different things.} The model has a probability over the next
+word. We tend to read fluent, definitive prose as
+\emph{confident}, and we tend to read confident prose as
+\emph{correct}. The model's prose is fluent because that is
+what its training optimised for. Its confidence in the
+colloquial sense is a property of the prose style, not of the
+underlying probabilities. Its correctness is a property of the
+match between what it said and the world, which is a property
+the model has no direct access to. Conflating the three is the
+source of more downstream errors than any architectural
+choice. We will return to this distinction in Chapter~13 as
+the difference between the \emph{meaning} axis and the
+\emph{grounding} axis of the error model.
+
+\paragraph{Sensitivity to small changes in the prompt.} Because
+the model's response is one sample from a distribution that
+depends on the exact prefix, two prompts that differ in
+seemingly trivial ways --- a comma added, a word reordered, a
+synonym substituted --- can produce qualitatively different
+outputs. The technical name is \emph{prompt brittleness}, and
+we will see in Chapter~5 why the architecture makes this not
+just possible but inevitable. For the purposes of this chapter,
+the important point is that the variability is intrinsic and
+that it cannot be removed simply by ``writing better prompts'',
+though writing better prompts can certainly reduce it.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter sets up the foundation for everything that follows.
+The notion that a model produces a probability distribution over
+next words reappears in Chapter~5 as the output of the
+Transformer, in Chapter~6 as the basis of pretraining, in
+Chapter~9 as the thing alignment modifies, and in Chapter~13
+as the source of the \emph{meaning} and \emph{grounding} axes
+of the error model. The notion that the model is sampling
+rather than answering reappears in Chapter~6 as the temperature
+control. The notion that the model is calibrated only weakly
+reappears in Chapter~9 as a measurable cost of the alignment
+work and in Chapter~10 as the reason retrieval, when done well,
+helps so much.
+
+This chapter depended on no earlier chapter, and the reader
+will not lose anything by stopping here for a day before
+continuing. The next chapter --- \emph{How Machines Learn from
+Their Mistakes} --- explains, in similarly plain language, the
+``adjust the network in tiny increments to reduce the
+penalty'' step we have repeatedly waved at.

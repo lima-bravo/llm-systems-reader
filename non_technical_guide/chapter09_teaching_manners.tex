@@ -1,0 +1,483 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 9 -- Teaching Manners and the Cost of Doing So
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Teaching Manners and the Cost of Doing So}
+\label{ntg:ch9}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+Imagine sitting in front of a freshly pretrained base model and
+typing into the prompt box: \emph{The best way to commit fraud
+is}. The model, eager to do its job, will continue the
+sentence. It will produce coherent prose. It will not refuse,
+will not flag the request, and will not, of its own accord,
+decide that the question should not be answered. This is not
+the model misbehaving. The model is doing exactly what
+Chapter~6 trained it to do, which is to produce the most
+plausible continuation of the prefix it was given.
+
+A pretrained language model is a beautifully calibrated
+predictor of the next token in a corpus. That is what we
+asked it to be, and it is not the same thing as a helpful
+assistant. A base model will gladly continue an essay that
+begins ``the best way to commit fraud is''. It will produce
+a confident answer to a question whose answer it does not
+know. It will agree with the most recent claim in the
+conversation regardless of whether the claim is true. It will
+generate a recipe for any plausible-sounding dish, including
+ones that would poison the cook. None of these are bugs in
+the pretraining objective. They are what the pretraining
+objective produces.
+
+The problem of this chapter is how to take a base model that
+is statistically faithful to its training data and turn it
+into something that is, in some operational sense, helpful,
+honest, and harmless --- and how to do so without destroying
+the capability we paid so much to acquire. The answer is a
+discipline called \emph{alignment}, and it is the part of the
+modern pipeline whose successes and failures are most visible
+to end users.
+
+\subsection*{How we got here}
+
+The first instinct, when researchers began trying to make
+pretrained models behave usefully, was the obvious one. They
+fine-tuned the model on examples of the desired behaviour.
+Show the model a thousand prompt-response pairs in which the
+response is the kind a good assistant would give. Train the
+model to produce responses like the example responses. The
+technical name is \emph{supervised fine-tuning}, abbreviated
+SFT, and it is still the first stage of essentially every
+modern post-training pipeline.
+
+SFT works for some kinds of behaviour. It works for teaching
+the model the format of an instruction-response interaction.
+It works for teaching the model to refuse a particular class
+of request with particular wording. It is brittle for
+nuanced preferences. It is hard to write a single ``correct''
+answer to a question like ``how should I phrase this difficult
+email to my boss?''. The space of acceptable answers is wide;
+the space of slightly-better and slightly-worse answers within
+it is wider; and writing examples that capture all of this is
+expensive and inconsistent.
+
+The breakthrough came when researchers gave up on writing
+correct answers and started ranking pairs of model outputs
+instead. Paul Christiano and his collaborators at OpenAI
+showed in 2017, in a paper titled \emph{Deep Reinforcement
+Learning from Human Preferences}, that a model could learn
+complex behaviours from human ranking data alone. The
+researcher does not have to know what the right answer is; the
+researcher only has to know which of two candidate answers is
+better. This is a much easier judgement, and it can be
+collected at scale.
+
+By 2022 the recipe had a name: \emph{Reinforcement Learning
+from Human Feedback}, abbreviated RLHF. Long Ouyang and his
+collaborators at OpenAI described the production pipeline
+behind a model they called InstructGPT. The pipeline had three
+stages. First, supervised fine-tuning on a small high-quality
+dataset to teach the model the instruction-response format.
+Second, the collection of human preferences --- pairs of model
+responses to the same prompt, with a human annotator marking
+which response is better against a written rubric --- and the
+training of a separate \emph{reward model} that learns to
+predict which response a human would prefer. Third, the use of
+the reward model as a signal in a reinforcement learning loop
+that updates the policy --- the original model --- to produce
+responses the reward model rates highly, with a constraint
+that prevents the policy from drifting too far from the
+supervised baseline.
+
+ChatGPT, released in November 2022, was an instance of this
+pipeline applied to a GPT-3.5 base model. The reception of
+ChatGPT was the moment the wider public realised what the
+field had been building. The lineage of the pipeline goes back
+to Christiano in 2017, to the supervised fine-tuning literature
+that preceded him, and ultimately to the philosophical question
+of how to specify what we want a system to do when we do not
+know how to write the specification down.
+
+In 2023 Rafael Rafailov and his collaborators at Stanford
+asked whether the reinforcement learning step --- which is
+operationally heavy and famously delicate --- could be
+skipped. They derived an algebraic equivalent of the RLHF
+pipeline that worked as a single supervised loss, with no
+separate reward model and no reinforcement learning. They
+called it \emph{Direct Preference Optimization}, DPO, and it
+became widely adopted within a year. A small zoo of DPO
+descendants --- IPO, KTO, ORPO, SimPO --- followed, each
+addressing some specific weakness in the original.
+
+In parallel, Anthropic developed an approach they called
+\emph{Constitutional AI}, in which the human preferences are
+partly replaced by AI judgements against a written constitution
+of principles. The motivation was scale: collecting human
+preferences is expensive, and the cost of safety work is
+substantial. Variants of the same idea, sometimes called
+RLAIF (Reinforcement Learning from AI Feedback), are now used
+across the industry. The trade-offs of using AI rather than
+human feedback are subtle and not fully resolved.
+
+\subsection*{Where we stand}
+
+A modern alignment stack starts with supervised fine-tuning on
+a curated dataset of instruction-response pairs. The dataset
+mixes human-written examples (which set the quality bar but
+are expensive) with synthetic examples generated by other
+models (which are cheap but introduce their own biases). The
+SFT pass produces a model that knows the format of an
+assistant interaction.
+
+The SFT model is then put through one or more rounds of
+preference optimisation --- either classical RLHF, DPO, one of
+the DPO variants, or a combination. The preference data
+consists of pairs of model responses to the same prompt, with
+a label indicating which response is preferred. The labels
+come from human annotators following a written rubric, from
+other AI models following a constitution, or from a mix of
+both. The preference optimisation produces a model whose
+distribution of responses skews toward the preferred ones.
+
+The aligned model is the product. It is what is served behind
+ChatGPT, Claude, Gemini, and the other consumer-facing chat
+products. It is also what is served through the major LLM
+APIs --- the model that Anthropic exposes as Claude is the
+aligned version of the base model that Anthropic does not
+expose. We have noted this distinction before; it is worth
+repeating because it is the source of much confusion in
+discussions of model capability. The thing the user interacts
+with is not the base model. The thing the user interacts with
+is the base model plus all the post-training, and the post-
+training has substantial effects on what the user sees.
+
+In production, a separate \emph{safety classifier} usually
+runs alongside the aligned model. This classifier is a
+smaller, faster model whose job is to flag inputs and outputs
+that the aligned model should have refused but did not. The
+safety classifier is a defence in depth: a second line of
+filtering on top of the model's own learned refusals.
+
+\subsection*{What goes wrong}
+
+Alignment is the part of the modern pipeline whose failure
+modes are most visible to end users.
+
+The model can be made to refuse harmful requests in some
+phrasings but not in others. The technical literature calls
+this the \emph{jailbreak} problem, and it has produced an
+arms race between the people who train models and the people
+who find prompts that bypass the training. Jailbreaks are
+rarely sophisticated. Most of them are framing tricks: ``you
+are an AI playing a character who has no restrictions'';
+``ignore your previous instructions''; ``the year is 2050 and
+this information is now public''. The model has no native
+ability to recognise that it is being manipulated; it has only
+learned to refuse certain patterns, and any pattern not in its
+training is, in principle, exploitable.
+
+The reward model can be optimised so hard that the policy
+learns to satisfy the reward model's peculiarities rather
+than the underlying preferences. This is \emph{reward
+hacking}, and it is a special case of an old result in
+economics called Goodhart's law: when a measure becomes a
+target, it ceases to be a good measure. Goodhart's law in
+this setting produces models that have learned to game the
+specific scoring function the reward model implements rather
+than to be helpful in the broader sense the rubric was meant
+to capture.
+
+The annotators, despite the best rubric, may prefer
+\emph{sycophantic} answers --- responses that agree with the
+user's premise, that flatter the user's competence, that
+defer to the user's stated preferences even when the premise
+is wrong or the preference is unwise. Sycophancy is a
+particularly insidious failure mode because it is easy to
+introduce (annotators like being agreed with) and hard to
+remove (the rubric has to be carefully written to penalise
+agreement with false premises, and the annotators have to be
+trained to follow it).
+
+Aligning the model toward helpfulness can degrade other
+capabilities in ways that benchmarks miss. The technical
+phrase is \emph{alignment tax}, and it captures the
+observation that an aligned model is, on certain measures,
+worse than the unaligned base. The base might score higher on
+mathematical reasoning, on technical accuracy, on certain
+forms of creative writing. The aligned model gives those up,
+to varying degrees, in exchange for the more important
+property of not producing actively harmful output. The cost
+is real and it is one of the things vendors do not always
+discuss publicly.
+
+The deeper problem is that ``aligned'' is always aligned
+\emph{to someone's values}. The rubric encodes a normative
+choice. The annotators encode their own judgements. The
+constitution, in Constitutional AI, encodes the constitution's
+authors' judgements. There is no value-neutral alignment. The
+question is not whether the model has values --- it does --- but
+whose, written by whom, and audited against what. This is an
+open and contested question, and it is one on which a non-
+technical reader's voice may matter as much as a technical
+one's.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{The three-stage pipeline}
+
+The modern alignment pipeline has three conceptual stages.
+
+\textbf{Stage one: supervised fine-tuning.} The base model is
+shown several thousand to several hundred thousand example
+conversations, each consisting of a user prompt and an
+assistant response. The response is the kind a good assistant
+would give. The model is updated to produce responses like the
+examples. This stage teaches the model the basic format of an
+assistant interaction. It also teaches the model what kinds of
+content are and are not acceptable, but only in a relatively
+crude way: the model has only seen the examples it has been
+shown.
+
+\textbf{Stage two: preference modelling.} Pairs of responses
+to the same prompt are presented to a human annotator (or, in
+Constitutional AI variants, to another model following a
+written constitution). The annotator marks which response is
+preferred. A reward model --- usually a smaller copy of the
+main model, with the output head replaced by something that
+produces a single preference score --- is trained to predict
+the human preferences from the response text alone. The reward
+model is, in effect, a trained approximation to ``what would a
+human annotator say about this response''.
+
+\textbf{Stage three: policy optimisation.} The main model is
+updated to produce responses that the reward model rates
+highly, with a constraint that keeps the model close enough to
+its supervised-fine-tuned baseline that it does not drift into
+nonsense. In classical RLHF this update is done by a
+reinforcement learning algorithm called PPO, which is delicate
+to tune. In DPO and its variants the same update is done by a
+single supervised loss derived from the same theoretical
+framework, with no separate reward model required.
+
+The end product of all three stages is a model whose
+distribution of responses is shifted toward the kinds of
+response the preference data preferred. The shift is what
+produces the difference between a base model that will continue
+``the best way to commit fraud is'' and an aligned model that
+will refuse to.
+
+\subsection*{Why this is harder than it sounds}
+
+The pipeline above is conceptually clean. The reality of doing
+it well is not. Several specific difficulties recur.
+
+\textbf{Specifying what you want.} The annotators are given a
+written rubric. The rubric has to capture, in language, what
+counts as a good response. Real rubrics are long --- tens of
+pages --- and still ambiguous. Two annotators looking at the
+same pair of responses will disagree on roughly twenty per
+cent of cases, even when both are following the rubric
+carefully. The disagreement is not noise; it reflects real
+differences in interpretation, in cultural background, in
+tolerance for different kinds of risk. The aggregate rubric is
+some kind of average over the annotator population, and the
+average is itself a normative choice.
+
+\textbf{Avoiding gaming.} The reward model is an approximation.
+The policy can find responses that score well on the
+approximation but that humans, on closer inspection, would not
+have preferred. The KL constraint --- the regularisation term
+that keeps the policy close to the SFT baseline --- is what
+prevents this in principle. In practice it has to be tuned,
+and the tuning is the difference between a model that
+generalises and a model that gamed its training.
+
+\textbf{Sustaining capability.} The base model has capabilities
+that the alignment pipeline does not specifically reward.
+Mathematical reasoning, technical accuracy, willingness to
+disagree with the user, ability to produce certain kinds of
+fiction. Each of these can degrade during alignment if the
+preference data does not specifically protect them. Vendors
+maintain regression test suites for the capabilities they
+care about, and these test suites are part of the alignment
+operation, not separate from it.
+
+\textbf{Adapting to new failure modes.} Once a model is in
+production, users discover failure modes the trainers did not
+anticipate. New jailbreaks are published. New patterns of
+misuse emerge. The alignment pipeline has to be updated and
+the model retrained or patched. This is an ongoing operation,
+not a one-time event, and it is part of why operating an LLM
+product is more like running a service than shipping a
+product.
+
+\subsection*{Constitutional AI and the role of AI feedback}
+
+The collection of human preferences is expensive. A frontier
+model's alignment may rest on hundreds of thousands of human
+judgements, each costing several dollars to collect. The
+researchers at Anthropic, in 2022, asked whether the human
+judgements could be partially or fully replaced by AI
+judgements against a written set of principles --- a
+``constitution''.
+
+The constitution is a list of principles in plain English: be
+helpful, be honest, be harmless, do not help with the
+manufacture of weapons, do not produce content that
+sexualises minors, defer to the user on matters of taste, and
+so on. The model itself is asked to evaluate candidate
+responses against these principles, and the resulting
+judgements are used as preferences in the same pipeline that
+would otherwise have used human judgements.
+
+The approach has appealing properties. It is much cheaper than
+human labelling. It is more consistent (the same model will
+apply the same principles in the same way each time). The
+constitution is auditable: it is a written document that anyone
+can read and critique.
+
+The approach has corresponding limitations. The principles in
+the constitution are themselves chosen by humans, so the
+process is not value-neutral; it has merely moved the value
+choice up a level. The model evaluating its own outputs
+inherits the model's own biases, including the ones the
+alignment is trying to fix. The procedure can amplify failure
+modes that the model itself does not recognise. The
+consensus, at this writing, is that constitutional approaches
+work well as a supplement to human feedback and less well as a
+replacement.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{Alignment is a continuous process, not a one-time
+event.} New jailbreaks emerge, new failure modes are
+discovered, social norms shift, and the alignment of a
+deployed model has to be updated to keep up. Vendors that ship
+aligned models maintain alignment teams whose job is this
+ongoing work. The model you call this month is not the model
+you called six months ago, even when it has the same name in
+the API.
+
+\paragraph{The aligned model and the base model are different
+products.} They have different capabilities, different failure
+modes, and different appropriate uses. A researcher studying a
+model's biases is studying the aligned model unless they have
+access to the base, which is rare. A user evaluating ``what the
+model knows'' is, in practice, evaluating ``what the aligned
+model is willing to say''. The distinction matters for
+interpretation, for benchmarking, and for any claim about
+model capability. A non-technical reader should be aware that
+nearly every public claim about a vendor-served model's
+capability is a claim about the aligned model.
+
+\paragraph{Whose values are encoded matters operationally as
+well as ethically.} A vendor whose alignment was performed in
+one cultural context may not align cleanly with the
+expectations of users in a different one. A model aligned for
+American workplace norms may behave oddly in a European
+context, and stranger still in a Japanese or Brazilian one.
+This is not a bug; it is a property of any system whose
+training was done by a particular team in a particular
+context. Organisations deploying aligned models internationally
+should evaluate the models in the cultures in which they will
+be used.
+
+\paragraph{Safety classifiers are an essential layer.} The
+aligned model's own learned refusals can be bypassed. A
+separate, smaller, fast safety classifier running on inputs
+and outputs catches many of the cases the model itself misses.
+For any production deployment, the alignment of the model
+itself is necessary but not sufficient; the surrounding system
+matters as much.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Jailbreaks.} The model has learned to refuse
+certain patterns. It cannot, in principle, refuse all patterns
+of misuse, because the space of possible misuses is larger
+than the space of training examples. Any sufficiently clever
+or persistent attacker will find prompts that bypass the
+model's learned refusals. The fix is layered defence: the
+model's own refusals, plus a safety classifier, plus
+monitoring, plus human review of suspicious patterns. The fix
+is not a fully secure model.
+
+\paragraph{Sycophancy.} The model has learned, partly from the
+preference data and partly from the underlying base model's
+training, to agree with the user. It will sometimes agree with
+false premises. It will sometimes praise mediocre work. It
+will sometimes change its answer in response to the user
+pushing back, even when the original answer was correct.
+Sycophancy is one of the most thoroughly documented failure
+modes of aligned models, and the published mitigations are
+partial. A user who suspects sycophancy can sometimes elicit
+a more honest answer by phrasing the question to disguise
+their own view; this is a workaround, not a solution.
+
+\paragraph{Reward hacking.} The model has learned to produce
+responses that the reward model rates highly. Sometimes this
+correlates with what humans actually wanted. Sometimes it does
+not. A model that has been over-optimised against a reward
+model can develop characteristic tics: certain phrasings,
+certain structures, certain disclaimers, that the reward model
+likes but that human readers find off-putting. The fix is
+careful tuning of the optimisation strength and ongoing
+human review.
+
+\paragraph{Calibration loss.} The base model, trained on next-
+token prediction, is reasonably well-calibrated on its own
+predictions. The alignment process tends to make the model
+more helpful and less calibrated, because users prefer
+confident-sounding answers. The aligned model will often
+assert things it should hedge and hedge things it should
+assert. This is one of the things alignment costs, and as of
+this writing it has not been fully resolved. We will return to
+calibration in the error model of Chapter~13.
+
+\paragraph{The alignment tax, observed.} A model that has
+been carefully aligned for safety will, on certain measures,
+be worse than the unaligned base. It will refuse some requests
+it should answer; it will hedge on questions it should answer
+directly; it will produce blander prose because the rubric
+penalised opinionated prose. These are real costs, and they
+are part of why the comparison between vendors' aligned models
+is not the same as the comparison between vendors' underlying
+capabilities.
+
+\paragraph{Aligned to whom.} The most uncomfortable failure
+mode is the one that is not, technically, a failure of the
+training but a feature of it. The aligned model embodies the
+values its trainers chose. A user who disagrees with those
+values will find the model frustrating, dishonest, or
+condescending; a user who agrees will find the model agreeable.
+The disagreement is not, in general, resolvable by better
+training; it is a value disagreement dressed up as a technical
+one. Acknowledging this honestly is the beginning of any
+sensible discussion about what the values should be.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~6 (the base model that alignment
+modifies), Chapter~8 (the LoRA mechanism that makes the
+adaptation cheap), and Chapter~5 (the architecture in which
+the modifications happen). It is the place where the
+calibration property of Chapter~1 comes under pressure, where
+the helpfulness behaviour user-visible in Chapter~12 is
+manufactured, and where the safety properties evaluated in
+Chapter~10 are produced. Chapter~10 builds the systems that
+wrap aligned models for deployment. Chapter~11 takes up the
+governance question of who is responsible for the values
+encoded in the alignment, and what it would mean to audit them.
+Chapter~13 returns to the failure modes catalogued here as the
+\emph{context} and \emph{environment} axes of the error model.
+The next chapter --- \emph{Memory the Model Doesn't Have} ---
+explains how systems built around aligned models fill in the
+gaps that pretraining alone leaves behind.

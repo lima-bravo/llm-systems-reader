@@ -1,0 +1,414 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 4 -- From Letters to Vectors
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{From Letters to Vectors}
+\label{ntg:ch4}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+A computer cannot read words. It can read numbers. The neural
+network we described in Chapter~3 takes a list of numbers as
+input, performs arithmetic on them, and produces a list of
+numbers as output. Before any of the apparatus of the previous
+chapters can do anything useful with a piece of text, the text
+has to be turned into numbers.
+
+This chapter is about how that turning-into-numbers happens. It
+proceeds in two steps. The first step is called
+\emph{tokenization}: the text is chopped into pieces, called
+\emph{tokens}, and each piece is given a number. The second
+step is called \emph{embedding}: each token's number is used to
+look up a list of further numbers, called the token's
+\emph{vector} or \emph{embedding}, that captures something about
+the token's meaning. The two steps sound prosaic. They are
+also the place where several of the most user-visible quirks
+of modern Large Language Models come from --- the way the model
+miscounts letters in a word, the way the same sentence in two
+languages costs different amounts to process, the way bias in
+the training corpus survives into the model's behaviour.
+
+\subsection*{How we got here}
+
+The earliest computational treatments of language took the
+\emph{word} as the unit of analysis. This was intuitive --- a
+dictionary is a list of words --- and almost immediately
+catastrophic. English has too many words. Inflectional
+languages like Finnish and Hungarian have far too many.
+Compound-forming languages like German and Dutch can produce a
+new word any time you want one. Every model encountered, in
+production, words that were not in its vocabulary. The standard
+response was to replace the unknown word with a single special
+symbol, conventionally written ``\texttt{<unk>}'', that
+destroyed any information the word had carried. A model whose
+answer to half the questions it received was effectively
+``unknown'' was not a useful model.
+
+For a brief period in the mid-2010s the field considered the
+opposite extreme: take the \emph{character} as the unit. Every
+text becomes a sequence of letters. There is no out-of-
+vocabulary problem because every letter is in the vocabulary.
+The trouble is that a single English word becomes five or six
+units, an entire paragraph becomes thousands, and the network
+spends most of its capacity learning to recognise that
+``c'', ``a'', and ``t'' together mean ``cat'' --- a thing it
+should be able to take for granted. Character-level models were
+elegant. They were, on the whole, defeated by the practical
+costs.
+
+The compromise that won was the \emph{subword}: a unit smaller
+than a word but larger than a letter, learned from the corpus
+rather than handed down by a linguist. The algorithm in
+predominant use today, \emph{Byte-Pair Encoding}, was originally
+designed by Philip Gage in 1994 as a data compression technique.
+Rico Sennrich, Barry Haddow, and Alexandra Birch, at the
+University of Edinburgh in 2016, adapted it for neural machine
+translation. Their idea was simple: start with the alphabet,
+look through the corpus for the most common pair of adjacent
+units, and merge that pair into a single new unit. Repeat. After
+a few thousand merges, the resulting vocabulary contains
+common words as single units, common parts of words as units,
+and rare words decomposed into their parts. The vocabulary
+size is fixed --- around thirty to one hundred thousand units
+in modern models --- and any string in any language can be
+represented in it without an out-of-vocabulary problem.
+
+Two close cousins of byte-pair encoding share the field.
+WordPiece was developed by Mike Schuster and Kaisuke Nakajima
+at Google for voice search; it became famous when Google's BERT
+model used it in 2018. SentencePiece, by Taku Kudo also at
+Google, handles languages without obvious word boundaries
+(Chinese, Japanese, Thai) cleanly. By 2020 every modern
+language model used one of these three algorithms. The
+differences between them are mostly engineering details. The
+qualitative behaviour --- chop text into subword units, give
+each unit a number, never have an out-of-vocabulary case --- is
+the same.
+
+The second step, the embedding, has its own history. The
+foundational idea is older than computational linguistics:
+\emph{the meaning of a word can be inferred from the company
+it keeps}. The British linguist J.~R.~Firth said this in 1957.
+The American linguist Zellig Harris, Chomsky's teacher, said
+something close to it in 1954. The principle is that two
+words that appear in similar contexts probably mean similar
+things, and the corollary is that you can characterise the
+meaning of a word by recording the contexts in which it
+appears. The principle was used in vector-space models of
+information retrieval as early as the 1960s.
+
+The decisive computational step came in 2003 with Yoshua
+Bengio's neural language model and in 2013 with Tom\'a\v{s}
+Mikolov's \emph{word2vec}. Mikolov simplified Bengio's idea
+into a system that could be trained on enormous corpora cheaply,
+and the resulting word vectors --- lists of typically three
+hundred numbers per word --- had a striking property. The
+geometry of the vector space encoded meaning. Words with
+similar meanings were close to one another in the space. The
+direction from ``man'' to ``woman'' was approximately the same
+as the direction from ``king'' to ``queen'', so that the
+arithmetic ``king minus man plus woman'' landed near
+``queen''. The geometry was not perfect --- the analogy trick
+broke down on most analogies that were not specifically about
+gender or capital cities --- but it was a real and reproducible
+phenomenon, and it convinced the field that meaning could be
+represented numerically.
+
+Modern Large Language Models do not, in general, train word
+vectors separately and then plug them into the network. They
+train the embedding as the bottom layer of the same neural
+network we described in Chapter~3, using the same training
+procedure of Chapter~2. The geometric properties Mikolov
+observed remain present, in modified form, in the embeddings of
+modern models, and they continue to be one of the things that
+makes the language modelling pipeline work.
+
+\subsection*{Where we stand}
+
+A modern tokenizer is a small, deterministic, frozen artefact.
+It is trained once, before the main model training begins, on a
+representative sample of the corpus. After that, it is fixed for
+the life of the model: changing it would invalidate every token
+the model had ever seen. The tokenizer is, in essence, a lookup
+table from strings to integers and back. Given a sentence, it
+produces a list of integers (the token IDs). Given the list of
+integers, it reconstructs the sentence almost exactly --- modulo
+a few normalisation choices about whitespace and Unicode form.
+
+The embedding layer takes each token ID and looks up the
+corresponding vector --- the list of numbers, typically a few
+thousand long, that the trained model uses to represent that
+token internally. The vectors live in a high-dimensional space
+in which directions and distances encode meaning, in a way the
+training procedure discovered without anyone telling it to. The
+rest of the model --- the deep stack of layers from Chapter~3
+plus the attention machinery of Chapter~5 --- operates on these
+vectors and produces, at the end, a probability distribution
+over which token should come next.
+
+\subsection*{What goes wrong}
+
+Tokenization is a quiet source of several user-visible quirks.
+
+The most consequential is the multilingual disparity. The same
+sentence in Thai, Amharic, or Burmese costs typically two to
+five times as many tokens as the English original under a
+tokenizer trained predominantly on English. This means a
+context window of a fixed token length covers far less of those
+languages than of English, and an API priced per token charges
+far more for the same content. There is no clean fix at the
+model level; partial fixes include training tokenizers on more
+balanced corpora, which several frontier model providers have
+begun to do.
+
+A second issue is the ``model doesn't know X'' phenomenon. The
+model often does know X. The token sequence that names X is
+just rare in the training data, or it is split awkwardly across
+token boundaries, and the model's grasp of it is correspondingly
+weak. Calling this an ignorance failure obscures the underlying
+tokenization issue. We will return to this in the engineering
+section below.
+
+A third issue is brittleness at token boundaries. Two prompts
+that look identical to a human can segment differently if
+whitespace, capitalisation, or Unicode normalisation differs by
+even a single character. The model behaves differently on the
+two segmentations, sometimes dramatically. Engineers who paste
+prompts together at runtime, without testing the resulting
+tokenization, ship products that misbehave in ways no test
+caught.
+
+A fourth issue is adversarial. Unicode is permissive about
+characters that look identical to a human reader (``homoglyphs'',
+like the Latin and Cyrillic letter ``a'') and about invisible
+code points (zero-width spaces, bidirectional override
+characters). An attacker can craft a prompt whose visible text
+says one thing and whose tokenized form says another. We will
+see this attack class properly in Chapter~12.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{Tokenization, by hand}
+
+The cleanest way to feel what tokenization does is to walk
+through it on a single sentence.
+
+Take the sentence ``The cat sat on the windowsill.'' A modern
+tokenizer might segment this into the tokens \texttt{The},
+\texttt{ cat}, \texttt{ sat}, \texttt{ on}, \texttt{ the},
+\texttt{ window}, \texttt{sill}, \texttt{.}. Notice three
+things. First, the leading space is part of the token: the
+tokenizer treats ``\texttt{ cat}'' (with space) and
+``\texttt{cat}'' (without) as different tokens, because they
+behave differently. Second, ``windowsill'' has been split into
+two tokens, ``\texttt{ window}'' and ``\texttt{sill}''. The
+tokenizer's vocabulary contained ``\texttt{ window}'' as a
+common word but not the full compound, so the compound was
+decomposed. Third, the period is its own token. Punctuation
+almost always gets its own tokens.
+
+Now consider the same sentence in Thai. The exact Thai
+characters do not matter for the example; the point is that a
+sentence of similar meaning in Thai, Burmese, or Amharic might
+be segmented into fifteen or twenty tokens rather than eight,
+simply because the tokenizer was trained predominantly on
+English text and never saw enough Thai to recognise common
+Thai sequences as tokens worth giving their own slot. The
+model can still process the Thai sentence, but it spends more
+of its budget doing so, and some of the relationships the
+model would learn easily in English
+(``\texttt{ window}'' as a single semantic unit) are
+fragmented across many small tokens it has to reassemble.
+
+The same fragmentation explains why models cannot reliably count
+the letters in a word. The word ``strawberry'' may be tokenized
+as ``\texttt{straw}'' and ``\texttt{berry}'', or as a single
+token, depending on the tokenizer. The model never sees the
+individual letters. Asking it ``how many R's are in
+strawberry'' is asking it about a property of the spelled-out
+form that is not part of its input. Sometimes it gets the
+answer right because something in its training data discussed
+the spelling. Often it does not. This is not a deep failing of
+language modelling. It is a property of the tokenization step.
+
+\subsection*{Embeddings as a map of meaning}
+
+The embedding step takes each token ID and looks up the list of
+numbers (typically two to four thousand of them in modern
+models) that the model uses to represent that token internally.
+You can think of each embedding as a coordinate in a very
+high-dimensional space. We cannot picture a four-thousand-
+dimensional space, but we can carry several useful intuitions
+from lower-dimensional analogies.
+
+In two dimensions: imagine plotting the words of English on a
+sheet of paper, with related words near one another. Words for
+animals would form a region. Within it, ``dog'' would be near
+``cat'' and far from ``elephant''. The arrangement is what
+linguists call a \emph{semantic field}. The field is not a
+discrete category; it is a continuous neighbourhood, and a word
+can be in several overlapping neighbourhoods at once.
+
+In four thousand dimensions: there are enough directions that
+each different ``meaning'' a word has can be encoded along a
+different one. The direction from ``man'' to ``woman'' is one
+direction. The direction from ``Paris'' to ``France'' is
+another. The direction that distinguishes ``ran'' from ``run''
+is a third. The training procedure of Chapter~2 worked these
+directions out from the contexts in which the words appeared,
+without being told what any of them meant.
+
+The magic of word2vec --- ``king minus man plus woman is near
+queen'' --- is the geometric statement that these directions
+exist as roughly straight lines in the embedding space and that
+they roughly add. This is not exactly true. The directions are
+not exactly straight, the analogies are not exactly preserved,
+and a long literature has grown up showing where the trick
+fails. But it is true \emph{enough} to be useful, and the
+overall fact that words with similar meaning end up near each
+other in the embedding space is what makes the rest of the
+model's machinery work. The model does not need a separate
+look-up table that says ``cat is similar to kitten''. It can
+read the similarity off the geometry.
+
+\subsection*{What the embedding is and is not}
+
+It is worth being careful about what the embedding does and
+does not contain.
+
+It contains, encoded in the geometry, the distributional
+statistics of the training corpus. Words that appeared in
+similar contexts in the corpus end up near one another in the
+space. Directions in the space sometimes correspond to
+interpretable axes of meaning (gender, tense, formality), often
+do not, and almost always vary in interpretability across
+models.
+
+It does not contain anything about the world that the corpus
+did not contain. If the corpus did not discuss a particular
+chemical compound, the model has no embedding for it that
+encodes anything useful about its properties. (The model may
+still have some embedding for it, if the chemical name was in
+the corpus at all. The embedding will, however, be sparse,
+and the model's behaviour around it correspondingly fragile.)
+
+It does not contain truth values. The embedding for ``Earth''
+and the embedding for ``flat'' have a relationship in the space
+that reflects how often they appeared together in the corpus,
+not whether the Earth is in fact flat. Models trained on
+corpora that contain a lot of conspiracy theory will have
+embeddings that reflect the conspiracy theory's statistical
+prominence, not its truth. This is one of the reasons curating
+the training corpus matters.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{Token counts are the unit of cost.} Almost every
+modern LLM API charges by the token, both for input (the prompt
+you send) and for output (the response you receive). A user
+who sends ten thousand words of context is paying for the
+tokenization of those ten thousand words. The same content in
+different languages costs different amounts. The same content
+expressed concisely versus verbosely costs different amounts.
+For a product team running an LLM at scale, the tokenization
+step has a direct line to the monthly bill.
+
+\paragraph{The context window is in tokens.} Modern models have
+a maximum context length, expressed in tokens, beyond which they
+either truncate the input or refuse the request. In 2024 this
+was typically between 8{,}000 and 200{,}000 tokens. The number
+of words this corresponds to depends on the language, the
+tokenizer, the proportion of code, and the proportion of
+unusual content. A team designing a product around an LLM has to
+budget for the tokenization rather than for the visible text.
+When the budget is tight, this is one of the first places to
+optimise.
+
+\paragraph{The tokenizer is a frozen artefact.} For any given
+model checkpoint, the tokenizer cannot be changed without
+re-training the model. This means that if a tokenizer was
+trained predominantly on English in 2020, the model still
+suffers from that imbalance in 2024. Newer models use newer
+tokenizers, and the gap between an old and a new model can
+include differences in tokenization that the model cards do not
+always foreground.
+
+\paragraph{Embedding similarity is a useful primitive.} Because
+the embedding space encodes meaning geometrically, the
+similarity between two pieces of text can be measured by
+embedding both and computing how close they are in the space.
+This is the basis of the \emph{vector database} that
+underpins the retrieval systems of Chapter~10. It is not a
+perfect measure of meaning --- two pieces of text can be close
+in the embedding space without being equivalent in any deep
+sense --- but it is a much better measure than the keyword
+matching it replaced.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Letter-level operations.} The model does not see
+letters; it sees tokens. Asking it to count the letters in a
+word, to spell a word backwards, to pick a word that starts
+with a particular letter, or to perform any operation that
+requires inspecting individual characters within a token will
+sometimes succeed (because the training corpus discussed the
+spelling) and will sometimes fail in surprising ways. The
+failure mode is not a failure of intelligence; it is a failure
+of input representation. Engineers building products that
+depend on letter-level operations should not use the bare
+language model for them.
+
+\paragraph{Multilingual cost and quality.} A model trained
+predominantly on English text is, on average, less fluent in
+non-English languages. The disparity is partly in the model
+weights (more training compute was spent on English) and partly
+in the tokenization (the tokenizer represents English more
+efficiently than most other languages). The combined effect is
+that the same task costs more and is performed worse in less
+well-represented languages. This is a known and unevenly
+addressed inequity, and a non-technical reader evaluating an
+LLM product for a non-English deployment should ask the vendor
+for performance numbers in the target language specifically.
+
+\paragraph{Bias as inherited corpus statistics.} Words associated
+in the training corpus with a particular gender, ethnicity, or
+profession will, in the model's embeddings, encode that
+association. A model whose corpus contained ``the doctor said
+he'' more often than ``the doctor said she'' will, on average,
+predict masculine pronouns after ``the doctor said''. This is
+not a separate failure of the model. It is a faithful encoding
+of the statistics of the corpus. Reducing the bias is possible
+and is the subject of an ongoing literature, but doing so
+without compromising other aspects of model behaviour is hard,
+and the trade-offs are usually not transparent in vendor
+documentation.
+
+\paragraph{The hidden interface between text and tokens.} The
+gap between what a user sees on the screen and what the model
+sees in its input is invisible to most users and to many
+engineers. This is the surface on which several attacks
+operate. We will see in Chapter~12 the class of attacks that
+exploit invisible Unicode characters, look-alike letters, and
+unexpected normalisations to make the model see one thing while
+the user sees another. The tokenization step is the place where
+the gap is opened.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built the bridge from text to numbers that
+everything else in the book takes for granted. Chapter~5 takes
+the embedded tokens as the input to attention. Chapter~6
+trains the embedding layer along with the rest of the model and
+gives us the larger context of pretraining. Chapter~10 uses the
+embedding space directly as the basis for retrieval. Chapter~12
+returns to the tokenization gap as the surface on which several
+classes of attack operate. The next chapter --- \emph{Attention,
+or How a Machine Reads} --- shows what the model does with the
+embedded tokens once it has them.

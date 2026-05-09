@@ -1,0 +1,415 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 5 -- Attention, or How a Machine Reads
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Attention, or How a Machine Reads}
+\label{ntg:ch5}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+A sentence is a sequence in which almost any word can, in
+principle, depend on almost any other. The pronoun in the last
+clause may refer to a noun in the first. The verb tense at the
+end of a paragraph may be set by an adverb at the beginning. The
+joke at the end of an essay may rely on a figure of speech
+introduced ten pages earlier. If you want to predict the next
+word in a passage, you need a way of letting information from
+arbitrary distances in the past reach the present without being
+attenuated, garbled, or forgotten.
+
+You also need this in a way that runs efficiently on the kind of
+hardware available to us today --- specifically, the graphics
+processors that excel at doing many small calculations at the
+same time but struggle with calculations that have to be done in
+strict sequence, one after another. The architectures of the
+1990s and 2000s satisfied the first requirement (long-range
+memory) but failed at the second (parallelism), and the
+architectures of the 2010s satisfied the second but were
+mediocre at the first. The breakthrough of the late 2010s was a
+design that satisfied both at once, and it is the design that
+underlies every Large Language Model in production today.
+
+This chapter is about that design. It is called the
+\emph{Transformer}, and the central trick it introduced is
+called \emph{attention}. The name of attention is, like the
+name of the artificial neuron, half honest. Attention does
+something a careful reader does --- it finds, for each new word,
+the earlier words most relevant to it --- but it does so by
+brute arithmetic rather than by anything resembling cognition.
+The trick is that the brute arithmetic, applied at scale,
+produces something that often looks like cognition.
+
+\subsection*{How we got here}
+
+The earliest neural networks for sequences were \emph{recurrent}.
+Jeffrey Elman, a cognitive scientist at the University of
+California, San Diego, published a paper in 1990 with the
+unpretentious title \emph{Finding Structure in Time}. Elman's
+network maintained a hidden internal state that was updated one
+word at a time. Each new word was read in, the hidden state was
+updated, the hidden state was used to predict the next word.
+The hidden state was meant to be a summary of everything the
+network had read so far. In practice, the summary was thin. The
+network had trouble remembering anything more than a handful of
+words back, and the longer the sequence, the worse the memory
+got.
+
+The diagnosis came in 1997 from Sepp Hochreiter and J\"urgen
+Schmidhuber. They observed that the gradient signal --- the
+information by which the training process tells the network how
+to improve --- shrank or grew exponentially as it was passed back
+through the time steps of a recurrent network. If it shrank, the
+early time steps stopped learning. If it grew, the network's
+weights blew up to nonsense. They proposed a more elaborate
+recurrent unit, called the \emph{Long Short-Term Memory cell}
+(LSTM), that used carefully gated arithmetic to let some signals
+pass through unmodified. The LSTM was the workhorse of
+sequence modelling for the next twenty years, and it is the
+basis of, among other things, Apple's Siri and Google's
+original speech recognition.
+
+The next move came in machine translation. Ilya Sutskever, Oriol
+Vinyals, and Quoc Le, all then at Google, showed in 2014 that a
+pair of LSTMs could translate end to end. One LSTM read the
+source sentence and compressed its meaning into a single fixed-
+length internal vector. A second LSTM took that vector and
+unrolled it into the target sentence. The trick almost worked.
+The catch was the fixed-length vector, which had to compress an
+entire source sentence into a few thousand numbers regardless of
+how long the source was. For short sentences this was fine. For
+long ones it was a disaster.
+
+The fix arrived in 2015. Dzmitry Bahdanau, Kyunghyun Cho, and
+Yoshua Bengio (working at the Universit\'e de Montr\'eal)
+introduced what they called \emph{attention}. At each step of
+the second LSTM, instead of relying on the bottleneck vector,
+they had the model compute a weighted sum over all the hidden
+states the first LSTM had ever produced --- with the weights
+chosen by the second LSTM itself, depending on what it currently
+needed. The bottleneck disappeared. Translations got better.
+The technique propagated rapidly across the field, and by 2017
+attention was being used as a component in dozens of different
+architectures.
+
+The decisive paper came in June of that year. Ashish Vaswani
+and seven coauthors at Google Brain and Google Research
+published a paper titled, with characteristic understatement,
+\emph{Attention Is All You Need}. They asked: if attention is
+the part that works, what happens if we throw away the recurrent
+network entirely and build the whole architecture out of
+attention? The answer was that you got a model that could be
+trained in parallel across an entire sequence, that did not
+suffer the vanishing-gradient problems of the recurrent
+network, and that scaled --- when given more data and more
+parameters --- in ways the recurrent models had never managed.
+Every Large Language Model in production today is a descendant
+of that paper. The 2017 publication date is, in retrospect, the
+moment when the present era of artificial intelligence became
+inevitable.
+
+\subsection*{Where we stand}
+
+The modern Transformer is a stack of identical building blocks.
+Each block takes its input as a list of vectors --- one per
+token, the vectors we constructed in Chapter~4 --- and produces
+a refined list of the same shape. Inside each block, two things
+happen.
+
+The first is the attention step. Each token in the sequence
+performs a small piece of arithmetic to produce three intermediate
+quantities, called by the technical names \emph{query},
+\emph{key}, and \emph{value}. The query of each token is
+compared against the keys of every other token, producing a
+score for each pair. The scores are normalised so that they sum
+to one across all the other tokens, producing a set of
+\emph{attention weights}. Each token's new representation is
+then a weighted sum of the values, with the weights being the
+attention weights it just computed. In effect: each token gets to
+look at every other token in the sequence, decide how relevant
+each one is to it, and pull together a summary weighted by that
+relevance.
+
+The second is the feed-forward step. The output of attention is
+passed through a small ordinary neural network of the kind we
+described in Chapter~3 --- a couple of layers, each computing
+weighted sums and nonlinearities. This step does not look at
+other tokens; it processes each token's representation
+independently. Its job is to take the contextually-informed
+representation produced by attention and refine it further.
+
+The two steps repeat. A modern Large Language Model has somewhere
+between thirty and a hundred such blocks stacked on top of one
+another. The output of the last block is fed into one final
+layer that produces, for each position in the sequence, a
+weighting over the tokens that might come next --- exactly the
+weighting we described in Chapter~1.
+
+\subsection*{What goes wrong}
+
+The Transformer's design has several characteristic failure
+modes that are visible to anyone using a modern LLM in earnest.
+
+The first is cost in long contexts. The attention step, by its
+construction, requires comparing every token to every other
+token. The number of comparisons grows with the square of the
+sequence length: a context of one thousand tokens requires
+about a million comparisons; ten thousand tokens requires a
+hundred million. This is why long-context LLMs are several times
+more expensive per query than short-context ones, and why the
+context-window length advertised by a vendor is the constraint
+that often binds first in real applications.
+
+The second is the \emph{lost-in-the-middle} effect. Researchers
+have repeatedly demonstrated that, when given a long document
+and asked to answer a question whose answer lies somewhere in
+that document, modern LLMs reliably attend more to the beginning
+and end of the document than to the middle. This means an answer
+buried in the middle of a long context is more likely to be
+missed than an equivalent answer at either end. The exact
+mechanism is not fully understood, but the effect is robust
+enough that practitioners building systems around LLMs are
+advised to put the most important information at the
+boundaries of the context.
+
+The third is the temptation to read attention weights as
+explanations. The attention weights look, on the face of it,
+like an interpretable signal: the model attended to such-and-
+such an earlier token, therefore that token is what informed
+the answer. This story is sometimes accurate and is, in
+general, an oversimplification. The attention weights are one
+piece of the model's computation; they pass through several
+more transformations before producing the output. Treating
+attention weights as a decisive explanation has produced a
+literature of well-meaning interpretations that subsequent
+analysis has had to walk back. The attention weights are an
+input to interpretability, not an answer.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{The librarian analogy}
+
+The attention mechanism is most easily understood by analogy to
+a librarian. Imagine a researcher (the new word being predicted)
+who walks up to a librarian and describes what they want to know
+(the query). The librarian has access to a card catalogue (the
+keys, one for each previous word) and to a stack of books (the
+values, one for each previous word). The librarian compares the
+researcher's description to each card, decides which cards are
+most relevant, and returns the corresponding books in proportion
+to that relevance --- mostly the most relevant book, somewhat of
+the second most relevant, a little of the third, almost none of
+the rest. The researcher then reads the weighted combination of
+books and incorporates it into their understanding of the
+question.
+
+The analogy is faithful in its main features. The query
+describes what the new token is looking for. The keys describe
+what each previous token has on offer. The dot-product
+similarity between the query and each key measures the relevance.
+The values are what gets pulled along and summed up. The
+softmax normalisation that turns scores into weights is what
+makes the librarian return ``mostly one book, partly several'',
+rather than either ``all of one book, none of the others'' or
+``equal slivers of every book''.
+
+The analogy is misleading in two important ways. First, the
+librarian's catalogue, books, and judgements are all created on
+the spot from the same source --- the previous tokens. There is
+no separate library; each previous token simultaneously plays
+the roles of card and book and decides what it will offer based
+on what it itself contains. Second, the researcher's question
+(the query) is also computed from the source --- the new token
+is asking the question its embedding has decided is appropriate,
+not the question a human reader would frame.
+
+\subsection*{Why parallelism mattered}
+
+The recurrent networks that came before the Transformer had a
+property that limited their scaling. They processed a sequence
+one token at a time, in order, with each step depending on the
+previous step's hidden state. This is the way a human reads
+prose. It is also exactly the wrong shape for a graphics
+processor, which is designed to do thousands of small operations
+in parallel and which sits idle if the operations have to be
+performed in sequence.
+
+The Transformer's attention step has a different shape. Every
+token's query, key, and value can be computed independently of
+every other token's. The scores between all pairs of tokens can
+be computed in one large matrix operation. The weighted sums can
+be computed in another large matrix operation. The whole step
+can be parallelised across the entire sequence at once. A
+Transformer training run can keep a graphics card saturated in
+a way a recurrent network never could. This is the prosaic
+reason the Transformer won. The scaling laws of Chapter~7 --- the
+empirical regularity that more compute reliably buys lower loss
+--- are downstream of the fact that the Transformer can spend
+the compute productively.
+
+\subsection*{The price of attention}
+
+The Transformer's parallelism comes at a specific cost. To
+compute the attention weights, every token must be compared
+against every other token. The number of such comparisons is
+the square of the sequence length. For a context of a thousand
+tokens, that is a million comparisons; for a context of a
+hundred thousand tokens, ten billion. The graphics card that
+loved the parallelism of attention is also the bottleneck on
+how long a context can be processed, and the cost grows quickly.
+
+A great deal of recent engineering has been devoted to softening
+the quadratic cost. Specialised implementations like
+\emph{FlashAttention}, developed by Tri Dao and his
+collaborators in 2022 and 2023, perform the same computation
+much more efficiently by being clever about how they use the
+graphics card's memory. Other approaches restrict each token to
+only attending to a window of nearby tokens (\emph{sliding
+window attention}), or to a small carefully chosen subset
+(\emph{sparse attention}). None of these tricks remove the
+quadratic cost in principle. They push the threshold at which it
+becomes prohibitive higher, but the threshold is still there.
+
+\subsection*{Position, and why it has to be added}
+
+A subtlety of the attention mechanism is that, by itself, it
+has no notion of order. The weighted sum of the previous tokens'
+values does not depend on what order those tokens appeared in.
+``The cat sat on the mat'' and ``Mat the on sat cat the'' would,
+to bare attention, look identical. This is obviously wrong for
+language, where order matters enormously.
+
+The fix is to add to each token's representation, before it
+enters the attention step, a small extra signal that indicates
+its position in the sequence. The signal can be a fixed
+mathematical pattern (the original Transformer paper used
+sinusoids of different frequencies), a learned set of vectors
+(one per position), or a trick called \emph{rotary position
+embedding} that the field has gradually converged on. The
+qualitative point is that position is something that has to be
+added; it is not native to attention. This is the source of
+several characteristic failure modes when models are asked to
+work with sequences much longer than they were trained on,
+which we will discuss below.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{Context window is the binding constraint.} For most
+applications built on top of LLMs today, the size of the
+context window --- how much text the model can take in at once
+--- is the constraint that binds first. It binds for retrieval
+systems (Chapter~10), where a longer context lets the system
+include more retrieved documents. It binds for code assistants,
+where a longer context lets the model see more of the
+surrounding code base. It binds for long-document analysis,
+where a longer context lets the model process the whole
+document at once rather than in chunks. The number you should
+ask of any LLM vendor is not just ``how many parameters'' but
+``what is the context window, and how much does inference cost
+at the long end of that window''.
+
+\paragraph{Long contexts are not free.} Because the attention
+cost grows with the square of the length, the per-query cost of
+running an LLM at the long end of its context window is
+several times higher than at the short end. Vendors do not
+always price this transparently. A product team that is
+designing around long contexts should measure end-to-end cost
+at realistic context lengths, not at the marketing number.
+
+\paragraph{Attention weights are diagnostics, not explanations.}
+There is a temptation, when debugging a model's behaviour on a
+particular input, to look at which earlier tokens it attended
+to and treat that as the explanation. The attention weights are
+useful as a diagnostic --- they often correlate with what the
+model considered relevant --- but they are not by themselves a
+complete account of what the model did with the information.
+Treating them as such has produced a series of confident
+interpretations that later turned out to be wrong. The honest
+posture is that attention is one signal among several, and that
+the literature on mechanistic interpretation is still working
+out how to read it carefully.
+
+\paragraph{Position handling is fragile.} A model trained with
+a context window of, say, four thousand tokens may technically
+be able to accept inputs longer than that, but its behaviour at
+ten thousand tokens will often be measurably worse than at four
+thousand. The position-handling machinery was tuned for the
+training-time range and degrades outside it. This is one of the
+quieter failure modes when product teams run into it. A
+technique called \emph{long-context fine-tuning} can extend a
+model's effective context, but the extension is not free and
+not always advertised.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Lost-in-the-middle.} Already mentioned above, this
+is the empirically observed tendency of modern LLMs to attend
+more to the start and end of a long context than to the middle.
+Documented in 2023 by Nelson Liu and his coauthors at Stanford,
+the effect is robust across model families, context lengths,
+and tasks. The mechanism is partly architectural (the position
+encodings have less differentiation in the middle of the
+range), partly trained-in (the training data overrepresents
+patterns where the salient information is at the start of a
+document), and partly poorly understood. The practical
+implication is that, when designing prompts that include
+multiple retrieved documents or multiple chunks of context, the
+ones the model most needs should be at the start or the end.
+
+\paragraph{Prompt brittleness from the inside.} The attention
+mechanism's content-addressable lookup is sensitive to the exact
+content of every token. Two prompts that differ in a single
+word, or in punctuation, can produce different attention
+patterns and therefore different outputs. We met this in
+Chapter~1 as a consequence of the model producing samples; here
+we see it as a consequence of the architecture. The same word
+in two slightly different positions of two slightly different
+sentences will play a different role in attention, and the
+downstream consequences can be qualitative.
+
+\paragraph{Context-window stunts.} The advertised context
+windows of frontier models have, in the last two years, grown
+from thousands of tokens to hundreds of thousands and, in some
+cases, millions. The effective context window --- the range
+over which the model can usefully attend without the lost-in-
+the-middle effect or position-encoding degradation --- is in
+general much shorter than the advertised one. ``Context window''
+is now a term whose marketing meaning and engineering meaning
+have come apart. A buyer who has to evaluate whether a model
+can handle a particular long-document task should test it on
+the actual task at the actual length, rather than relying on
+the headline number.
+
+\paragraph{Attention sinks and other emergent oddities.}
+Researchers have observed that, in some trained models, a small
+number of token positions accumulate disproportionate attention
+across the entire sequence --- as if the model uses them as
+internal registers. This is not yet a settled story, but it has
+implications for any analysis that treats the attention
+weights as a clean explanation of model behaviour, since the
+``sink'' positions can dominate the weights without
+corresponding to any meaningful semantic role.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~3 (the deep stack of layers) and
+Chapter~4 (the embeddings that turn tokens into the vectors the
+attention mechanism reads). It is the architectural foundation
+for everything that follows: Chapter~6 trains a Transformer at
+scale, Chapter~7 discusses how big the Transformer can get,
+Chapter~8 modifies a trained Transformer cheaply, and
+Chapter~10 puts a Transformer on top of a retrieval system.
+The lost-in-the-middle effect we have just described will
+reappear in Chapter~10 as a major constraint on how retrieval
+results are arranged in the prompt, and in Chapter~13 as one of
+the failure modes the error-model ladder helps diagnose. The
+next chapter --- \emph{Pretraining and the Birth of GPT} ---
+takes the Transformer architecture and explains what was done
+to it, and with what data, to produce the GPT line and the
+models that followed.

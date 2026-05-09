@@ -1,0 +1,618 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 13 -- A Map of How LLMs Go Wrong
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{A Map of How LLMs Go Wrong}
+\label{ntg:ch13}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+The twelve chapters that came before have each ended with a
+section called \emph{What goes wrong, and why}. By now the
+reader has met a substantial vocabulary of LLM failure modes:
+hallucination, miscalibration, prompt brittleness, the
+alignment tax, sycophancy, reward hacking, jailbreaks, lost-in-
+the-middle, retrieval drift, citation hallucination, prompt
+injection, confused-deputy attacks, cost runaways. Each of
+these terms picks out a real and important kind of failure.
+Each was paid for, in the chapter that introduced it, with a
+careful explanation of the mechanism that produces it.
+
+What the vocabulary does not give the reader, on its own, is a
+way of saying to the colleague across the desk who has just
+been handed a wrong answer by a language model and wants to
+know, in plain words, what went wrong. ``The cross-entropy
+objective trains for plausibility rather than truth, and the
+retrieval pipeline appears to have surfaced a topically
+adjacent but factually incorrect passage'' is correct. It is
+not what the colleague came to hear. The problem of this final
+chapter is the gap between the engineer's vocabulary, which is
+precise, and the user's experience of error, which is
+unmediated. We want a model of LLM failure that an intelligent
+non-specialist can hold in their head, that maps onto the
+technical mechanisms covered in previous chapters, and that
+gives a user something to do when an answer arrives that they
+suspect is wrong.
+
+This chapter builds that model. The model has five axes,
+arranged from the most mechanical to the most human. The
+ordering is not arbitrary. It is the empirically observed order
+of how reliably the model performs at each level: very well at
+the bottom, less well as one ascends. Walking the ladder, when
+an answer arrives that smells wrong, is the discipline this
+chapter recommends.
+
+\subsection*{How we got here}
+
+The study of language as a layered phenomenon is older than
+the language model. Linguists since at least the early
+twentieth century have distinguished between the structure of
+an utterance (its syntax), the meaning it conveys (its
+semantics), and the situational effect it has (its
+pragmatics). Each level has its own rules, its own
+characteristic failures, and its own diagnostic vocabulary.
+
+Noam Chomsky's distinction between competence and performance,
+in the 1960s, separated the abstract rules of grammar from
+the noisy reality of speech. A speaker can have competence in
+a rule (they know it, in the sense that their judgements
+about new sentences conform to it) without performing it
+reliably (their actual speech is full of slips, restarts, and
+errors that the rule does not predict). The distinction
+matters for our purposes because it captures, almost
+exactly, the gap between what the model has been trained to
+do and what the model in any given moment actually does.
+
+H. Paul Grice, in his 1967 William James lectures at Harvard,
+articulated what he called the \emph{cooperative principle}:
+that speakers and listeners in conversation are tacitly
+cooperating to make the exchange go well, and that the
+implications a listener draws from a speaker's utterance
+depend on this assumption of cooperation. Grice gave us the
+vocabulary of \emph{conversational implicature} --- the
+distinction between what a speaker literally says and what
+they mean by saying it --- and the four maxims of conversation
+(quantity, quality, relation, manner) that participants are
+assumed to follow. None of this was about machines. All of it
+turns out to matter when the machine begins to talk.
+
+John Searle's \emph{speech acts} of 1969 categorised what
+utterances do as well as what they say. A statement asserts; a
+question requests information; a promise commits the speaker
+to a future action. The taxonomy gave us the vocabulary in
+which to ask, of any utterance, not only ``is it true'' but
+``is it the right kind of thing to be saying here''. This
+question turns out to be unexpectedly relevant to what users
+mean when they say a model has answered the wrong question.
+
+The translation to artificial systems began with the question
+of whether a symbol-manipulating system could ever truly mean
+anything at all. Stevan Harnad's 1990 paper \emph{The Symbol
+Grounding Problem} asked how the symbols inside a computer
+could come to refer to things in the world, given that the
+symbols themselves are just shapes. The question became
+urgent when statistical language models began producing
+fluent text without any obvious mechanism for connecting that
+text to anything outside the corpus.
+
+Emily Bender and Alexander Koller's 2020 paper \emph{Climbing
+towards NLU} sharpened the argument. They proposed a thought
+experiment in which an octopus, intelligent but confined to
+listening to undersea cables that carry human conversation,
+learns to imitate the conversation perfectly without ever
+encountering the world the conversation is about. Could the
+octopus, on the basis of imitation alone, be said to
+understand? Bender and Koller's answer was no: a system
+trained only on linguistic form cannot, by that training
+alone, learn meaning, because meaning is a relation between
+form and the world that the form alone does not contain.
+Modern Large Language Models are, in this analogy, the
+octopus.
+
+Gary Marcus, in a series of papers and books over the same
+period, argued that the failures of modern LLMs are not bugs
+to be fixed but the expected consequence of an architecture
+that has no concept of reference. The argument is contested.
+What is not contested is that the failure modes are real,
+that they are characteristic, and that they are not going
+away merely as a consequence of further scaling.
+
+\subsection*{Where we stand}
+
+The model this chapter develops has five axes, arranged from
+the mechanical to the human.
+
+\textbf{Structure.} Whether the output is well-formed for the
+purpose at hand. A JSON object that parses; a grammatical
+sentence; a piece of code that runs. The most mechanical of
+the five axes, and the one on which modern models perform
+best.
+
+\textbf{Meaning.} Whether the output is internally coherent
+and says what it appears to say. A paragraph whose sentences
+agree with one another; an argument that does not contradict
+its own premises; a chain of reasoning that holds together.
+Detectable by careful reading without any appeal to the
+world.
+
+\textbf{Context.} Whether the output is appropriate for the
+situation, the purpose, and the audience. The right tone, the
+right level of detail, the right register, the right answer
+to the question the user actually asked.
+
+\textbf{Grounding.} Whether the output connects to verifiable
+reality or has drifted into plausible-sounding fabrication.
+The factual claims in the output, evaluated against the
+world.
+
+\textbf{Environment.} Whether the prompt itself contained
+enough of what the user knows about the situation for the
+question to be answerable at all. The most human of the
+axes; the one on which the model is most at the mercy of the
+person typing.
+
+The five axes form a ladder. At the bottom, the model is at
+its strongest and failures are rare. At the top, the model is
+in a precise sense at the mercy of the human, and failures
+are inevitable unless the human compensates.
+
+The pedagogical use of the model is twofold. For users, it is
+a diagnostic ladder: when an answer arrives that smells wrong,
+walk the axes and ask which has failed. For engineers and
+operators, it is a way of mapping the vocabulary of the
+previous chapters onto a shape that non-specialists can hold.
+Cross-entropy training is a structure-and-meaning mechanism
+that makes no native attempt at grounding. Retrieval is a
+grounding mechanism that does not by itself solve context.
+Tool use is an environment-importing mechanism whose contract
+is structural. The ladder makes these connections explicit.
+
+\subsection*{What goes wrong}
+
+The model itself has failure modes worth disclosing in
+advance.
+
+The first is the temptation to use it mechanically, as if the
+diagnosis of an output were a checklist that always returns a
+single answer. Real failures often span multiple axes. A
+model that is wrong about a fact and presents the fact in the
+wrong tone has failed on grounding and context simultaneously.
+Pulling the two apart can be artificial.
+
+The second is the temptation to treat the axes as orthogonal.
+They are not. Failures of structure tend to drag meaning with
+them; failures of context tend to drag grounding. The axes
+are a vocabulary, not an algebra.
+
+The third is the deeper mistake of treating the model as a
+solution rather than as a diagnostic vocabulary. The model
+does not, by itself, fix anything. It tells you which earlier
+chapter to consult. The fixing is the work the previous
+chapters described.
+
+\section{The five axes, in plain language}
+\addcontentsline{toc}{section}{The five axes, in plain language}
+
+\subsection*{Structure: is the output well-formed?}
+
+A model's output is structurally correct if it satisfies the
+formal constraints of the format being requested. A piece of
+JSON that parses. A grammatically complete sentence. A
+Python script that imports without error. A SQL query that
+the database accepts.
+
+Structure is the most mechanical of the five axes and is, for
+that reason, where modern Large Language Models perform best.
+A structural failure is the kind a parser can catch. The
+model produces a JSON-like blob with a missing comma, or
+writes Python whose indentation contradicts the syntax rules,
+or opens a markdown code fence and forgets to close it.
+These failures are real but increasingly rare in the current
+generation of frontier models, and most production systems
+catch them automatically through what engineers call
+\emph{constrained decoding}: forcing the model to produce
+output that satisfies a known schema.
+
+In diagnosis, structural failures are the easiest to identify.
+They are also the easiest to be falsely reassured by: a
+syntactically valid JSON object can still mean the wrong
+thing, say the wrong thing, and refer to a thing that does
+not exist. A practitioner who confirms structure and stops has
+confirmed the least interesting property of the output.
+
+\subsection*{Meaning: is the output internally coherent?}
+
+A structurally correct output can still fail at the level of
+meaning. The model produces a paragraph whose first sentence
+contradicts its third. The model defines a term in one
+section and then uses the term differently in the next. The
+model's argument relies on a premise it has elsewhere denied.
+These failures are detectable by careful reading, without any
+appeal to the outside world. They are failures of internal
+coherence.
+
+The mechanism that produces meaning failures is the same
+mechanism that produces fluent text. A language model trained
+on next-token prediction (Chapter~1) optimises for the
+\emph{plausibility} of the next token given the prefix.
+Plausibility is a local property. A token can be plausible at
+every position in a long sequence and still produce, at the
+end of the sequence, a global contradiction. A single
+forward pass through the model has no architectural verifier;
+the model emits each token conditioned on the prefix without
+checking the output as a whole against itself.
+
+Recent training tries to narrow the gap. The reasoning models
+that began appearing in 2024 (the OpenAI o1 and o3 lines,
+DeepSeek's R1, Anthropic's extended-thinking modes) learn to
+walk back contradictions in their own reasoning during
+generation, in effect performing self-checking inside the
+inference call. Outside the model, techniques sample multiple
+completions and compare them, ask the model to critique and
+revise its own output, or hand the output to a separate
+verifier. None of these is a guarantee in the way a parser is
+for structure. Each is a mitigation that trades cost for
+reliability.
+
+This is the axis that benchmarks tend to overstate. A model
+that scores 85 out of 100 on a multiple-choice reading
+comprehension test may nevertheless produce, in free
+generation, paragraphs that contradict themselves in subtle
+ways. Domain expertise tends to unmask this: the technical
+reader who knows the territory catches inconsistencies that
+the casual reader does not.
+
+In diagnosis, the question to ask is not whether the output
+sounds right but whether it \emph{is} right considered as a
+self-contained artefact. Read it once for fluency, then again
+for contradictions. When the cost of a meaning failure
+justifies the additional compute, ask the model to check its
+own work or sample multiple completions and compare them.
+
+\subsection*{Context: is the output appropriate for the
+situation?}
+
+The third axis is whether the output is appropriate for its
+situation, purpose, and audience. A model can produce a
+structurally valid, internally coherent paragraph that
+nevertheless answers the wrong question, addresses the wrong
+audience, strikes the wrong tone, or pitches the wrong level
+of detail. The technical literature calls this
+\emph{pragmatic competence}; the user recognises it as the
+model having ``answered a different question''.
+
+Examples are easy to find. A user asks for a summary of a
+research paper for a non-specialist audience and receives a
+paragraph dense with jargon. A user asks a quick yes-or-no
+question and receives a five-paragraph essay with the
+yes-or-no buried in the middle. A user asks a clarifying
+question about a sensitive topic and receives a generic
+safety disclaimer instead of the requested clarification.
+None of these are factually wrong. All of them are wrong for
+the situation.
+
+The mechanism is largely the gap between what the user knows
+about the situation and what the prompt encodes. The model
+has access only to the words in its context window. Anything
+the user knows about themselves, their audience, their goals,
+or their constraints that is not written into the prompt does
+not exist for the model. Few-shot prompting (Chapter~6) is,
+among other things, an attempt to encode situational
+expectations through examples. System prompts (Chapter~12)
+are an attempt to fix the situation up front. Alignment
+training (Chapter~9) shapes the model's defaults along this
+axis --- politeness, refusal, length, formality --- but the
+defaults are defaults, not the situation.
+
+In diagnosis, context failures are easy to recognise and
+harder to fix. The user can usually point at the answer and
+say what is wrong with it (``too long'', ``too technical'',
+``misses the actual question''). The fix is almost always to
+give the model more of the situation: who you are, who you
+are writing for, why you need the answer, what would count as
+a good one. The asymmetry between the ease of recognition and
+the difficulty of fix is the diagnostic signature of a context
+failure.
+
+\subsection*{Grounding: does the output connect to reality?}
+
+The fourth axis is whether the output connects to verifiable
+reality or has drifted into plausible-sounding fabrication.
+The practitioner literature calls a grounding failure a
+\emph{hallucination}: the model produces a fluent, confident,
+well-formed claim that does not correspond to any fact in
+the world.
+
+Grounding failures are uniquely dangerous because no internal
+reading of the output reveals them. A hallucinated citation
+has the same structural form as a real one. A hallucinated
+statistic has the same surface plausibility as a true one. A
+hallucinated historical fact reads with the same confidence
+as a verified one. The check must come from outside the text.
+The model has produced the most probable continuation of its
+prompt; the most probable continuation is sometimes true,
+sometimes false, and the model cannot, on its own, tell the
+two apart.
+
+The mechanism is the next-token prediction objective itself.
+A model trained to predict the next token given the prefix
+optimises for plausibility, not for truth. There is no signal
+in the training that distinguishes a fact the model has
+correctly memorised from a confabulation that fits the
+surrounding pattern. This is the deeper philosophical point
+that Harnad and Bender and Koller made: a system trained only
+on form has no native way to ground form in reference.
+
+The remedy at the system level is retrieval (Chapter~10). A
+retrieval-augmented generation pipeline replaces the question
+``what is the most probable thing to say'' with ``what is the
+most probable thing to say given these specific sources''.
+The grounding is no longer the model's problem; it is the
+retriever's problem and the prompt's problem. Tool use
+(Chapter~10 and Chapter~12) extends the same idea: a model
+that can call a calculator can delegate arithmetic; a model
+that can query a database can delegate fact lookup. The
+pattern in each case is to take the work that demands
+grounding and move it outside the language model entirely.
+
+In diagnosis, grounding failures call for a particular
+discipline. Treat any factual claim by the model as a
+hypothesis. If the claim matters, verify it. If it cannot be
+verified, do not use it. The careful practitioner builds
+workflows that make verification cheap (retrieval, citations,
+linked sources) so that grounding failures are catchable by
+construction.
+
+\subsection*{Environment: did the prompt encode the situation?}
+
+The fifth axis sits at the human end of the ladder, and is
+the hardest to see because, by construction, it is invisible.
+An environment failure occurs when the answer is wrong because
+the prompt did not contain enough of the situation for the
+question to be answerable. The user knows things --- about
+themselves, their domain, their constraints, the local
+conventions of their organisation, the events of yesterday
+afternoon --- that the model does not. If the user does not
+write those things into the prompt, the model cannot use
+them. The model can produce a fluent, internally coherent,
+grounded, well-formed answer that is wrong because the
+question itself was underspecified.
+
+This is the failure mode that experienced LLM users learn to
+recognise first and explain to others last. It looks, from
+the inside, like a model failure: the answer is wrong, so the
+model must be wrong. From the outside, it is a prompt
+failure: the model gave the most reasonable answer to the
+question it was actually asked, which differs from the
+question the user thought they were asking. The gap between
+the two is the user's environment.
+
+The mechanism is fundamental and not fixable by training. A
+language model has access to its weights and its context
+window. It does not have access to the user's calendar, the
+user's team, the user's organisation's coding conventions,
+the user's medical history, the user's project's constraints,
+or any of the several hundred other things that shape what
+counts as a good answer in a real situation. Some of these
+can be imported into the context: through retrieval, through
+tool use, through careful prompting, through long-running
+agent contexts that accumulate state. None of them can be
+imported automatically.
+
+In diagnosis, an environment failure has a characteristic
+shape. The user reads the answer and feels frustrated; the
+answer is, on its own terms, fine; what is wrong is that it
+does not address the real situation. The fix is rarely to ask
+the model again. The fix is to write down, explicitly, the
+parts of the environment the model needed to see.
+Practitioners who become good at LLMs are practitioners who
+have learned which parts of their environment need importing
+for which kinds of question.
+
+\section{Walking the ladder}
+\addcontentsline{toc}{section}{Walking the ladder}
+
+When an output arrives that strikes the user as wrong, the
+recommended walk is bottom-up.
+
+\begin{enumerate}
+  \item \textbf{Structure.} Does the output parse, compile,
+        validate against its expected form? If not, the
+        failure is structural. The remedy lives in the model's
+        decoding (Chapter~6) or the system's constrained
+        generation (Chapter~12).
+  \item \textbf{Meaning.} Read the output as a self-contained
+        artefact. Does it contradict itself? Does it use a
+        term differently in different sentences? Does its
+        argument rely on a premise it has elsewhere denied?
+        If yes, the failure is one of meaning. The remedies
+        are sampling multiple completions and comparing them,
+        asking the model to check its own work, or using
+        chain-of-thought to externalise the reasoning.
+  \item \textbf{Context.} Is the output appropriate for the
+        situation --- the right tone, the right level, the
+        right format, the right answer to the actual question?
+        If not, the failure is contextual. The remedy is to
+        import more of the situation into the prompt: who you
+        are, who you are writing for, why you need the answer,
+        what would count as a good one.
+  \item \textbf{Grounding.} Are the factual claims in the
+        output true? If verification is hard, treat the claims
+        as hypotheses. If verification is easy, do it.
+        Failures here call for retrieval, tool use, or human
+        review.
+  \item \textbf{Environment.} Is the question itself fully
+        specified? Did the prompt contain enough of the user's
+        situation for the question to have a single right
+        answer? If not, no amount of model improvement will
+        help; the user must supply more of their environment.
+\end{enumerate}
+
+The discipline of walking the ladder bottom-up is that
+lower-axis failures are typically easier to diagnose and
+cheaper to remedy than higher-axis ones. A practitioner who
+jumps straight to ``the model hallucinated'' may have missed
+a meaning or context failure that does not require any change
+to the model at all. Conversely, a practitioner who never
+considers grounding will deploy systems that are confidently
+wrong about the world.
+
+When a single output fails on more than one axis, the
+procedure is to label all axes that fail and to address them
+in ladder order: the lowest-axis failure is fixed first,
+because higher-axis fixes assume the lower axes hold. A useful
+heuristic for prioritising the work is to ask which axis, if
+it had been correct, would have made the others correctable.
+A grounded answer in the wrong tone can be fixed by the user
+through a follow-up; a fluent answer about a fact that does
+not exist cannot be fixed by the user at all, because the
+user did not know the fact was wrong. The limiting axis is
+the one to pay first.
+
+\section{Connections to earlier chapters}
+\addcontentsline{toc}{section}{Connections to earlier chapters}
+
+The five axes connect to the technical mechanisms of earlier
+chapters in ways worth making explicit.
+
+\textbf{Structure} is the territory of the decoding step
+(Chapter~6) and the structured-output contracts of tool use
+(Chapter~12). When you see a structural failure, the
+intervention is in the decoder, the schema, or the validation
+layer immediately after the model.
+
+\textbf{Meaning} is the territory of the next-token prediction
+objective (Chapter~1), the deep neural network architecture
+(Chapter~3), and the inference-time techniques that trade
+compute for coherence (Chapter~6). When you see a meaning
+failure, the intervention is in how the model is being asked
+to think out loud, how many samples are being drawn, and
+whether self-checking is being used.
+
+\textbf{Context} is the territory of in-context learning
+(Chapter~6), the attention mechanism (Chapter~5), the
+prompt-construction discipline (Chapter~10), the system
+prompts of the API surface (Chapter~12), and the alignment
+work that shapes the model's defaults (Chapter~9). When you
+see a context failure, the intervention is in the prompt: more
+of the situation, more explicit constraints, more examples of
+the desired behaviour.
+
+\textbf{Grounding} is the territory of retrieval (Chapter~10),
+tool use, the symbol-grounding literature (Harnad, Bender and
+Koller), and the memorisation-versus-hallucination distinction
+of Chapter~6. When you see a grounding failure, the
+intervention is to move the work that demands ground truth
+outside the model: into a retriever, a tool, a verification
+step, a human reviewer.
+
+\textbf{Environment} is the territory of system design rather
+than model design. Long-context architectures (Chapter~5)
+extend how much environment can be imported. Agent loops
+(Chapter~12) accumulate environment over time. The
+documentation, logging, and incident reporting disciplines of
+governance (Chapter~11) make the environment the system sees
+explicit and auditable.
+
+The general pattern is that lower axes are increasingly the
+\emph{model's} responsibility, while higher axes are
+increasingly the \emph{system's} responsibility, and at the
+top the responsibility belongs to the human writing the
+prompt. The ladder makes the locus of intervention explicit.
+
+\section{What the ladder does not catch}
+\addcontentsline{toc}{section}{What the ladder does not catch}
+
+The five-axis framework is useful because it is simple. It is
+also incomplete. A few classes of failure deserve mention as
+cases where the ladder helps less than one might hope.
+
+The first is the \emph{normative} failure: an output that is
+structurally fine, internally coherent, situationally
+appropriate, factually grounded, and environmentally informed
+but that is, by some standard the user holds, simply wrong ---
+offensive, biased, unethical, in conflict with the values the
+user expected the system to hold. These failures live in
+Chapter~9's territory rather than this one. The five axes
+ask whether the answer is correct; the normative dimension
+asks whether the answer is right, and right is not the same
+thing as correct.
+
+The second is the \emph{adversarial} failure: an output that
+has been induced by a malicious party manipulating one of the
+inputs --- the prompt, a retrieved document, a tool result.
+The ladder will identify the failure (most often as a context
+or grounding failure), but the diagnosis does not by itself
+explain that the failure was caused by an attacker. The
+adversarial framing is its own discipline, and Chapter~12's
+treatment of prompt injection and confused-deputy attacks is
+where it belongs.
+
+The third is the \emph{drift} failure: an output that is fine
+considered as a single artefact but that, considered as part
+of a stream of similar outputs over time, indicates that the
+system's behaviour has changed in a way the operator did not
+anticipate. Drift is detected statistically rather than
+individually, and the monitoring infrastructure of Chapter~11
+is what catches it.
+
+The fourth is the \emph{collective-impact} failure: an output
+that may be correct for the individual user who received it
+but that contributes to a pattern of harm at the population
+level. A model that produces correct medical advice for the
+average patient may produce systematically worse advice for a
+minority subgroup. A model that produces correct recommendations
+in aggregate may produce a homogenisation of behaviour that
+is harmful in the long run. These failures live in
+Chapter~11's territory and are not visible from inspecting
+individual outputs.
+
+\section*{Closing thought}
+\addcontentsline{toc}{section}{Closing thought}
+
+You have, by this point, walked through the entire engineering
+of a Large Language Model in plain language. You know,
+roughly, where they came from, what they do, why they do it
+the way they do, and how they fail. The vocabulary you now
+have --- structure, meaning, context, grounding, environment;
+hallucination, sycophancy, jailbreak, prompt injection,
+alignment tax; pretraining, alignment, retrieval, tool
+use; Markov, Shannon, Rumelhart, Mikolov, Vaswani, Hu,
+Hoffmann, Christiano, Bender --- is the vocabulary of a
+literate observer of the field as it stands at the time of
+this writing. It will age. The technology will change. The
+deeper structure of why models do what they do, and why they
+fail in the ways they do, will not.
+
+The most useful posture, in our experience, is the one we
+recommended in the preface and have tried to model throughout.
+These systems are remarkable, in specific and definable ways.
+They are limited, in specific and definable ways. The public
+conversation has tended to oscillate between the two halves
+of that observation. The reader who has come this far knows
+better. The model is doing exactly what we asked. What we
+asked is not quite what we meant. The space between the two is
+the field. The vocabulary you now have is what makes that
+space inhabitable.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on every preceding chapter. It is the
+chapter that the others were written to make possible. The
+five-axis ladder is not a fix for any of the failure modes
+catalogued in the previous twelve chapters; it is a way of
+holding all of them at once, in language a non-specialist can
+use, so that a wrong answer in front of you can be diagnosed
+and acted on rather than merely lamented.
+
+There are no further chapters. The remainder of the work is
+yours: to use these systems thoughtfully, to ask the
+questions of vendors and engineers and regulators that the
+preceding chapters have prepared you to ask, and to keep an
+honest record of what you find. The next edition of this
+guide, if there is one, will be better for what you find than
+for what its authors imagined.

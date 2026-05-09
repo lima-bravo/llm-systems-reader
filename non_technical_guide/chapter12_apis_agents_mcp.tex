@@ -1,0 +1,425 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 12 -- How You Talk to a Model Today
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{How You Talk to a Model Today}
+\label{ntg:ch12}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+The previous eleven chapters described how to build the
+artefact at the centre of a Large Language Model product. This
+chapter describes how engineers actually use one. The two are
+not the same.
+
+In 2026, a developer who wants to build a product on top of a
+frontier model does not download the model's parameters and
+run them on their own hardware. They send a request, formatted
+as a small piece of structured text, to a server operated by
+the model's vendor. They receive a response, sometimes streamed
+back word by word as the model produces it. They may, in the
+course of a single user interaction, let the model invoke
+external tools that they have described to it in a structured
+schema. They may route the whole interaction through a
+standardised protocol that lets the model use tools written by
+third parties. The result is wrapped in a software development
+kit (SDK) and embedded inside the application the user actually
+sees.
+
+Each of those layers is the result of a deliberate engineering
+decision. Each layer has its own failure modes. Each layer is
+the place where one team's bug becomes another team's incident
+report. The problem of this chapter is the surface between the
+model and the application that uses it, and the discipline
+required to operate that surface in production without
+incident. The non-technical reader does not need to understand
+the SDKs in detail. The non-technical reader does need to know
+that the surface exists, what kinds of things move across it,
+and what kinds of things go wrong when they move incorrectly.
+
+\subsection*{How we got here}
+
+The first widely available LLM API was OpenAI's GPT-3
+completions endpoint in 2020. The contract was simple. A
+developer sent a string of text. The endpoint returned a
+string of text. There was no notion of conversation, no
+notion of tool use, no notion of structured output. The model
+was a sophisticated autocomplete, and the API treated it as
+such.
+
+Within two years the contract had grown. The chat-completions
+schema, introduced in early 2023, distinguished between
+\emph{system} messages (which set the model's role and
+instructions), \emph{user} messages (which carried the user's
+input), and \emph{assistant} messages (which carried the
+model's responses). This made multi-turn conversations natural
+to express. The function-calling extension, introduced in
+mid-2023, let the model emit structured JSON conforming to a
+developer-supplied schema, which the surrounding application
+could validate and dispatch as a function call. Streaming over
+server-sent events let the model's response arrive token by
+token rather than as a single block, so users could see
+responses being typed in real time. Prompt caching let
+identical prefixes of repeated requests be re-used without
+recomputation, reducing both cost and latency.
+
+By 2024 most providers --- OpenAI, Anthropic, Google, xAI,
+Cohere, Mistral, the open-source serving ecosystem --- exposed
+an OpenAI-compatible endpoint. The interface had won by
+default. A developer who learned to call OpenAI's API could
+call any of the others with a few lines of configuration
+change.
+
+The next layer was \emph{agents}. The earliest agentic systems
+--- ReAct from Princeton and Google in early 2023, AutoGPT and
+BabyAGI from independent developers later that year --- were
+demonstrations in which a single control loop drove a language
+model to take actions in service of a goal. The model was
+asked, repeatedly: ``you have these tools available, you have
+this goal, what would you like to do next?'' The model
+responded with a tool call. The tool call was executed. The
+result was returned to the model. The model decided whether it
+was done or whether it wanted to take another action. The
+loop continued until the model reported completion or the
+operator stopped it.
+
+The frameworks that followed --- LangChain, LangGraph, AutoGen,
+CrewAI, smolagents, the Anthropic Agent SDK --- codified the
+pattern. They added memory, retry logic, branching, multi-
+agent collaboration, and the operational machinery to make
+agent loops survive contact with production. In parallel,
+IDE-integrated agents --- GitHub Copilot, Cursor, Claude Code
+--- moved from autocomplete demos to systems that could read
+an entire codebase, design a change spanning many files,
+write the change, run the tests, and commit the result.
+
+The most recent layer is the \emph{Model Context Protocol},
+proposed by Anthropic in late 2024 and adopted across the
+ecosystem in 2025. MCP is a standardised protocol for how a
+host application (a chat client, an IDE, an SDK harness)
+communicates with a tool server. Before MCP, every host had
+to write a custom integration for every tool, and the
+combinatorial cost was substantial. After MCP, every host
+speaks the same protocol, every tool implements the same
+protocol, and integration becomes plumbing. Standardisation
+mattered, in the same way that standardisation has always
+mattered in computing.
+
+\subsection*{Where we stand}
+
+A modern LLM application is a layered stack. At the bottom are
+the model parameters and the inference runtime that runs them.
+Above that is the wire protocol, typically OpenAI-compatible
+chat completions with streaming. Above that is the SDK --- a
+typed client library, in the developer's preferred programming
+language, that handles retries, rate limiting, structured-
+output validation, and cost accounting. Above that is the
+orchestration layer --- the agent framework, the retrieval
+pipeline, the memory store, the session management. At the
+top is the host application, which is the only thing the user
+ever sees. The Model Context Protocol cuts across the
+orchestration layer, providing a standard way for the host to
+discover and invoke tools written by third parties.
+
+The whole stack is designed for change. Any layer can be
+replaced, in principle, without disturbing the others. A team
+can switch model providers by changing a configuration value.
+A team can add a tool by deploying an MCP server. A team can
+swap out the orchestration framework by rewriting the layer
+above the SDK. None of this is free in practice, but the
+modularity is real, and it is the property that has let the
+ecosystem evolve as fast as it has.
+
+\subsection*{What goes wrong}
+
+The transition from research demonstration to production
+system is where the failure modes accumulate.
+
+Rate limits turn into cascading retries that overwhelm the
+provider; this is the classical \emph{thundering herd}
+problem from distributed systems, with a new wrapper. Tool
+schemas drift between development and production, so a tool
+the model has been trained to call no longer accepts the JSON
+the model emits. Streaming responses arrive out of order, or
+fail mid-stream, or are silently truncated by an intermediate
+proxy. Prompt caches return stale results when the cache key
+representation changes between client versions.
+
+Agent loops can enter pathological cycles, repeating the same
+tool call until the budget is exhausted. The cost of an
+unbounded agent run can reach four figures before anyone
+notices. There are stories, increasingly less apocryphal, of
+agents that ran overnight and produced bills that exceeded
+their entire month's budget. The fix is a hard limit on
+iterations, on tokens, on tool calls, and on dollars. Not
+every team adds the limits before they need them.
+
+The MCP standard helps with integration but introduces new
+trust boundaries. A malicious MCP server can exfiltrate data,
+lie about tool results, or inject instructions into the
+model's context. The discipline of vetting MCP servers is, at
+this writing, immature, and the analogy to the early days of
+browser plug-ins is uncomfortably apt. The \emph{prompt
+injection} attack vector grows alongside every new capability
+the agent gains, and a system that can read documents, write
+files, and call APIs has many more surfaces on which an
+injection can land than a chat assistant does.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{The agent loop}
+
+The clearest way to understand a modern agentic LLM system is
+to look at the loop that drives it. The loop is conceptually
+simple.
+
+\begin{enumerate}
+  \item The user gives the system a goal.
+  \item The system constructs a prompt that contains the goal,
+        the available tools (each described by a schema), and
+        any prior context.
+  \item The system asks the model what it would like to do
+        next. The model returns either a final answer to the
+        user or a tool call.
+  \item If the model returned a tool call, the system
+        validates the call against the tool's schema, executes
+        the tool, and appends the result to the prompt.
+  \item Return to step 3.
+  \item When the model returns a final answer, return that
+        answer to the user.
+\end{enumerate}
+
+That is the entire loop. It is a few hundred lines of code in
+a typical implementation. The complexity of an agentic
+system is not in the loop itself but in the surrounding
+infrastructure: the tool schemas, the memory store, the cost
+controls, the error handling, the safety filters, the
+observability, the user interface.
+
+The loop has several characteristic operating modes. In the
+\emph{single-shot} mode, the model returns a final answer
+immediately and the loop terminates. This is what happens when
+a user asks a chat assistant a question that does not require
+any tools. In the \emph{tool-call} mode, the model takes one or
+more tool actions before returning a final answer. This is
+what happens when an assistant looks up a customer record, or
+runs a calculation, or sends an email. In the
+\emph{multi-step planning} mode, the model returns a sequence
+of intended actions before executing any of them, and the
+system asks for confirmation. This is what happens in some
+coding agents, which propose a multi-file change for review
+before applying it.
+
+The boundaries between these modes are not crisp, and a single
+deployed system may move between them depending on the task.
+
+\subsection*{The Model Context Protocol, briefly}
+
+The Model Context Protocol is, structurally, a set of
+conventions for how three parties --- a host application, a
+client running inside the host, and a tool server running
+elsewhere --- talk to one another. The conventions cover the
+discovery of available tools (``what can you do?''), the
+invocation of tools (``please do this''), the return of
+results (``here is what happened''), the management of
+sessions, and the negotiation of capabilities and security.
+
+The appeal of the protocol is that it dissolves what
+engineers call the \emph{M times N integration problem}.
+Without a standard, every host application that wanted to use
+every tool would have to write a custom integration for it,
+and the number of integrations would grow as the product of
+the number of hosts and the number of tools. With a standard,
+every host speaks the standard, every tool implements the
+standard, and integrations become plumbing rather than custom
+engineering.
+
+The non-technical implication is that the ecosystem of
+LLM-accessible tools is, as of 2025, growing rapidly. A user
+of Claude Desktop, Cursor, or any other MCP-aware host can
+add capabilities to the assistant simply by enabling the
+corresponding MCP server: a connector for the user's
+calendar, a connector for their database, a connector for
+their company's internal documentation. The convenience is
+real. So is the security exposure.
+
+\subsection*{Trust boundaries in agentic systems}
+
+The single most important conceptual idea for a non-technical
+reader to take away from this chapter is the notion of a
+\emph{trust boundary}.
+
+A trust boundary is a place in the system where information
+crosses from a less-trusted source to a more-trusted one, and
+where verification is required to maintain the integrity of
+the more-trusted side. In an agentic LLM system, the trust
+boundaries are numerous.
+
+The user's input is, in general, less trusted than the
+system's instructions. The model has to be told not to follow
+user-supplied instructions that contradict its system prompt,
+and the system has to be designed so that user-supplied input
+cannot be confused with system-supplied input.
+
+The output of a tool is, in general, less trusted than the
+inputs the model gave to the tool. A tool that fetches a web
+page may return content that contains an instruction the
+model should not follow. A tool that queries a database may
+return data that contains a malicious payload. The system has
+to treat tool outputs as data rather than as instructions.
+
+The output of one agent in a multi-agent system is, in
+general, less trusted by the other agents than the original
+user's request. A system in which agents pass instructions to
+one another can be subverted at any link in the chain.
+
+Maintaining the trust boundaries is, in many production
+deployments, the single largest piece of operational work.
+The model itself does not enforce them; the surrounding
+system has to. A system that does not enforce them is a
+system that can be manipulated through any of the inputs it
+accepts, which is to say, every system that has not been
+carefully designed.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{Costs are real and need bounding.} The per-query
+cost of a single chat-completion call is small. The cost of
+an agentic system that can call itself recursively is, in
+principle, unbounded. Production deployments need hard limits
+on iterations, on tokens consumed, on tool calls made, and on
+dollars spent. Without those limits, the system's worst
+behaviour is the bill at the end of the month. With the
+limits, the system has well-defined failure modes that can be
+detected and recovered from.
+
+\paragraph{Latency budgets compose.} Each layer of the stack
+adds latency: the network round-trip, the model's
+inference time, the tool's execution time, the orchestration
+overhead. An agent loop that calls three tools sequentially
+incurs the latency of each. A user who has clicked a button
+and is waiting will not, in general, wait many seconds.
+Designing an agentic system to meet a user-experience
+latency budget requires conscious decisions about which tools
+to call in parallel, which to call asynchronously, and which
+to skip when the budget is tight.
+
+\paragraph{Vendor lock-in is real but manageable.} An
+application built tightly against one vendor's specific API
+extensions will be expensive to port to another vendor.
+Applications that use the OpenAI-compatible interface and
+avoid vendor-specific features can usually be moved to
+another vendor with a configuration change. The trade-off is
+between using each vendor's most powerful features and
+preserving the option to switch. Different teams sit in
+different places on the trade-off. The discipline is to make
+the choice consciously rather than by accident.
+
+\paragraph{Observability is non-negotiable.} A production
+LLM system needs to log every request, every response, every
+tool call, and every error. The logs need to be searchable,
+auditable, and retained for as long as regulatory and
+operational needs require. The OpenTelemetry community has
+developed conventions for instrumenting LLM applications;
+they are increasingly the de facto standard. A team that
+deploys an LLM application without observability is a team
+that will not understand its own system's behaviour when
+something goes wrong.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+\paragraph{Prompt injection.} The single most consequential
+class of attack on agentic LLM systems. An attacker crafts an
+input --- a document, a webpage, an email, a tool result ---
+that contains an instruction the model is induced to follow.
+The instruction may be to exfiltrate data, to perform an
+action the user did not authorise, or to ignore the system
+prompt. The mitigations are layered: input sanitisation,
+prompt structure that flags untrusted content, output
+filtering, monitoring for anomalous behaviour. None of the
+mitigations is complete. As of this writing, prompt injection
+is the unsolved problem of agentic deployment, and any team
+building a production agent should treat it as a category of
+risk that requires defence in depth, not a single fix.
+
+\paragraph{Confused-deputy attacks.} A particularly insidious
+form of prompt injection in which an attacker uses the
+model's privileges to do something the attacker themselves
+could not. The model has access to internal systems; the
+attacker tricks the model into using that access on the
+attacker's behalf. The classic computer-security pattern of
+the confused deputy --- the deputy has the authority, but is
+acting on instructions from someone who does not --- now has
+an LLM-shaped instance, and the defences are similarly
+familiar: principle of least privilege, mediation of
+sensitive actions, and audit.
+
+\paragraph{Cost runaways.} An agent loop with no termination
+condition, or with a poorly-tuned one, can iterate indefinitely
+and produce a bill that exceeds the operator's budget by
+orders of magnitude. The fix is hard limits: a maximum number
+of iterations, a maximum number of tool calls, a maximum
+spend per session, and an alerting system that notifies an
+operator before any of those limits is approached. The fix is
+mundane. It is also reliably effective when actually
+implemented, and reliably absent in the early versions of
+many agentic systems.
+
+\paragraph{Agent loops that go in circles.} A model that has
+been asked to accomplish a task, encountered an obstacle, and
+not figured out how to get around the obstacle will sometimes
+repeat the same set of tool calls indefinitely, hoping for a
+different result. The mitigations include better prompts that
+encourage the model to recognise repeated failure, hard
+limits on retries of the same call, and monitoring that
+detects loops and intervenes. None of these is fully
+satisfying. The honest position is that agent loops are an
+active research area, and the failure modes are still being
+catalogued.
+
+\paragraph{Vendor-side updates that break the integration.}
+A vendor that updates the underlying model can change the
+model's behaviour in ways that break carefully tuned tool
+schemas, prompt templates, and agent loops. The deployer has
+to test before any vendor-side update, has to maintain the
+ability to roll back, and has to maintain a test suite that
+catches the relevant kinds of regression. This is engineering
+discipline applied to a moving target, and it is one of the
+ongoing operational costs of building on a vendor-served
+model.
+
+\paragraph{Trust-boundary leakage in multi-agent systems.}
+Systems in which several agents pass tasks and information
+between one another are particularly susceptible to a class
+of failure in which an instruction injected at one point in
+the chain propagates to others without being filtered. The
+discipline of treating each agent's output as untrusted
+input to the next one is unfamiliar and, in our experience,
+reliably skipped on the first design pass. The fix is to
+treat the multi-agent architecture as a distributed system in
+which every link is a trust boundary.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on Chapter~9 (the aligned model that the
+APIs serve), Chapter~10 (the retrieval and tool-use systems
+that surround the model), and Chapter~11 (the governance
+discipline within which the system operates). It described
+the developer-facing surface of the technology: the layer at
+which most LLM products are actually built, and the layer at
+which most production failures occur. Chapter~13 returns to
+the failure modes catalogued here as the \emph{environment}
+axis of the error model, where the model is at the mercy of
+the prompt and the tools the surrounding system has provided.
+The next, and final, chapter --- \emph{A Map of How LLMs Go
+Wrong} --- gathers all the failure modes from across the
+preceding twelve chapters into a single diagnostic framework
+the non-technical reader can use to make sense of any
+particular wrong answer.

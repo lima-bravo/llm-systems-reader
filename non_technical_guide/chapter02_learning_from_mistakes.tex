@@ -1,0 +1,446 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 2 -- How Machines Learn from Their Mistakes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{How Machines Learn from Their Mistakes}
+\label{ntg:ch2}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+Chapter~1 told us \emph{what} we want a language model to do:
+look at the words so far and produce a sensible weighting over
+the words that might come next. It said almost nothing about
+\emph{how} the model came to be able to do that. We now face
+that question. The model has, on the small side, a hundred
+million internal numbers --- the parameters --- and on the
+large side a trillion. Each of those numbers needs to be set
+to a value that makes the model's predictions, on average,
+correct. There is no clever shortcut. There is no formula one
+can solve in closed form. There is, instead, a procedure: try
+something, measure how wrong it was, change the numbers a
+little, try again, and repeat for months on end.
+
+The idea seems almost too simple to be the basis of an entire
+field. It is. The remarkable thing is that the procedure works
+at all. The slightly less remarkable thing is what it costs in
+electricity, in chips, in human attention, and in the design
+choices that surround it.
+
+\subsection*{How we got here}
+
+The mathematics of descending a function by following its slope
+is older than electricity. In 1847 the French mathematician
+Augustin-Louis Cauchy described, in a short note to the French
+Academy of Sciences, the method we now call \emph{gradient
+descent}. The idea is one a hiker would recognise. If you want
+to reach the bottom of a valley in a fog so thick that you can
+see only your own feet, the best you can do is feel the slope
+of the ground beneath you, take a small step downhill, and
+repeat. You may not reach the lowest possible point in the
+landscape. You will, if the landscape is reasonable, reach a
+point lower than where you started. Cauchy's note was about
+solving small algebraic problems. The idea would wait a
+century before becoming the dominant tool of artificial
+intelligence.
+
+The trick that bridged Cauchy's idea to modern machine learning
+came in 1951, in a paper by the American statisticians Herbert
+Robbins and Sutton Monro. They observed that, in many practical
+problems, computing the exact slope of the function you were
+trying to descend was impossible --- you could only get a
+\emph{noisy estimate} from a small sample of data. They proved
+that, under reasonable conditions, descending in the direction
+of the noisy estimate would still get you somewhere useful, as
+long as you took progressively smaller steps. They called this
+\emph{stochastic approximation}. We now call it stochastic
+gradient descent, and it is the engine of every neural network
+training run that has ever been performed.
+
+The other trick we needed was a way to compute the slope of a
+deep network at all. The chain rule of calculus answers this in
+principle. The implementation is called \emph{back-propagation},
+and the name is fair: it computes the slope by walking backwards
+through the network from output to input. Paul Werbos, in his
+1974 Harvard PhD thesis, wrote down a recognisable version of
+the algorithm for neural networks. The field did not notice. It
+was rediscovered, polished, and brought to general attention by
+David Rumelhart, Geoffrey Hinton, and Ronald Williams in their
+1986 paper in \emph{Nature}. Without back-propagation, a network
+of more than a few layers could not be trained at all. With it,
+a network of a hundred layers could be trained almost as easily
+as a network of one. The remainder of the field's history is
+what people did with the algorithm Werbos had written down and
+the world had forgotten for twelve years.
+
+For thirty years after that the field argued about which
+flavour of gradient descent was best. Momentum (which lets the
+descent build up speed in consistent directions, like a heavy
+ball rolling down a slope). RMSProp, AdaGrad, AdaDelta. In 2014
+two graduate students, Diederik Kingma and Jimmy Ba, combined
+several of the existing ideas into a recipe they called
+\emph{Adam}. With minor refinements --- AdamW from Loshchilov
+and Hutter in 2017 fixed a subtle issue with how the algorithm
+handled a regularisation trick called weight decay --- this is
+still the optimiser used to train almost every Large Language
+Model in production. Choosing an optimiser is no longer a
+research question. The research questions are now elsewhere.
+
+The most consequential of those questions is: \emph{how much
+of what should we spend?} Jared Kaplan and his coauthors at
+OpenAI, in 2020, observed that the loss --- the surprise number
+from Chapter~1 --- decreases as a slow, predictable function of
+three quantities: the number of parameters in the model, the
+number of words in the training corpus, and the total amount of
+arithmetic spent. The relationship is what mathematicians call
+a \emph{power law}, which means that doubling any of the three
+quantities buys you a fixed proportional improvement in the
+loss. Power laws are not exciting. They predict that progress
+will be steady and expensive rather than sudden and free.
+
+Two years later Jordan Hoffmann and her colleagues at DeepMind
+ran a more careful version of the same study and reached a
+sharper conclusion. They argued that most existing large
+models had been trained with too few words for the size they
+were --- that, given a fixed compute budget, you got a better
+model by training a smaller network on more text than by
+training a larger network on less. They named the recipe after
+their flagship model: \emph{Chinchilla}. The Chinchilla
+argument changed how compute is allocated across the industry,
+and it is the reason the headline parameter count of new
+models has, in the past three years, mostly stopped going up.
+
+\subsection*{Where we stand}
+
+A modern training recipe is a long sequence of small choices,
+each of which has been worked out by trial and error over a
+decade. Choose AdamW. Pick a peak learning rate (a number that
+controls how big each step downhill is) and start it at zero,
+ramping it up slowly over the first few thousand steps and then
+gradually shrinking it back down over the rest of the run. Use
+mixed precision arithmetic --- half precision for most of the
+work, full precision where it matters for stability. Clip
+unusually large gradients so a single bad batch cannot wreck
+months of training. Pick a model size and a corpus size in the
+proportion the Chinchilla paper recommended. Run on a cluster of
+thousands of high-end accelerator chips. Watch the loss curve
+the way an air traffic controller watches a screen. Recover
+from the failures, of which there will be many. After several
+weeks to several months you will have a trained model.
+
+The ``thousands of high-end accelerator chips'' is not a
+rhetorical flourish. The training of a frontier model in
+2024 used somewhere between roughly tens of thousands of
+H100-class GPUs running for several weeks. The marginal cost
+of electricity, hardware depreciation, and operational support
+ran into the tens to hundreds of millions of dollars. The
+total upfront capital expenditure on the data centres that
+host these training runs ran into the tens of billions. These
+numbers are accurate as of this writing; they will be larger
+when you read this; they are themselves the subject of
+considerable industry secrecy and may be off by a factor of
+two in either direction. The qualitative point is that
+training a frontier model is a financial and industrial
+undertaking on the scale of building a new aircraft.
+
+\subsection*{What goes wrong}
+
+The dramatic failures of training are visible. A loss curve that
+suddenly spikes upward and never recovers. A gradient that
+explodes after fifty thousand steps and turns the rest of the
+run into nonsense. A divergence at the end of week three that
+turns four million dollars of cluster time into nothing. These
+failures look bad and they cost money, but they are the easy
+ones. The engineer who notices them can usually diagnose them:
+a learning rate set too high, a batch of training data with an
+outlier in it, a precision setting too aggressive. They show up
+on the dashboard and they get fixed.
+
+The harder failures are the quiet ones. A model that trains to
+a respectable score on the held-out evaluation set and yet
+behaves badly on the slightly different distribution of inputs
+it will actually face when users send it questions. A model
+that has, by accident, memorised passages of its training
+corpus rather than learned the patterns the corpus exhibits ---
+which is fine until a user asks the right question and the
+model returns a verbatim copy of someone's copyrighted novel.
+A model whose evaluation scores improved relative to the
+previous generation because the evaluation set was, unbeknownst
+to the engineers, contained in the training data. A model that
+appears to have a useful behaviour in testing but which only
+exhibits the behaviour because the test prompts were drawn from
+the same distribution as the data the model was trained on,
+and that fails when the prompts are even slightly different.
+
+These failures are not failures of the optimiser. The optimiser
+did exactly what it was asked to do: it reduced the loss. The
+failures are mismatches between what the loss measures and what
+the deployed system actually needs to do. We will see this
+pattern repeat throughout the rest of the book under different
+names: in Chapter~6 it will be the gap between pretraining and
+deployment, in Chapter~9 it will be the alignment tax, in
+Chapter~10 it will be evaluation contamination, in Chapter~13 it
+will be the structure-meaning-context-grounding-environment
+ladder.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{The hiker in the fog}
+
+The single most useful image for understanding modern machine
+learning is the hiker in the fog. The landscape is the loss
+surface --- a multidimensional terrain in which every point
+corresponds to one possible setting of the model's parameters,
+and the height of the terrain at that point is how badly the
+model performs at the values. The hiker's job is to find a low
+spot. The fog is so thick that the hiker can only feel the
+slope under their feet. They take a step in the steepest
+downhill direction. They feel the new slope. They take another
+step. After enough steps, they reach a low point. They have no
+guarantee it is the lowest. They have only the guarantee that
+they are lower than where they started.
+
+Several details of the picture matter for what follows.
+
+First, the dimensionality. The hiker is not walking in three
+dimensions. For a Large Language Model, the hiker is walking
+in a space with billions of dimensions, one per parameter.
+Visualisation fails almost immediately, and so does intuition
+based on hill climbing in everyday landscapes. What we know
+about the actual landscape is mostly what we have observed
+empirically: it has many local low points, most of them are
+roughly as good as one another, and the path between them is
+mostly downhill. Why this should be true is not, at the time
+of writing, well understood theoretically. It is one of the
+several places where the field is operating on empirical
+observation rather than principle.
+
+Second, the noise. The hiker does not get to feel the true
+slope. The slope they feel is computed from a small sample of
+training examples, and it is therefore noisy --- a different
+sample would produce a slightly different feel. The training
+of a Large Language Model takes the noisiness as a feature
+rather than a bug. The noise prevents the hiker from getting
+stuck on small bumps in the landscape, the way a precise step
+might. The right metaphor is a slightly drunk hiker, whose
+small random missteps occasionally jiggle them out of holes
+they would otherwise sit in forever.
+
+Third, the step size. Each step is small --- much smaller than
+the diameter of the bumps and basins on the surface. If the
+steps are too large, the hiker overshoots and oscillates. If
+they are too small, the hiker takes forever to get anywhere.
+The ``learning rate'' is the engineering name for the step
+size, and most of the design of a modern training schedule is
+about how to vary it across the run --- larger early, when the
+hiker is far from any minimum and any direction is likely to
+help; smaller late, when the hiker is close enough to a
+minimum that overshoot would be catastrophic.
+
+\subsection*{Why scaling sometimes works}
+
+The Kaplan and Chinchilla papers are worth understanding in
+their qualitative form even if you never look at their
+equations.
+
+The Kaplan paper observed that the loss --- the surprise number
+the training is trying to reduce --- decreases predictably as
+you spend more on it. Specifically, the loss falls along a
+curve whose shape is the same regardless of which of the three
+spending quantities (parameter count, dataset size, total
+compute) you change. The curve is one of diminishing returns:
+each doubling of compute buys a smaller proportional
+improvement in loss than the doubling before. But the
+improvements do not stop. They continue, predictably, for as
+long as anyone has been able to measure them.
+
+This is not the same as saying that every capability of the
+model improves smoothly. Some capabilities --- the ones that
+require chaining several steps of reasoning together, for
+example --- appear suddenly at certain scales, in a way that
+looks discontinuous. The technical name for this is
+\emph{emergence}, and there is a continuing argument in the
+literature about whether it is a real phenomenon or an artefact
+of how the capabilities are being measured. We will return to
+this in Chapter~6.
+
+The Chinchilla paper sharpened the Kaplan picture by pointing
+out that, given a fixed budget, you do better by training a
+smaller model on more data than by training a bigger model on
+less. The argument has held up well empirically. It is the
+reason a typical 2024 model is, by parameter count, smaller
+than the 2020 GPT-3 (which had 175 billion parameters), and yet
+better than it on every benchmark anyone has run. The Chinchilla
+ratio is the rough rule of thumb that, for a given size of
+model, you want to train on roughly twenty times as many words
+as the model has parameters.
+
+\subsection*{Why scaling sometimes does not work}
+
+The Kaplan and Chinchilla curves describe the gross behaviour
+of training loss as a function of resources. They do not
+describe everything that matters. In particular, they do not
+describe deployment behaviour, which is what users care about.
+
+A model that has a lower training loss than another model is
+better, on average, at predicting the next word in its training
+distribution. This usually translates into better deployment
+behaviour, but not always. The translation is mediated by:
+
+\begin{itemize}
+  \item How well the training distribution matches the
+        deployment distribution. If the training corpus is
+        mostly informal web text and the deployment is asking
+        the model to draft contracts, the loss improvement may
+        not transfer.
+  \item How well the alignment work of Chapter~9 has been done.
+        A model that is perfectly trained but unhelpfully
+        evasive at deployment is not actually useful.
+  \item How well the surrounding system --- the retrieval, the
+        tool calls, the prompt template --- exploits the model's
+        capability. A small well-equipped model can outperform
+        a large under-equipped one.
+\end{itemize}
+
+The honest summary is that scaling helps but is not a strategy
+on its own. The gap between a research model that scores well
+on internal benchmarks and a product that delights users is not,
+in our experience, predictable from the benchmarks. We will
+return to this in Chapter~10 when we discuss evaluation
+harnesses, and again in Chapter~11 when we discuss what
+``deployment-ready'' actually means.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+The fact that training is a procedure rather than an algorithm
+has several consequences worth holding in mind for any reader
+trying to reason about a real LLM product.
+
+\paragraph{Training is a slow, expensive, opinionated process.}
+Every training run involves hundreds of decisions about
+hyperparameters, data composition, and evaluation. Most of those
+decisions are not documented in any meaningful way. When a
+vendor tells you that ``model X is better than model Y'', they
+are reporting the outcome of a specific recipe. A different
+recipe with the same starting materials would produce a
+different model, and the vendor will, in most cases, not tell
+you which choices in the recipe mattered most.
+
+\paragraph{Compute, data, and parameters are jointly the budget.}
+A small organisation cannot, by training a large model, beat a
+large organisation that has trained a smaller one on much more
+data. The Chinchilla insight is that, for any compute budget,
+there is an efficient frontier of (model size, training data
+size) pairs, and most attempts to beat the frontier by spending
+more on one of the three quantities than on the others are
+wasteful. Reasoning about whose model is better, in this
+context, is mostly reasoning about who got closer to the
+frontier with the budget they had.
+
+\paragraph{The training cost is not the deployment cost.} A
+model that cost a hundred million dollars to train may cost
+thousandths of a cent to use for a single query. The mismatch is
+deliberate: training is amortised across hundreds of millions
+of queries. It also has a perverse consequence: an organisation
+that trained a frontier model has no economic reason to retrain
+it from scratch when a better recipe appears. They have an
+economic reason to fine-tune (Chapter~8), to add retrieval
+(Chapter~10), to align (Chapter~9). Training a brand new
+foundation model is a bet that is made only by the small set of
+organisations that can afford to make it, and it is made
+roughly once a year per such organisation.
+
+\paragraph{Training has its own failure modes that matter
+operationally.} A model that has been trained on data of poor
+quality cannot be repaired by post-hoc alignment. A model whose
+training data was contaminated with the test set will look
+better than it is until it meets reality. A model trained
+without sufficient diversity in its corpus will be quietly
+worse on populations underrepresented in that corpus. None of
+these failures are visible at the API layer. All of them are
+deeply consequential for whoever has to defend the deployed
+behaviour to a regulator, an auditor, or a sceptical user.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+Several characteristic failure modes trace back to the training
+process described in this chapter.
+
+\paragraph{Memorisation.} Because the training process is
+shown each example in its corpus repeatedly, and because a
+model with a billion parameters has more than enough capacity
+to store many of those examples verbatim, modern models reliably
+memorise some fraction of their training data. The fraction is
+small in proportional terms but large in absolute terms.
+Memorised content is recoverable from the model under the right
+prompt, which has implications for copyright (Chapter~11), for
+privacy (a model trained on a corpus that contained leaked
+personal data may surface that data on request), and for
+benchmark integrity (a model that memorised the test set will
+look better than its actual capability). The mechanism is the
+training process doing what it was asked to do; the consequence
+is one the field is still working out how to manage.
+
+\paragraph{Distribution shift.} The model was trained on data
+drawn from a particular distribution: the public web up to a
+certain date, certain books, certain code repositories. The
+model is then asked to perform on inputs drawn from a different
+distribution: queries from real users in the present day, often
+about subjects that did not exist when the training data was
+collected, or framed in ways that do not appear in the training
+data. The gap between training distribution and deployment
+distribution is the single largest source of unpredictable
+behaviour in the field. We will see in Chapter~10 how retrieval
+helps to close part of the gap, in Chapter~9 how alignment
+helps to close another part, and in Chapter~13 how, even with
+both interventions, a residue remains.
+
+\paragraph{Compute as a binding constraint.} A widespread
+public misunderstanding holds that the field is bottlenecked by
+algorithmic ideas. This is, at the time of writing, not the
+view of most researchers in the field. The field is bottlenecked
+by compute, by the supply of high-quality training data, and by
+the supply of trained engineers. Algorithmic improvements
+matter, but their effect on the deployed product is, in
+practice, a multiplier of an order of magnitude or so on top of
+the gross effect of more compute and better data. This has
+implications for how to read industry announcements: most
+``breakthroughs'' are points along the scaling curve rather
+than departures from it.
+
+\paragraph{Training data choices are quietly load-bearing.}
+Two models with identical architectures and identical
+parameter counts can behave very differently if their training
+corpora differ. Curating the corpus --- which texts to include,
+which to exclude, in what proportions, with what filtering
+applied --- is one of the most important and least visible
+parts of building a modern model. The decisions are usually
+not documented publicly, often for competitive reasons and
+sometimes for reasons of legal exposure. The result is that
+even a careful evaluator can have difficulty saying \emph{why}
+one model is better than another, because the answer is often
+``the training data was different in ways the vendor will not
+disclose''.
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter depended only on Chapter~1: we are reducing the
+``surprise'' number Chapter~1 introduced. The hiker-in-the-fog
+picture and the Chinchilla scaling argument reappear in
+Chapter~6 (where we apply them to actual pretraining), in
+Chapter~7 (where we discuss what to do when the budget is
+binding), and in Chapter~8 (where we discuss adaptation as the
+art of getting useful model behaviour without paying the full
+training cost). The notion that the loss is a proxy for the
+deployment property the user actually cares about reappears
+throughout the rest of the book, and is the central organising
+idea of Chapter~13. The next chapter --- \emph{Networks of
+Simple Decisions} --- explains, in similarly plain language,
+what is actually inside the network that the procedure of this
+chapter is training.

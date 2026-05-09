@@ -1,0 +1,435 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% CHAPTER 3 -- Networks of Simple Decisions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Networks of Simple Decisions}
+\label{ntg:ch3}
+
+\section*{Setting the Scene}
+\addcontentsline{toc}{section}{Setting the Scene}
+
+\subsection*{The problem}
+
+We have, by now, a sense of what we want a Large Language Model
+to do (Chapter~1) and a sense of how the model is improved over
+time (Chapter~2). What we have not yet looked at is what is
+\emph{inside} the model. The training procedure of the previous
+chapter adjusts a great many internal numbers; we have not said
+how those numbers are arranged, what they do when the model is
+asked a question, or why a particular arrangement of them
+should be capable of representing language at all.
+
+This chapter is about the arrangement. It is about the artefact
+the field calls a \emph{neural network} --- a name that is half
+honest. The pieces of a neural network are loosely modelled on
+the pieces of a biological brain, in the sense that they
+combine many small inputs into a single output and pass the
+output along to other pieces. They are not modelled on biological
+brains in any deeper sense. Calling them ``neurons'' is a
+historical accident that has outlasted its usefulness, and you
+should think of the units as small mathematical decision-makers
+rather than as anything resembling the cells in your skull.
+
+\subsection*{How we got here}
+
+The idea that a network of simple computing units could learn a
+useful function from examples is older than the computers that
+could run it. Warren McCulloch, a neurophysiologist, and Walter
+Pitts, a young logician, published a paper in 1943 that
+described how a network of idealised on-off units could, in
+principle, compute any function expressible in symbolic logic.
+The paper is now mostly read for its historical importance
+rather than its mathematics. It established the question:
+could a system of small interacting units, each doing something
+trivial, collectively do something interesting?
+
+Frank Rosenblatt, at Cornell in 1958, built the first working
+answer. The \emph{perceptron} was a single computing unit that
+took a list of inputs, multiplied each by a weight, added them
+up, and produced an on-or-off output depending on whether the
+total exceeded a threshold. The trick was that the weights
+could be adjusted by showing the perceptron labelled examples:
+if it got an example wrong, the weights were nudged in the
+direction that would have got it right. Rosenblatt's machine
+could, with enough training, learn to distinguish handwritten
+shapes, simple visual patterns, and a small library of other
+useful tasks. The press of the day was extravagant. The
+\emph{New York Times} reported, with characteristic restraint,
+that the perceptron was the embryo of a machine that would walk,
+talk, see, write, and reproduce itself.
+
+In 1969 Marvin Minsky and Seymour Papert published \emph{Perceptrons},
+a book whose mathematical chapters proved that a single perceptron
+could not represent certain very simple functions --- the most
+famous being the exclusive-or, the operation that returns true
+when exactly one of two inputs is true. Their proof did not say
+that a network of \emph{many} perceptrons, arranged in layers,
+could not do these things. But the field at the time did not
+know how to train such networks, and the practical effect of the
+book was to make funding for neural network research dry up.
+The period that followed is now called the first AI winter, and
+it lasted roughly until the mid-1980s.
+
+The thaw came with backpropagation. Paul Werbos, in his 1974
+Harvard PhD thesis, wrote down a recognisable derivation of the
+algorithm by which a network of \emph{many} layers could be
+trained --- the chain rule of calculus, applied carefully, will
+tell you how each weight in each layer should be adjusted to
+reduce the error at the output. Werbos's thesis sat largely
+unread. The same algorithm was rediscovered, independently or
+semi-independently, by several people in the mid-1980s, and it
+was David Rumelhart, Geoffrey Hinton, and Ronald Williams who
+published the version, in \emph{Nature} in 1986, that the field
+finally noticed. The 1986 paper showed that a network of two or
+three layers, trained by backpropagation, could solve problems
+that the single-layer perceptron could not. Hinton would later
+joke, with some justice, that the field had spent fifteen years
+not knowing how to train two-layer networks because nobody
+remembered Werbos.
+
+The second renaissance ran from 1986 through the early 2000s.
+Yann LeCun, at AT\&T Bell Labs, applied backpropagation to
+networks for reading handwritten zip codes; the United States
+Postal Service eventually deployed his system to sort about a
+tenth of all American mail. Sepp Hochreiter and J\"urgen
+Schmidhuber, in 1997, identified and largely solved the
+\emph{vanishing gradient problem} that had been preventing
+networks from learning across long sequences. By the late
+1990s neural networks were a working tool in several specialist
+domains. They were not yet the dominant tool in any of them.
+
+The pivotal year was 2012. Alex Krizhevsky, Ilya Sutskever, and
+Geoffrey Hinton entered a deep neural network into the ImageNet
+visual recognition competition and won by a margin so large
+that the competition organisers initially suspected an error.
+The network was eight layers deep --- modest by today's
+standards --- and it ran on consumer graphics cards rather than
+on specialist hardware. The combination of a working algorithm
+(backpropagation), enough training data (ImageNet's million
+labelled images), and enough cheap computation (the GPU) had
+converged. The field has not stopped accelerating since.
+
+\subsection*{Where we stand}
+
+A modern neural network used inside a Large Language Model is a
+tall stack of small mathematical operations. Each layer of the
+stack takes a list of numbers as input, multiplies the list by a
+table of weights to produce a new list, adds a small adjustment
+to each output, and then passes the result through a simple
+nonlinear function (a function that, for example, replaces every
+negative number with zero). The result is a new list of
+numbers, of comparable size to the input, which becomes the
+input to the next layer.
+
+A typical Large Language Model today has between twenty and a
+hundred such layers stacked on top of one another. The stack is
+deeper than the deepest practical network of even ten years ago,
+and the engineering tricks that made the depth trainable ---
+careful initial values for the weights, normalisation of the
+intermediate signals, and, crucially, the \emph{residual}
+shortcut that lets each layer add its contribution to a running
+total rather than transform the running total wholesale --- are
+each named contributions of named researchers in the period from
+2010 through about 2017.
+
+The Transformer of Chapter~5 is, in essence, this stack of
+layers with one further trick on top: each layer does not just
+compute a function of its input; it computes a function of its
+input \emph{and} of an attention-weighted summary of all the
+other inputs in the sequence. We will see in Chapter~5 what
+that means in detail. For now, the picture is enough: a deep
+stack of small operations, each one slightly transforming a
+list of numbers, with adjustments that the training procedure
+slowly tuned.
+
+\subsection*{What goes wrong}
+
+The failure modes of neural networks are part of the
+engineering vocabulary of the field, and they recur often
+enough that even a non-technical reader benefits from
+recognising them.
+
+\emph{Vanishing} or \emph{exploding} signals: in a network of
+the wrong design, the numbers passed from one layer to the next
+either shrink to nothing or grow without bound, and the
+training procedure either learns nothing at all or produces
+gibberish. The fix is the careful initialisation, normalisation,
+and residual-shortcut combination just described, and the
+modern recipe for stacking layers is well understood enough
+that this class of failure rarely happens in production.
+
+\emph{Brittleness} to inputs unlike the training data: a network
+trained on photographs from one camera will be measurably
+worse on photographs from a different one. A model trained on
+fluent English will be noticeably worse on text written by
+someone for whom English is a second language. The training
+process bakes the distribution of the training data into the
+network in a way that cannot easily be removed.
+
+\emph{Adversarial examples}: in the early 2010s, researchers
+discovered that an image of a panda, modified by adding a
+carefully chosen pattern of noise that was invisible to a
+human viewer, could cause a state-of-the-art image classifier
+to confidently label it a gibbon. The same phenomenon exists
+for language models, in slightly different form: a prompt
+modified by a few characters can produce qualitatively
+different output. We will see this in Chapter~5 as
+\emph{prompt brittleness} and in Chapter~12 as
+\emph{prompt injection}.
+
+\section{The idea, in plain language}
+\addcontentsline{toc}{section}{The idea, in plain language}
+
+\subsection*{What a single ``neuron'' actually does}
+
+The smallest unit of a neural network is the artificial
+``neuron'' that descends from Rosenblatt's perceptron. It does
+something a committee chair would recognise. It takes a list of
+inputs (think: the numerical opinions of various committee
+members). It assigns each input a \emph{weight} (some members
+have a stronger voice than others). It adds the weighted
+opinions together. It adds a small \emph{bias} (the chair's
+own predisposition). It then passes the total through a
+\emph{nonlinear function} that decides what the unit's own
+opinion will be --- often something as simple as ``if the total
+is negative, output zero; if positive, output the total
+unchanged''.
+
+That is, in essence, the entire computation a single artificial
+neuron performs. Several thousand of them in a row constitute a
+\emph{layer}. Several layers stacked on one another constitute
+a \emph{network}. The training of Chapter~2 adjusts the weights
+and the biases. Nothing else in the network changes during
+training.
+
+The remarkable thing about this construction --- and it took the
+field decades to come to peace with how remarkable it is --- is
+that a network of these very simple decision-makers, given
+enough of them and enough training, can represent extraordinarily
+complicated functions. There are theorems that say so (the
+universal approximation theorems of George Cybenko in 1989 and
+Kurt Hornik in 1991, which proved that a sufficiently wide
+single-layer network can approximate any reasonably well-behaved
+function to any desired accuracy). The theorems do not, however,
+say that the training procedure of Chapter~2 will reliably
+\emph{find} such a representation, and most of the engineering
+of modern neural networks is the work of arranging things so
+that the training procedure does find one.
+
+\subsection*{Why depth matters}
+
+If the universal approximation theorems already say that a wide
+enough single-layer network can represent any function, why does
+the field bother with deep networks?
+
+The answer is that ``can represent'' and ``can reasonably be
+trained to represent'' are different things. A single-layer
+network of the size required to represent a useful language
+model would have so many neurons in its single layer that it
+could not fit on any plausible amount of hardware, would
+require an absurd amount of training data, and would in practice
+fail to learn anything coherent. A deep network of more modest
+width, on the other hand, can express the same function with
+many fewer total parameters, because each layer can compose
+the work of the layers below it.
+
+The picture worth holding onto is a recipe for a recipe.
+Imagine that the bottom layer of the network learns to detect
+very simple features of the input --- in a vision network, the
+presence of edges; in a language model, the presence of common
+word fragments. The next layer learns to combine those simple
+features into slightly more complex ones --- in vision, corners
+and curves; in language, common multi-word phrases. The layer
+above that combines the slightly-complex features into
+moderately-complex ones --- shapes, syntactic structures. By
+the time we are at the top of a fifty-layer network, the
+features being combined are abstract enough to be useful for
+the prediction task. No human has told the network what features
+to detect at any layer. The training has worked them out.
+
+This composition picture is partly right and partly a useful
+fiction. We have decades of evidence from \emph{interpretability}
+research that early layers in vision networks really do detect
+edges, and that intermediate layers really do detect more
+complex shapes. The picture is murkier for language models,
+which have been studied less and which appear to organise their
+internal computations along different lines than vision
+networks do. But the basic intuition --- that depth lets the
+network reuse the work of earlier layers when computing later
+layers --- is the right one.
+
+\subsection*{What the network is not}
+
+Several things follow from the picture we have just laid out
+that are worth stating explicitly because they tend to be
+muddled in popular discussion.
+
+The network does not contain a database. It does not look
+things up. It is a function from inputs to outputs, computed by
+performing arithmetic on the inputs. The arithmetic is
+parameterised by the weights, and the weights were set by the
+training procedure of Chapter~2. There is no place inside the
+network where ``what the model knows'' is written down in
+retrievable form. There is only the procedure that, when the
+prompt is the input, produces a particular distribution over
+next words as the output. The distinction between this and
+having a database matters when we discuss retrieval in
+Chapter~10 --- retrieval, in essence, gives the model the
+database it does not have.
+
+The network does not reason in the sense a human does. It
+performs arithmetic. The arithmetic was tuned, by training,
+to produce outputs that resemble the outputs a corpus of
+human-written text produced. When the model generates a
+chain of reasoning that arrives at a correct answer, what has
+happened is that the corpus contained many similar chains of
+reasoning, and the trained model has learned to imitate them.
+This is not the same as having reasoned. It is, often,
+indistinguishable from having reasoned at the level of the
+output, which is part of what makes the technology so
+disconcerting.
+
+The network is not, in any technical sense, a black box ---
+though it is fashionable to call it one. Every operation
+inside the network is exposed to inspection. Researchers can,
+and do, study what each neuron in each layer responds to.
+What is true is that the number of operations is so large
+that no human can summarise them all, and that the
+interpretations researchers extract from individual neurons
+are post-hoc reconstructions rather than authoritative
+descriptions of what the network is ``doing''. The honest
+phrase is that the network is \emph{difficult to interpret},
+not that it is opaque in principle.
+
+\section{The engineering consequence}
+\addcontentsline{toc}{section}{The engineering consequence}
+
+\paragraph{The function class is enormously powerful but
+uninterpretable.} A network of the size used in modern Large
+Language Models can represent essentially any function for which
+sufficient training data exists. This is its strength: the
+research community does not have to design an architecture
+specific to each task. It is also its weakness: the network's
+representation of a particular function is a tangle of weights
+that no human can read directly. The practical consequence is
+that \emph{interpretability} --- the discipline of working out
+what a network is doing internally --- is an active research
+area whose results are partial, post-hoc, and contested.
+
+\paragraph{The same architecture can be trained for many
+different tasks.} The deep stack of layers we have described
+is, with minor variations, the same architecture used to
+identify objects in photographs, transcribe speech, predict
+protein folding, and generate language. The differences are in
+the input format, the output format, and the training data.
+This is why a research advance in one application area --- a
+better way of stacking layers, say, or a more efficient
+optimiser --- tends to propagate quickly to all the others. It
+is also why the failure modes we will discuss for Large
+Language Models have analogues in image recognition, speech,
+and beyond.
+
+\paragraph{Training and serving have very different costs.}
+Training a neural network involves running each example forward
+through the network, computing the error, and then running the
+error backward through the network to update the weights. The
+backward pass costs roughly as much as the forward pass.
+Serving the trained network --- the operation that happens
+when a user sends a query and waits for the response --- only
+requires the forward pass. The serving cost per query is
+therefore typically a few thousandths to a few cents of a
+trained model, while the training cost is in the tens or
+hundreds of millions of dollars. The lopsided economics drive
+much of how the industry is organised.
+
+\paragraph{Deeper networks are not always better networks.}
+There is a long-standing temptation, in this field, to assume
+that adding layers will improve a model's performance. The
+truth is more subtle. Adding layers helps until the additional
+layers run out of new things to compute, or until the
+additional weights run out of training signal to learn from.
+The right depth for a model depends on the task, on the data,
+on the budget, and on a number of other choices that
+interact. We will see in Chapter~7 that the relationship
+between depth, width, training data, and capability is one of
+the things the scaling laws were created to make precise.
+
+\section{What goes wrong, and why}
+\addcontentsline{toc}{section}{What goes wrong, and why}
+
+The failure modes of neural networks are largely failures of
+mismatch: the network was trained on one distribution, the
+network is asked to produce an answer about a different one, and
+the network's behaviour at the boundary is unpredictable.
+
+\paragraph{Brittleness near the edge of training distribution.}
+The network's behaviour on inputs very close to its training
+data is, on the whole, reliable. Its behaviour on inputs that
+are unlike anything in its training data is unpredictable in
+ways that the network itself does not flag. There is, in
+particular, no built-in mechanism by which the network reports
+``I have not seen anything like this question before'' --- the
+network has only the same response mechanism for known and
+unknown inputs, and it produces a confident-looking output in
+both cases. Building systems that detect ``out-of-distribution''
+inputs is an open problem, and the partial solutions we have
+are usually external to the model rather than inside it.
+
+\paragraph{The black-box framing, reconsidered.} It is common
+to describe neural networks as black boxes whose decisions
+cannot be explained. The framing is partly accurate and partly
+misleading. It is accurate in the sense that no human can
+follow, in detail, every operation a billion-parameter model
+performs on a particular input. It is misleading in the sense
+that researchers can and do reverse-engineer significant parts
+of what models compute --- a discipline called \emph{mechanistic
+interpretability} that has, in the last few years, produced
+recognisable accounts of how certain classes of computation are
+performed in certain models. A more honest framing is that
+neural networks are difficult to interpret rather than
+impossible to interpret, and that the difficulty is a real
+constraint on regulation, audit, and trust.
+
+\paragraph{Adversarial inputs.} A small, deliberately chosen
+perturbation of an input can cause the model to produce a
+qualitatively different output. In vision models this takes the
+form of imperceptible pixel patterns that change a
+classification. In language models it takes the form of
+sequences of characters that look like noise to a human reader
+but that override the model's normal behaviour --- the technical
+name is a \emph{jailbreak}. The vulnerability is intrinsic to
+the function-approximation framing of neural networks: a
+network that interpolates smoothly between its training
+examples will also interpolate into regions of input space where
+its training was sparse, and a clever attacker can find those
+regions.
+
+\paragraph{The training-distribution prison.} A model trained
+on a particular corpus will, no matter how well trained, behave
+with the assumptions and biases of that corpus. A model trained
+predominantly on English text will treat English as the default;
+a model trained predominantly on the public web will inherit
+the public web's distribution of opinions, errors, and
+omissions. There is no architectural fix for this. The fix is
+either better training data (which is expensive and contested),
+retrieval (Chapter~10), or careful prompt engineering at the
+edge (which is brittle).
+
+\section*{Bridges}
+\addcontentsline{toc}{section}{Bridges}
+
+This chapter built on the surprise-minimisation picture of
+Chapters~1 and~2 and gave us the function class --- the deep
+stack of weighted-sum-and-nonlinearity layers --- that the
+training procedure of Chapter~2 is adjusting. Every chapter
+that follows assumes this picture. Chapter~4 puts the
+\emph{embeddings} that turn words into lists of numbers at the
+bottom of the stack. Chapter~5 adds the \emph{attention}
+mechanism, the trick that turned ordinary deep networks into
+the Transformer. Chapter~7 returns to the question of how
+deep, how wide, and on how much data, framed as a scaling
+problem. Chapter~8 returns to the question of how to modify a
+trained network without retraining it from scratch. The next
+chapter --- \emph{From Letters to Vectors} --- explains how the
+text on your screen ever becomes a list of numbers in the first
+place.
