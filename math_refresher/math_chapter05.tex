@@ -1,9 +1,33 @@
 \section{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
 
 \subsection*{Setting the Scene}
-Chapter 5 is where linear algebra becomes computational architecture. The historical move from recurrence/convolution to attention was motivated by path length and parallelism: make long-range interactions explicit as matrix operations.
+Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish.
 
-The critical insight is that attention is not mysterious. It is a chain of shape-constrained multiplications plus a normalization. If the shape bookkeeping is clear, the reasoning remains clear.
+\paragraph{Step A --- bilinear compatibility.}
+\textbf{Problem.} Position \(t\) must aggregate information from other positions weighted by relevance.
+\textbf{Insight.} Dot products score compatibility between transformed representations (queries vs keys).
+\textbf{Lineage.} Bahdanau-style attention (2015); scaled dot-product formulation crystallised in Vaswani et al.\ (2017).
+\textbf{Mental model.} Think ``matching embeddings,'' not mysticism---everything reduces to tensor contractions.
+
+\paragraph{Step B --- softmax as differentiable selector.}
+\textbf{Problem.} Hard argmax blocks gradients; we need smooth convex combinations.
+\textbf{Insight.} Softmax (Chapter~1 tools) turns logits into mixing weights---Preface Step~10 intuition specialised row-wise.
+\textbf{Lineage.} Statistical mechanics exponential tilts $\to$ neural attention gates.
+\textbf{Mental model.} Temperature inherited from decoding chapters scales sharpness identically in spirit.
+
+\paragraph{Step C --- masks encode causal laws.}
+\textbf{Problem.} Autoregressive generation forbids peeking rightward.
+\textbf{Insight.} Additive \(-\infty\) constraints zero softmax mass---enforce equality constraints algebraically before nonlinear squash.
+\textbf{Lineage.} Decoder masking folklore codified in Transformer stacks.
+\textbf{Mental model.} Same trick handles padding tokens---different semantics, identical mathematics.
+
+\paragraph{Step D --- quadratic surface area.}
+\textbf{Problem.} Pairwise attention allocates \(T\times T\) logits per layer.
+\textbf{Insight.} Long contexts explode memory/compute---motivates FlashAttention-style engineering outside this refresher's scope but inside systems reasoning.
+\textbf{Lineage.} Dao et al.\ IO-aware kernels (2022 era).
+\textbf{Mental model.} Preface Step~6 variance arguments resurface when chunking randomises attention pathways.
+
+If shapes align, attention is honest matrix cookbookery---when shapes drift, bugs hide silently.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -21,9 +45,14 @@ The critical insight is that attention is not mysterious. It is a chain of shape
   \[
     \mathrm{Attn}(Q,K,V)=\mathrm{softmax}\!\left(\frac{QK^\top+M}{\sqrt{d_k}}\right)V.
   \]
+  Read row-wise: row $t$ of $QK^\top$ lists dot-product similarities between position-$t$ query vectors and every key vector; softmax turns those logits into nonnegative weights summing to $1$; multiplying those weights into $V$ mixes value vectors---attention outputs are convex combinations of values attended-to.
+
+  \textbf{Why divide by $\sqrt{d_k}$?}
+  If components of queries and keys are $\mathcal{O}(1)$ with roughly independent variation across $d_k$ dimensions, dot-product magnitudes grow \(\Theta(\sqrt{d_k})\) in expectation (length scales like Euclidean norm). Without scaling, softmax logits become sharply peaked as width grows, driving gradients toward sparse argmax-like behaviour and harming trainability. Rescaling keeps typical logits \(\mathcal{O}(1)\) across widths.
+
   \item \textbf{Mask semantics:} causal mask forbids looking right; padding mask blocks non-content locations.
   \item \textbf{Head decomposition:} independent projections create multiple interaction subspaces.
-  \item \textbf{Residual and normalization:} preserve signal and training stability in deep stacks.
+  \item \textbf{Residual and normalization:} residual streams pass representations forward as \(x\leftarrow x+\mathrm{Block}(x)\), letting blocks learn corrections around identity rather than full maps from scratch. Normalisation (LayerNorm/RMSNorm inside Transformer blocks) recentres/rescales activations per token or position so dot products do not drift orders of magnitude mid-training---pairs with residual paths to control gradient scale through depth.
   \item \textbf{Complexity source:} score matrix is $T\times T$, so interaction cost grows with sequence length.
 \end{itemize}
 

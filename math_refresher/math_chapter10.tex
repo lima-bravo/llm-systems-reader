@@ -1,7 +1,22 @@
 \section{Chapter 10 Refresher: LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses --- Retrieval Metrics and Evaluation Arithmetic}
 
 \subsection*{Setting the Scene}
-Chapter 10 formalizes an important systems lesson: a good final answer is a composition of retrieval and generation quality. The field evolved from lexical IR metrics to hybrid retrieval and RAG-specific faithfulness diagnostics. The critical insight is decomposition: do not grade a pipeline with one undifferentiated score.
+Retrieval-augmented answering concatenates two stochastic modules: recall relevant evidence (set-valued event), then condition generation on that evidence (Preface Step~2 again). One scalar cannot isolate which module failed.
+
+\paragraph{Step A --- Set-valued relevance.}
+\textbf{Problem.} Truth may admit multiple supporting documents.
+\textbf{Insight.} Precision/recall generalise Preface Step~1 counting logic to partial overlaps between retrieved and gold sets.
+\textbf{Lineage.} Classical IR (Manning et al.); neural hybrids layer embedding geometry from Chapter~4.
+
+\paragraph{Step B --- Conditional generation quality.}
+\textbf{Problem.} Good retriever + weak synthesiser still ships nonsense.
+\textbf{Insight.} Evaluate \(\mathcal{L}\) or task metrics \emph{given} oracle contexts vs live contexts---difference isolates grounding gaps.
+
+\paragraph{Step C --- Faithfulness as constrained decoding.}
+\textbf{Problem.} Fluent generators invent citations.
+\textbf{Insight.} Faithfulness metrics approximate hard logical entailment with softer overlap checks---engineering surrogate for impossible full semantics.
+
+Decomposition honors Preface Step~5 linearity instinct: diagnose components before averaging them blindly.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -15,7 +30,13 @@ Chapter 10 formalizes an important systems lesson: a good final answer is a comp
 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Ranking metrics:} precision@$k$, recall@$k$, and MRR-type metrics measure different behaviors.
+  \item \textbf{Ranking metrics.}
+  Let \(R_k\) be top-$k$ retrieved IDs and \(G\) gold relevant IDs with $|G|$ possibly larger than $k$.
+  \[
+    \mathrm{Prec@}k=\frac{|R_k \cap G|}{k},\qquad
+    \mathrm{Rec@}k=\frac{|R_k \cap G|}{|G|}.
+  \]
+  Precision stresses cleanliness of short rankings; recall stresses coverage of all positives---trade-offs arise whenever $|G|$ is large relative to $k$. Mean reciprocal rank (MRR) averages \(1/\text{rank of first relevant}\) across queries---rewarding systems that surface \emph{one} correct doc quickly rather than maximising exhaustive recall.
   \item \textbf{Sparse vs dense retrieval:} lexical overlap and embedding similarity capture different relevance modes.
   \item \textbf{Fusion methods:} rank fusion stabilizes retrieval when signals disagree.
   \item \textbf{Evaluation decomposition:} retrieval-stage errors and generation-stage errors require separate diagnostics.

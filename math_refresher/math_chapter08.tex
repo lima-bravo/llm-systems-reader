@@ -1,7 +1,25 @@
 \section{Chapter 8 Refresher: Model Adaptation, LoRA, Quantization, and Deployment Reality --- Low-Rank Adaptation and Quantization}
 
 \subsection*{Setting the Scene}
-Chapter 8 studies approximation as a design tool. The evolution from full fine-tuning to parameter-efficient adaptation and quantized deployment was driven by memory/cost constraints. The key insight is to treat each approximation as a hypothesis with measurable error, not a free performance gain.
+Deployment freezes most of \(\theta\) learned via Preface Step~8-style objectives and tunes cheap corrections under storage/power envelopes---approximation theory meets accounting.
+
+\paragraph{Step A --- Low-rank hypothesis.}
+\textbf{Problem.} Full matrices encode redundancy; updating all entries per task is wasteful.
+\textbf{Insight.} Restrict \(\Delta W\) to rank-\(r\) manifolds---implicit claim task signals concentrate in few directions (Preface Step~6 thinks about singular values informally).
+\textbf{Lineage.} Hu et al.\ LoRA (2021) popularised modern adapter lore.
+\textbf{Mental model.} Monitor singular spectrum drift when skeptics question rank budgets.
+
+\paragraph{Step B --- Quantisation as noisy channel.}
+\textbf{Problem.} Continuous weights exceed SRAM budgets.
+\textbf{Insight.} Rounding injects controlled distortion reminiscent of quantised communication channels---error scales with dynamic range misuse.
+\textbf{Lineage.} Dettmers QLoRA et al.\ marry low-rank updates with int4 storage.
+\textbf{Mental model.} Outliers behave like heavy-tail Preface Step~6 violations---scale grids adapt or suffer.
+
+\paragraph{Step C --- Gate on measured drift.}
+\textbf{Problem.} Approximations trade compute for risk.
+\textbf{Insight.} Acceptance tests slice datasets like calibration bins---aggregate scores hide subgroup collapses tied to Preface Step~5 expectations.
+
+Treat every shortcut as falsifiable: publish metrics or admit folklore.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -15,15 +33,17 @@ Chapter 8 studies approximation as a design tool. The evolution from full fine-t
 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{LoRA update form:}
+  \item \textbf{LoRA update form and intuition.}
   \[
     \Delta W = \frac{\alpha}{r}BA,\quad B\in\mathbb{R}^{d\times r},\ A\in\mathbb{R}^{r\times k}.
   \]
+  Rank \(r\ll \min(d,k)\) forces \(\Delta W\) to live in an \(r\)-dimensional subspace of the full \(d\times k\) parameter space; optimisation restricts plasticity to directions where adaptation concentrates empirically, exchanging expressiveness for parameter savings.
+
   \item \textbf{Trainable parameter fraction:}
   \[
     \rho=\frac{r(d+k)}{dk}.
   \]
-  \item \textbf{Quantization model:} real values mapped to finite codes plus scale metadata.
+  \item \textbf{Quantization model:} map tensors through affine rescaling (per-channel or per-tensor scale/zero-point) into finite-bit grids---often asymmetric ranges capture outliers better than naive symmetric buckets. Quantisation noise concentrates where scales mismatch empirical tails (especially outliers), triggering subgroup drift unrelated to aggregate perplexity.
   \item \textbf{Error tradeoff:} memory/bandwidth gains versus approximation and calibration drift risk.
   \item \textbf{Budget accounting:} adaptation and base-model memory are separate components.
 \end{itemize}

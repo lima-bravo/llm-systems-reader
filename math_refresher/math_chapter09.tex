@@ -1,7 +1,25 @@
 \section{Chapter 9 Refresher: Alignment, Instruction Tuning, and Preference Optimization --- Preferences, KL Regularization, and Policy Updates}
 
 \subsection*{Setting the Scene}
-Preference learning replaced ``next token is correct'' supervision with ``output A is preferred over B.'' The field evolved from reward modeling plus RLHF toward simpler direct preference objectives, but the same probabilistic logic remains underneath.
+Alignment reframes Preface Steps~2--4: instead of conditioning only on observed tokens, we condition on human comparisons and regularise policies toward trusted references.
+
+\paragraph{Step A --- Pairwise likelihood.}
+\textbf{Problem.} Scalar correctness insufficient; humans supply partial orders.
+\textbf{Insight.} Bradley--Terry models lift score gaps into Bernoulli probabilities---Preface Step~2 specialised to preference events.
+\textbf{Lineage.} Thurstone/B Bradley--Terry tradition; Rafailov et al.\ DPO (2023) streamlines derivatives.
+\textbf{Mental model.} Relative labels estimate latent utilities; absolute calibration remains optional extra.
+
+\paragraph{Step B --- KL anchor.}
+\textbf{Problem.} Unconstrained policy optimisation hallucinates unsupported modes.
+\textbf{Insight.} KL penalties replay Preface Step~10 mismatch narrative between \(\pi_\theta\) and \(\pi_{\mathrm{ref}}\).
+\textbf{Lineage.} Schulman/PPO lineage intersects RLHF practice (Stiennon, Ouyang, subsequent stacks).
+\textbf{Mental model.} \(\beta\) trades helpfulness vs behavioural drift---no universal optimum without governance context.
+
+\paragraph{Step C --- Support hazards.}
+\textbf{Problem.} Zero reference probability yields exploding log-ratios.
+\textbf{Insight.} Conditioning events need positive measure---same vigilance as Preface Step~3 warned for chain factors.
+
+Preference optimisation is probabilistic inference under sociotechnical data---mathematics unchanged, likelihood rewritten.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -20,7 +38,11 @@ Preference learning replaced ``next token is correct'' supervision with ``output
   \[
     P(y^+ \succ y^- \mid x)=\sigma(r(x,y^+)-r(x,y^-)).
   \]
-  \item \textbf{KL regularization role:} constrain policy shift while optimizing preference-aligned behavior.
+  Write margin \(\Delta r = r(x,y^+)-r(x,y^-)\). In Bradley--Terry style models this acts like a log-odds difference: \(\sigma(\Delta r)\) matches how humans choose stochastically under utility noise; pairwise losses therefore encourage reward gaps consistent with observed preferences.
+
+  \item \textbf{KL regularization role.}
+  Optimising preferences alone can peel \(\pi_\theta\) away from pretrained \(\pi_{\mathrm{ref}}\) into unsupported linguistic regimes where rewards mis-generalise. Adding \(\beta\, D_{\mathrm{KL}}(\pi_\theta \,\|\, \pi_{\mathrm{ref}})\) (or sampled surrogates thereof) penalises drift measured against data-supported behaviour while pairwise margins tilt \(\pi_\theta\) toward helpful completions.
+
   \item \textbf{Pairwise objective geometry:} score differences (margins) drive learning signal.
   \item \textbf{Support condition:} near-zero reference probability destabilizes log-ratio terms.
   \item \textbf{Objective-vs-behavior distinction:} optimizing preference loss does not automatically guarantee safety or honesty on all distributions.

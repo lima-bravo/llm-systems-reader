@@ -1,11 +1,40 @@
 \section{Chapter 2 Refresher: Optimization, Generalization, and Scaling Intuition --- Optimization and Scaling}
 
 \subsection*{Setting the Scene}
-Chapter 2 uses optimization theory as an engineering discipline. The loss from Chapter 1 tells us \emph{what} to optimize; this refresher chapter studies \emph{how} optimization behaves under stochastic gradients, finite precision arithmetic, and finite compute budgets.
+Chapter~2 consumes the gradient of an empirical risk built in Chapter~1 (Preface Steps~5--8): we optimise an expectation estimated from batches. The novelty is size: billions of parameters force \emph{cheap, noisy} directional probes rather than exact curvature solves.
 
-Historically, deterministic gradient methods gave the first general template. Momentum methods then addressed oscillatory or noisy updates. Adaptive optimizers (RMSProp/Adam line) improved practical stability under heterogeneous gradient scales. Large-scale training then forced two additional layers of reasoning: numerical precision management and empirical scaling laws for planning model/data/compute tradeoffs.
+\paragraph{Step A --- Local linear model.}
+\textbf{Problem.} Full loss landscapes are unwieldy; near $\theta_t$ we approximate $\mathcal{L}(\theta_t+\Delta)$ by first-order Taylor expansion.
+\textbf{Insight.} Gradient descent assumes meaningful linear prediction within chosen step lengths.
+\textbf{Lineage.} Cauchy (1847) gradient methods; modern proofs invoke convex-like intuitions rarely satisfied literally in deep nets.
+\textbf{Mental model.} If curvature tightens, shrink steps or add momentum filters---otherwise linearisation lies.
 
-The critical insight along this path is that optimization rules are not interchangeable implementation details. They encode assumptions about noise, curvature, and numerical regime. That chapter's mathematics is the language for checking when those assumptions are plausible.
+\paragraph{Step B --- Stochastic gradients.}
+\textbf{Problem.} Exact $\nabla\mathcal{L}$ over full corpora is unaffordable.
+\textbf{Insight.} Subsample to inject noise whose variance trades memory for stability (Preface Step~6).
+\textbf{Lineage.} Robbins--Monro (1951); Bottou's large-scale ML synthesis.
+\textbf{Mental model.} Treat minibatch gradient as true gradient + zero-mean perturbation; diagnose spikes as breakdown of bounded-variance stories.
+
+\paragraph{Step C --- Adaptive signal processing.}
+\textbf{Problem.} Parameter blocks receive gradients at wildly different scales (embeddings vs logits vs biases).
+\textbf{Insight.} Running moment estimates rescale updates elementwise while preserving descent intent at smooth regions.
+\textbf{Lineage.} Polyak momentum; Duchi/Hazan/Singer (Adagrad); Kingma/Ba (Adam); Loshchilov/Hutter (AdamW).
+\textbf{Mental model.} Adaptive methods behave like learned preconditioners---trust them until drift/outliers falsify stationarity.
+
+\paragraph{Step D --- Numerical hygiene.}
+\textbf{Problem.} Low-precision tensors amplify underflow/overflow.
+\textbf{Insight.} Loss scaling preserves gradient magnitude while exploiting hardware throughput.
+\textbf{Lineage.} NVIDIA mixed-precision training recipes (2017 era onward).
+\textbf{Mental model.} Clip gradients when tail events violate FP16 comfort zones.
+
+\paragraph{Step E --- Macroscopic empirical laws.}
+\textbf{Problem.} Engineers must budget parameters \emph{and} tokens jointly.
+\textbf{Insight.} Iso-loss contours summarize decades of runs---Preface Step~7 interpreted informally at massive $n$.
+\textbf{Lineage.} Kaplan et al.\ (2020); Hoffmann et al.\ / Chinchilla (2022).
+\textbf{Mental model.} Scaling fits extrapolate poorly across dataset contamination regimes---treat coefficients as local Taylor surrogates.
+
+\paragraph{Connective thread.}
+Exact gradients are expensive; minibatches trade bias for variance: write $\hat g_t=\nabla_\theta \mathcal{L}_t(\theta_t)+\varepsilon_t$ with $\mathbb{E}[\varepsilon_t]=0$. Under i.i.d.\ sampling, $\mathrm{Var}(\varepsilon_t)$ scales roughly like $1/B$ with batch size $B$, which is why larger batches smooth updates but cost memory. Momentum and adaptive moments are filters on that noise; clipping guards rare spikes that violate the ``bounded variance'' story.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -36,12 +65,18 @@ The critical insight along this path is that optimization rules are not intercha
 
   \item \textbf{Momentum as exponential averaging.}  
   With $m_t=\beta m_{t-1} + (1-\beta)\hat g_t$, updates use smoothed direction $m_t$.
+  Think of $m_t$ as a low-pass filter on the gradient signal: high-frequency minibatch noise is attenuated while consistent downhill curvature survives, similar in spirit to a heavy ball continuing through shallow oscillations in the loss surface.
 
   \item \textbf{Bias correction for startup EMA.}  
-  Because $m_0=0$, early EMAs are biased toward zero. Adam uses
+  Because $m_0=0$, early EMAs are biased toward zero---the running average ``forgets'' that gradients were nonzero before time zero. Adam uses debiased estimates
   \[
     \hat m_t=\frac{m_t}{1-\beta_1^t},\qquad \hat v_t=\frac{v_t}{1-\beta_2^t}.
   \]
+  so that if $\hat g$ were constant, $\hat m_t$ would recover that constant after a few steps instead of ramping up spuriously slowly.
+
+  \item \textbf{AdamW intuition (brief).}
+  Classic Adam entangles weight decay with adaptive preconditioning in ways that distort the intended $\ell_2$ penalty. AdamW applies weight decay \emph{directly} to $\theta$ (decoupled from the adaptive gradient transform), while still using $\hat m_t,\hat v_t$ to precondition the loss gradient step.
+
 
   \item \textbf{Gradient clipping rule:}
   \[
@@ -50,14 +85,14 @@ The critical insight along this path is that optimization rules are not intercha
   This bounds update magnitude without changing direction when clipping is active.
 
   \item \textbf{Mixed precision with loss scaling.}  
-  Multiply loss by $s$, backpropagate, divide gradients by $s$ before optimizer step. This avoids subnormal underflow in reduced precision formats.
+  Forward/backward often run in bf16/fp16 for throughput; tiny gradients can flush to subnormals or zero in those formats. Multiply the scalar loss by a large factor $s$ before backward pass so chain-rule gradients inherit scale; divide accumulated gradients by $s$ before the optimizer applies updates (often fp32)---recovering usable magnitude without changing the mathematically correct descent direction.
 
   \item \textbf{Scaling-law interpretation.}  
   Empirical forms such as
   \[
     L(N,D)=L_\infty + aN^{-\alpha} + bD^{-\beta}
   \]
-  are fitted regularities in specific regimes, not universal laws.
+  summarise measured iso-loss contours across runs when architecture and data pipelines stay comparable. Use them as \emph{budget planners}: given fixed compute $C\approx 6ND$ tokens-parameter conventions from Kaplan/Chinchilla-style analyses, pick $(N,D)$ pairs predicted to sit near the elbow rather than extrapolate blindly across regimes where data quality or objectives shifted.
 \end{itemize}
 
 \subsection*{How These Results Build on Each Other}
@@ -81,6 +116,7 @@ The critical insight along this path is that optimization rules are not intercha
   \item \textbf{Gradient clipping:} norm-bound safeguard against spikes.
   \item \textbf{Warmup:} gradual LR increase to stabilize early dynamics.
   \item \textbf{Scaling law:} empirical relation among model size, data, compute, and loss.
+  \item \textbf{AdamW:} Adam-style adaptive steps with weight decay applied directly to parameters (decoupled from gradient preconditioning).
 \end{itemize}
 
 \subsection*{Worked Example (Training-Dynamics Diagnosis)}

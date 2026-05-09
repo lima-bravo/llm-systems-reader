@@ -1,7 +1,31 @@
 \section{Chapter 13 Refresher: A Human-Centric Model for Understanding LLM Errors --- Diagnostic Decomposition and Multi-Objective Reasoning}
 
 \subsection*{Setting the Scene}
-The closing chapter consolidates mathematical judgment rather than introducing a new heavy formalism. The field moved from single-score evaluation toward structured diagnosis because one scalar cannot describe heterogeneous failure causes. The critical insight is decomposition before intervention.
+Closing the loop returns evaluation to Preface discipline: partition failures into measurable slices before averaging hides pathology (Step~7 scepticism about naive empirical means).
+
+\paragraph{Step A --- Axes as orthogonal-ish hypotheses.}
+\textbf{Problem.} ``Bad answer'' is ambiguous utterance.
+\textbf{Insight.} Five axes mimic independent latent causes though reality correlates them---approximate factorial design for debugging.
+\textbf{Lineage.} Human-factors evaluation tradition; reader-specific ladder framing.
+
+\paragraph{Step B --- Diagnostics precede optimisation.}
+\textbf{Problem.} Teams tweak prompts when retrieval broke.
+\textbf{Insight.} Hypothesis testing instinct from Preface Step~4 / classical experimentation---rule out cheap structural failures before blaming semantics.
+
+\paragraph{Step C --- Multi-objective feasibility.}
+\textbf{Problem.} Accuracy, safety, latency, cost trade off.
+\textbf{Insight.} Pareto surfaces generalise scalar loss discomfort from Chapter~2---no magic scalar unless governance chooses weights.
+
+The axes listed operationally:
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Structure:} grammar/schema/tool-protocol adherence.
+  \item \textbf{Meaning:} semantic alignment despite fluency.
+  \item \textbf{Context:} prompt/task cue fidelity.
+  \item \textbf{Grounding:} evidence-backed claims.
+  \item \textbf{Environment:} tool/SDK behavioural assumptions.
+\end{itemize}
+
+Structured diagnosis honours Preface probability hygiene: define events precisely, measure their frequencies, intervene where measurements spike.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -62,10 +86,14 @@ Reasoning: this is not primarily a prompt-style failure; it is evidence-path fai
 
 \subsection*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
-  \item Calibration and uncertainty: see Chapter 1 refresher.
   \item A plausible answer can still be ungrounded.
   \item One failure can belong to multiple axes; diagnosis is often multi-label.
   \item The strongest fix is the one that changes the relevant information pathway.
+\end{itemize}
+
+\subsection*{Pointers}
+\begin{itemize}[leftmargin=1.5em]
+  \item Calibration and uncertainty foundations: see Chapter 1 refresher.
 \end{itemize}
 
 \subsection*{Further Refresh}

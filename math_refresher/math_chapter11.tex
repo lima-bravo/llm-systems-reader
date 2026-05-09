@@ -1,7 +1,22 @@
 \section{Chapter 11 Refresher: Governance, Assurance, and the Future of AI Systems --- Risk Arithmetic and Assurance Logic}
 
 \subsection*{Setting the Scene}
-Governance math is not abstract compliance language; it is decision logic under uncertainty. The field evolved from safety engineering (hazards, layered controls, assurance cases) into AI governance artifacts. The critical insight is traceability: every risk claim must be connected to measurable evidence and triggerable controls.
+Risk arithmetic translates qualitative hazards into inequalities you can monitor---probability returns as operational thresholds on empirical frequencies (Preface Steps~1--4 recycled for compliance narratives).
+
+\paragraph{Step A --- Hazards as events.}
+\textbf{Problem.} Stakeholders disagree verbally unless \(\Omega\) carved crisply.
+\textbf{Insight.} Define hazardous outcomes as measurable events; attach severities/likelihoods only after measurability clears.
+\textbf{Lineage.} Leveson STAMP lineage; ISO/IEC flavour standards.
+
+\paragraph{Step B --- Controls multiply imperfectly.}
+\textbf{Problem.} Layered mitigations stack but rarely independent.
+\textbf{Insight.} Product-form residual models mirror naive independence yet expose correlation caveats---same scepticism as Preface Step~6 covariance warnings.
+
+\paragraph{Step C --- Evidence graphs.}
+\textbf{Problem.} Auditors demand provenance.
+\textbf{Insight.} Assurance cases are Bayesian-flavoured narratives without always updating posteriors---still DAGs connecting claims to sensors.
+
+Governance makes Preface probability language accountable to humans outside ML conferences.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -16,7 +31,12 @@ Governance math is not abstract compliance language; it is decision logic under 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Risk decomposition:} severity and likelihood are different axes with different uncertainty.
-  \item \textbf{Layered controls:} multiplicative residual-risk models assume forms of independence.
+  \item \textbf{Layered controls.}
+  With baseline scalar risk score \(R\) and independent-ish controls each attenuating fraction \(\eta_i\in[0,1]\),
+  \[
+    R_{\mathrm{res}} = R \prod_{i}(1-\eta_i).
+  \]
+  Interpret \(\eta_i\) as fractional reductions attributable to distinct safeguards under optimistic independence assumptions; shared vulnerabilities violate independence and make multiplicative models overly cheerful---inflate residuals mentally whenever controls depend on the same latent failures.
   \item \textbf{Trigger logic:} indicator functions implement threshold decisions.
   \item \textbf{Assurance structure:} claim $\to$ evidence $\to$ control action $\to$ artifact.
   \item \textbf{Correlation caveat:} multiplicative risk-reduction models are optimistic under shared-cause failures.

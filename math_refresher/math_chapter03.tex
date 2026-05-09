@@ -2,11 +2,32 @@
 \label{sec:math-refresher-neural-networks}
 
 \subsection*{Setting the Scene}
-Chapter~3 of the reader introduces the \emph{function class} \(f_\theta\) that sits between the cross-entropy objective (Chapter~1) and the optimisation machinery (Chapter~2): affine layers, elementwise nonlinearities, composition, backpropagation, activations, initialisation, normalisation, and residual paths. The mathematics is mostly multivariate calculus and linear algebra told as \emph{structured composition}: each layer is a simple map, but depth stacks many copies of the same structural pattern.
+Chapter~3 names the map \(f_\theta\) that converts contexts (embedded as vectors) into logits consumed by the softmax head from Chapter~1. Probability Preface Steps~2--3 built distributions over \emph{symbols}; here we build differentiable functions producing \emph{parameters} of those distributions.
 
-Historically, Rosenblatt's perceptron showed that adjusting weights from errors could learn a separating hyperplane when one exists; Minsky and Papert's XOR observation showed that a single linear boundary is not enough for seemingly trivial logic. Depth plus nonlinearity restored expressive power. Werbos and Rumelhart--Hinton--Williams turned the calculus chain rule into an \(O(P)\)-time gradient algorithm for \(P\) parameters, making depth computationally tractable. Glorot/Bengio and He initialisation, ReLU-style activations, batch/layer normalisation, and residual connections each addressed a concrete failure mode (vanishing or exploding signals, dead units, trainability at depth). The modern LLM block is built from those responses.
+\paragraph{Step A --- Affine versus nonlinear composition.}
+\textbf{Problem.} Stack linear maps naïvely and nothing new appears (matrix multiplication absorbs depth).
+\textbf{Insight.} Insert nonlinearities so each layer genuinely bends space.
+\textbf{Lineage.} McCulloch--Pitts abstract neurons; Rosenblatt perceptron (1958); Minsky--Papert XOR diagnosis (1969).
+\textbf{Mental model.} Ask ``would removing \(\varphi\) reduce this entire stack to one matrix?'' If yes, redesign.
 
-This refresher rebuilds the prerequisites so the reader chapter's derivations read as bookkeeping rather than magic: affine maps and dimensions, composition versus affine-only stacks, the two different ``chain rules,'' Jacobians only at the level needed to read backprop, elementwise nonlinearities and the Hadamard product, one variance identity behind Xavier/He-style scaling, XOR geometry, and the softmax cross-entropy gradient at the output layer.
+\paragraph{Step B --- Depth becomes tractable.}
+\textbf{Problem.} Naïve depth amplifies or shrinks signals exponentially.
+\textbf{Insight.} Backprop applies Preface Step~8's log-product intuition in reverse: derivatives multiply along layers too.
+\textbf{Lineage.} Werbos thesis (1974); Rumelhart--Hinton--Williams \emph{Nature} (1986).
+\textbf{Mental model.} Forward multiply matrices; backward multiply transposes---same \(\mathcal{O}(P)\) order as one forward pass.
+
+\paragraph{Step C --- Initialise like a physicist.}
+\textbf{Problem.} Random weights inject variance into activations; depth compounds variance sums (Preface Step~6).
+\textbf{Insight.} Match \(\mathrm{Var}\) layer-to-layer so neither explosions nor vanishing dominate early training.
+\textbf{Lineage.} Glorot \& Bengio (2010); He et al.\ (2015).
+\textbf{Mental model.} Treat fan-in as degrees of freedom contributing independent squared terms.
+
+\paragraph{Step D --- Normalise and short-cut.}
+\textbf{Problem.} Optimisers still distort scale mid-training; identity maps are easiest to learn.
+\textbf{Insight.} Normalisation recentres activations; residuals learn perturbations around identity (He et al., 2016; Ba et al., LayerNorm).
+\textbf{Mental model.} Depth searches neighbourhoods of stable highways rather than rebuilding maps from scratch each layer.
+
+This refresher installs calculus-chain-rule literacy distinct from the probability chain rule (Preface Step~3): same English phrase, different theorem---always label which you mean.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -28,6 +49,7 @@ This refresher rebuilds the prerequisites so the reader chapter's derivations re
     h_{\mathrm{in}}\in\mathbb{R}^{d_{\mathrm{in}}},\; b,z\in\mathbb{R}^{d_{\mathrm{out}}}.
   \]
   Without an elementwise nonlinearity, any composition of affine maps is still a single affine map; \emph{depth buys nothing}.
+  Concrete sketch with two layers: $z_2 = W_2(W_1 x + b_1)+b_2 = (W_2 W_1)x + (W_2 b_1 + b_2)$, still affine in $x$. Adding \(\varphi\) between layers breaks closure because \(\varphi(W_1 x+b_1)\) is generally non-affine in \(x\).
 
   \item \textbf{MLP skeleton.}
   With pre-activations \(z^{(\ell)}\), post-activations \(h^{(\ell)}=\varphi(z^{(\ell)})\) for hidden layers, and \(h^{(0)}=x\),
@@ -46,6 +68,8 @@ This refresher rebuilds the prerequisites so the reader chapter's derivations re
   If \(y=g(u)\) and \(u=h(x)\) are differentiable scalars, \(\displaystyle\frac{dy}{dx}=\frac{dy}{du}\frac{du}{dx}\). For nested \(y=f^{(L)}\!\circ\cdots\circ f^{(1)}(x)\), multiply local derivatives along the graph from output backward.
 
   \item \textbf{Jacobian view for vectors (reading backprop).}
+  Warmup scalar-on-vector case: if \(z\in\mathbb{R}^m\) feeds scalar \(\mathcal{L}(z)\) and \(z=z(\theta)\), chain rule gives \(\partial \mathcal{L}/\partial \theta_j = \sum_i (\partial \mathcal{L}/\partial z_i)(\partial z_i/\partial \theta_j)\)---a dot product of the upstream sensitivity \(\nabla_z \mathcal{L}\) with each column of \(\partial z/\partial \theta\). Packing columns yields matrix-vector form below.
+
   Take scalar \(\mathcal{L}(z)\) with \(z\in\mathbb{R}^m\) depending on \(\theta\in\mathbb{R}^r\). With \emph{column} gradients \(g_z=\nabla_z \mathcal{L}\in\mathbb{R}^m\) and \(g_\theta=\nabla_\theta\mathcal{L}\in\mathbb{R}^r\),
   \[
     g_\theta = \Bigl(\frac{\partial z}{\partial \theta}\Bigr)^{\!\top} g_z,
@@ -67,7 +91,7 @@ This refresher rebuilds the prerequisites so the reader chapter's derivations re
   \[
     \nabla_z \mathcal{L}_{\mathrm{CE}} = p - e_k.
   \]
-  This is the bridge between Chapter~1's probabilistic head and Chapter~3's layered map producing logits.
+  Sketch: write \(\log p_k = z_k - \log\sum_j e^{z_j}\). Differentiate: \(\partial (\log\sum_j e^{z_j})/\partial z_i = p_i\) because softmax derivatives telescope inside the log-sum-exp. Subtracting the indicator \(e_k\) leaves residual \(p_i\) on every coordinate except the target coordinate where it becomes \(p_k-1\). Packaging coordinates yields \(p-e_k\). This identity is the bridge between Chapter~1's probabilistic head and Chapter~3's layered map producing logits---gradients vanish exactly when \(p\) places mass \(1\) on the observed token.
 
   \item \textbf{Hyperplane and XOR.}
   A linear classifier uses \(\mathrm{sign}(w^{\top}x+b)\); the decision boundary is \(\{x:w^{\top}x+b=0\}\), an affine hyperplane. XOR labels on \(\{(0,0),(0,1),(1,0),(1,1)\}\) are not linearly separable in \(\mathbb{R}^2\): no single line separates the two label classes. A hidden layer folds space so a second boundary can finish the job.
@@ -106,7 +130,13 @@ This refresher rebuilds the prerequisites so the reader chapter's derivations re
 \end{itemize}
 
 \subsection*{Worked Example (XOR Geometry + One Composition Chain)}
-\textbf{Part A (geometry).} XOR truth table on corners of the unit square: $(0,0)$ and $(1,1)$ label $0$; $(0,1)$ and $(1,0)$ label $1$. Any line $w_1 x_1 + w_2 x_2 + b = 0$ leaves at least three corners in one closed half-plane by convexity of half-planes; checking cases shows those three cannot all share one XOR label pattern compatible with separating $0$ vs $1$. Conclusion: no single linear classifier fits XOR.
+\textbf{Part A (geometry).} XOR assigns label $+1$ to $(0,1)$ and $(1,0)$ and label $-1$ to $(0,0)$ and $(1,1)$. Suppose a linear scoring rule $\mathrm{sign}(w_1 x_1 + w_2 x_2 + b)$ separates the classes with nonzero margin along each labelled point (ideal separator---relax later). Evaluate linear score $s(x)=w_1 x_1 + w_2 x_2 + b$ on the four corners. XOR symmetry forces contradictory inequalities:
+\begin{itemize}[leftmargin=1.5em]
+  \item Separating $(0,1)$ from $(0,0)$ implies $s(0,1)>s(0,0)$ hence $w_2>0$.
+  \item Separating $(1,0)$ from $(0,0)$ implies $w_1>0$.
+  \item Separating $(1,1)$ from $(1,0)$ implies $s(1,1)<s(1,0)$ hence $w_2<0$.
+\end{itemize}
+The second and third requirements contradict each other. No affine hyperplane in $\mathbb{R}^2$ induces opposite signs on exactly those XOR-labelled subsets without contradiction---so linear threshold units alone fail.
 
 \textbf{Part B (scalar depth intuition).} Let \(f(x)=\varphi(w_2\,\varphi(w_1 x)+b_1)+b_2\) with scalar \(x\) and smooth \(\varphi\). Then
 \[

@@ -1,7 +1,27 @@
 \section{Chapter 6 Refresher: Pretraining, GPT-Style Models, and In-Context Learning --- Pretraining Objective and Decoding Controls}
 
 \subsection*{Setting the Scene}
-Chapter 6 connects statistical learning and generation behavior. Historically, this is where language modeling moved from ``fit data well'' to ``control generation behavior under constraints.'' The critical insight is that decoding is distribution shaping, not retraining.
+Training optimises Preface Steps~8--10 on teacher-forced contexts; deployment samples from the learned conditional family under budgets and safety envelopes---same \(\theta\), different \emph{pushforward} map from logits to tokens.
+
+\paragraph{Step A --- Autoregressive likelihood reminder.}
+\textbf{Problem.} Guarantee coherence across positions while fitting data.
+\textbf{Insight.} Factorisation \(\prod_t p_\theta(x_t\mid x_{<t})\) ties optimisation to causal graphs already rehearsed in Preface Step~3.
+\textbf{Lineage.} Shannon's entropy estimates for English $\to$ modern causal transformers.
+\textbf{Mental model.} Teacher forcing mismatches free-running drift---monitor both regimes.
+
+\paragraph{Step B --- Inference-time reshaping.}
+\textbf{Problem.} Raw softmax may be too peaked or too flat for products.
+\textbf{Insight.} Temperature, top-\(k\), top-\(p\) apply measure transforms \emph{after} forward pass---no gradient necessarily flows (pure inference policy).
+\textbf{Lineage.} Nucleus sampling (Holtzman et al.) formalises mass truncation psychology.
+\textbf{Mental model.} Treat decoding knobs as UI levers on Shannon entropy (Preface Step~9).
+
+\paragraph{Step C --- Scaling budgets.}
+\textbf{Problem.} Engineers trade parameters vs tokens under compute roofs.
+\textbf{Insight.} Empirical iso-loss laws operationalise Preface Step~7 qualitatively at trillion-token scales.
+\textbf{Lineage.} Kaplan (2020); Chinchilla (2022).
+\textbf{Mental model.} Laws fit historical pipelines---extrapolate cautiously when data composition shifts.
+
+Decoding is theatre lighting on the same actor (\(\theta\)); training chooses the script likelihood, decoding chooses spotlight intensity.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -15,12 +35,19 @@ Chapter 6 connects statistical learning and generation behavior. Historically, t
 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Autoregressive NLL objective:} same probability chain as Chapter 1, now at pretraining scale.
+  \item \textbf{Autoregressive NLL objective.}
+  For corpus sequences \(x_{1:T}\), training maximises \(\sum_t \log p_\theta(x_t\mid x_{<t})\), equivalently minimises per-token cross-entropy averaged over positions and documents. This is the Chapter~1 chain rule factorisation evaluated inside the transformer stack that produces conditional softmax parameters at each \(t\).
   \item \textbf{Temperature transform:}
   \[
     p_i(\tau)=\frac{\exp(z_i/\tau)}{\sum_j \exp(z_j/\tau)}.
   \]
-  \item \textbf{Top-$k$ and top-$p$:} support truncation followed by renormalization on retained set.
+  \item \textbf{Top-$k$ and top-$p$ (ordered operations).}
+  Start from full softmax masses \(p_i\) over vocabulary.
+  \begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Top-$k$:} keep the $k$ largest probabilities, zero the rest, divide remaining masses by their sum so they again form a distribution on the surviving support.
+    \item \textbf{Top-$p$ (nucleus):} sort probabilities descending, greedily add tokens until cumulative mass reaches threshold $p\in(0,1]$, zero outside that prefix, renormalise on the kept set.
+  \end{enumerate}
+  Both policies intentionally discard probability mass outside a subset of vocabulary entries before sampling; they reshape diversity without changing trained weights.
   \item \textbf{Objective/metric distinction:} training objective may not align perfectly with deployment metric.
   \item \textbf{Scaling fits:} compute/data/parameter fronts are empirical and objective-dependent.
 \end{itemize}

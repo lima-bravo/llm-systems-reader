@@ -1,0 +1,137 @@
+\section*{Preface: Probability Building Blocks}
+\addcontentsline{toc}{section}{Preface: Probability Building Blocks}
+
+\subsection*{How to read this preface}
+The chapters ahead assume undergraduate probability fluency that may have faded. This preface does not replace a textbook; it reinstalls a \emph{Strang-style chain}: each subsection states what problem the next definition solves, names where the idea entered mathematics or engineering, and ends with a \emph{mental model} you will reuse when reading LLM systems notation.
+
+Probability here means Kolmogorov-style measure on a sample space. Random variables compress events into summaries (numbers or vectors). Expectation averages those summaries under a distribution. Information quantities reinterpret probabilities as coding costs. Large-sample intuition connects finite training batches to population quantities. Later refresher chapters pointer-reference these steps instead of repeating them.
+
+\subsection*{Step 1 --- Sample space, events, and axioms}
+\textbf{Problem.} We must assign consistent numbers to uncertain outcomes so algebraic manipulation respects logic.
+
+\textbf{Construction (compact).} A sample space $\Omega$ collects mutually exclusive elementary outcomes. An event is a subset $A\subseteq\Omega$ (in the $\sigma$-algebra $\mathcal{F}$ when rigor demands). A probability measure $P$ obeys $P(\Omega)=1$, $P(A)\ge 0$, and countable additivity on disjoint unions.
+
+\textbf{Insight.} Uncertainty becomes bookkeeping: combine events with set operations; probabilities inherit monotone laws that mirror everyday implication.
+
+\textbf{Lineage.} Kolmogorov's axioms (1933) unified earlier paradox-prone intuitions into measure theory---still the lingua franca of ML papers.
+
+\textbf{Mental model.} Before manipulating symbols, write down what $\Omega$ \emph{is}. Ambiguous $\Omega$ produces ambiguous conditioning later---especially when ``token'' vs ``character'' vs ``byte'' outcomes differ.
+
+\subsection*{Step 2 --- Conditional probability}
+\textbf{Problem.} Observations arrive partially: we learn $B$ happened and must revise beliefs about $A$.
+
+\textbf{Definition.} For $P(B)>0$,
+\[
+  P(A\mid B)=\frac{P(A\cap B)}{P(B)}.
+\]
+Equivalently $P(A\cap B)=P(A\mid B)P(B)$.
+
+\textbf{Insight.} Conditioning \emph{restricts and renormalises} the world to the slice where $B$ is true.
+
+\textbf{Lineage.} Formalised within Kolmogorov's programme; conceptual ancestors include Bernoulli/Huygens gaming mathematics and later Bayesian narratives.
+
+\textbf{Mental model.} Language-model ``next token given context'' \emph{is} conditional probability: $B$ is ``we saw prefix $x_{<t}$,'' $A$ is ``next symbol equals $x_t$.''
+
+\subsection*{Step 3 --- Chain rule for probabilities}
+\textbf{Problem.} High-dimensional joints look unmanagable unless we factor them along an ordering.
+
+\textbf{Identity.} Always $P(A,B)=P(A\mid B)P(B)$. Iterating along an ordered sequence gives
+\[
+  P(x_{1:T})=\prod_{t=1}^{T} P(x_t\mid x_{<t}),
+\]
+provided each conditional is defined (positive-probability prefixes).
+
+\textbf{Insight.} Sequential prediction needs no extra axiom beyond Step~2---factorisation is algebraic honesty.
+
+\textbf{Lineage.} Elementary consequence of definitions; Markov (1913) showcased sequential dependence in text before computers existed.
+
+\textbf{Mental model.} Each factor answers ``what fraction of surviving probability mass lands on this symbol \emph{after} seeing the left context?'' Misordered dependencies confuse causality with notation.
+
+\subsection*{Step 4 --- Bayes' theorem (compact)}
+\textbf{Problem.} Sometimes we observe effects and must infer latent causes or revise hypotheses.
+
+\textbf{Form.} With $P(E)>0$, $P(H\mid E)=\dfrac{P(E\mid H)\,P(H)}{P(E)}$.
+
+\textbf{Insight.} Invert conditioning direction by paying the evidence normaliser $P(E)$.
+
+\textbf{Lineage.} Bayes; Laplace championed inferential uses.
+
+\textbf{Mental model.} Pure LM training rarely expands Bayes in full, but calibration papers and Bayesian interpretations of weight decay/noise often invoke posterior language---recognise when authors silently swap $\theta$ and data roles.
+
+\subsection*{Step 5 --- Random variables and expectation}
+\textbf{Problem.} Events are verbose; we want numerical summaries whose averages behave linearly.
+
+\textbf{Discrete expectation.}
+\[
+  \mathbb{E}[f(X)]=\sum_{x\in\mathcal{X}} p(x)\,f(x).
+\]
+Linearity: $\mathbb{E}[a f(X)+b g(X)] = a\,\mathbb{E}[f(X)] + b\,\mathbb{E}[g(X)]$ (no independence needed).
+
+\textbf{Insight.} Expectation is the ``center of mass'' of outcomes weighted by probability---the quantity laws of large numbers later approximate.
+
+\textbf{Lineage.} Nineteenth-century mechanics analogies $\to$ measure-theoretic integral (Lebesgue).
+
+\textbf{Mental model.} Empirical cross-entropy is a finite-sample proxy for $\mathbb{E}_{x\sim\text{data}}[-\log q_\theta(x)]$; stochastic gradients perturb that proxy.
+
+\subsection*{Step 6 --- Variance and sums (sketch)}
+\textbf{Problem.} Expectation hides spread; optimisation noise depends on second moments.
+
+\textbf{Definitions.} $\mathrm{Var}(X)=\mathbb{E}[(X-\mathbb{E}[X])^2]$; for independent $X,Y$, $\mathrm{Var}(X+Y)=\mathrm{Var}(X)+\mathrm{Var}(Y)$.
+
+\textbf{Insight.} Independent minibatch gradients sum variances---batch scaling trades compute against noise amplitude.
+
+\textbf{Lineage.} Classical; Chebyshev's inequality links variance to tail bounds.
+
+\textbf{Mental model.} When inputs correlate inside a batch, $\mathrm{Var}(\sum)$ gains covariance terms---clip-heavy regimes acknowledge heavy tails violating naive Gaussian pictures.
+
+\subsection*{Step 7 --- Law of large numbers (operational)}
+\textbf{Problem.} Finite datasets nonetheless approximate unseen distributions---when is that morally justified?
+
+\textbf{Qualitative statement.} Under IID or weakened dependence, sample averages $\frac{1}{n}\sum_{i=1}^n f(X_i)$ converge to $\mathbb{E}[f(X)]$ as $n\to\infty$ (modes differ: weak vs strong LLN).
+
+\textbf{Insight.} Training losses reference an underlying population quantity even though only finite corpora arrive.
+
+\textbf{Lineage.} Early probabilists (Bernoulli); modern proofs measure-theoretic.
+
+\textbf{Mental model.} Engineering monitors finite-$n$ deviation (bias, variance, drift); LLM corpora violate IID---LLN intuition guides, assumptions rarely hold verbatim.
+
+\subsection*{Step 8 --- Maximum likelihood}
+\textbf{Problem.} Choose parameters $\theta$ so observed data look plausible under $P_\theta$.
+
+\textbf{Objective.} $\hat\theta\in \arg\max_\theta \prod_{i=1}^n P_\theta(\text{datum}_i)$; equivalently maximise $\sum_i \log P_\theta(\text{datum}_i)$.
+
+\textbf{Insight.} ML estimation aligns probabilities with frequencies inside the model class---not proof of truth outside that class.
+
+\textbf{Lineage.} Fisher sharpened theory in the 1920s--1930s; modern deep learning uses regularised variants.
+
+\textbf{Mental model.} Products become sums via $\log$---derivatives and curvature numerics prefer sums; ``negative log-likelihood'' is the minimisation convention.
+
+\subsection*{Step 9 --- Shannon entropy}
+\textbf{Problem.} Quantify uncertainty with a single scalar aligned with coding limits.
+
+\textbf{Definition (discrete).} $H(p)=-\sum_x p(x)\log p(x)$ (nats if $\ln$, bits if $\log_2$).
+
+\textbf{Insight.} Optimal lossless codes for draws from $p$ require $\approx H(p)$ symbols per draw on average---entropy is not mysticism, it is asymptotic compression cost.
+
+\textbf{Lineage.} Shannon's \emph{A Mathematical Theory of Communication} (1948).
+
+\textbf{Mental model.} Never compare entropies computed in different log bases without conversion; tokenisation changes $|\mathcal{X}|$ and hence typical $H$ magnitudes.
+
+\subsection*{Step 10 --- Cross-entropy and Kullback--Leibler divergence}
+\textbf{Problem.} Models $q$ disagree with reference $p$; quantify mismatch in bits/nats.
+
+\textbf{Definitions.}
+\begin{align*}
+  H(p,q) &= -\sum_x p(x)\log q(x),\\
+  D_{\mathrm{KL}}(p\|q) &= \sum_x p(x)\log\frac{p(x)}{q(x)}.
+\end{align*}
+\textbf{Decomposition.} $H(p,q)=H(p)+D_{\mathrm{KL}}(p\|q)$.
+
+\textbf{Insight.} Cross-entropy splits unavoidable uncertainty ($H(p)$) plus excess coding penalty from using $q$ when truth is $p$ (the KL term).
+
+\textbf{Lineage.} Shannon coding theorems motivate $H(p,q)$; Kullback and Leibler (1951) formalised $D_{\mathrm{KL}}$.
+
+\textbf{Mental model.} Minimising sample cross-entropy pushes $q$ toward empirical token frequencies \emph{inside the softmax parameterisation}; KL penalties in alignment explicitly drag policies toward references---same symbolic animal, different rhetorical frame.
+
+\subsection*{Where Chapter 1 picks up}
+Chapter~1 of this refresher specialises Steps~2--3 to autoregressive tokens, Steps~8--10 to softmax logits and calibration diagnostics, and binds Step~7 qualitatively to dataset-scale claims. Re-read this preface whenever conditioning or information identities feel like unmotivated algebra.

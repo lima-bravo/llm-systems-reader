@@ -1,7 +1,23 @@
 \section{Chapter 12 Refresher: Modern LLM Access --- APIs, SDKs, Agents, and the Model Context Protocol --- Latency, Queues, and Reliability Budgets}
 
 \subsection*{Setting the Scene}
-Chapter 12 brings probability back into systems operations. Queueing theory, retry arithmetic, and budget constraints determine whether an otherwise capable model can be deployed reliably. The key insight is compounding: small per-request probabilities become large system effects at scale.
+APIs expose stochastic models inside stochastic infrastructure: arrivals, service times, retries, and pricing multiply Preface Steps~5--7 expectations into tail experiences users actually feel.
+
+\paragraph{Step A --- Utilisation as latent probability.}
+\textbf{Problem.} Saturated GPUs inflate latency although average load looks fine.
+\textbf{Insight.} \(\rho=\lambda/\mu\) nearing 1 blows variance (Preface Step~6)---queue waits explode superlinearly.
+\textbf{Lineage.} Kendall queue notation; Kleinrock textbooks.
+\textbf{Mental model.} Treat \(\rho\) like criticality in statistical mechanics---small deltas matter near phase transitions.
+
+\paragraph{Step B --- Retries compound load.}
+\textbf{Problem.} Clients retry on flakes.
+\textbf{Insight.} Geometric retry counts lift effective \(\lambda\)---same algebra as Preface Step~4 inverted conditioning stories but operational.
+
+\paragraph{Step C --- Guards cap rare disasters.}
+\textbf{Problem.} Agents might loop unbounded.
+\textbf{Insight.} Hard budgets reinstate finite \(\Omega\) partitions compatible with Step~1 measurability mindset.
+
+Probability-minded reliability engineers read LM dashboards the same way traders read risk tapes---moments plus tails.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -16,12 +32,15 @@ Chapter 12 brings probability back into systems operations. Queueing theory, ret
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Latency decomposition:} prefill latency plus per-output-token decode latency.
-  \item \textbf{Queueing baseline:} in M/M/1,
+  \item \textbf{Queueing baseline (M/M/1).}
+  Assume Poisson arrivals rate \(\lambda\), exponential service rate \(\mu\) per busy server, single server, infinite buffer (steady-state regime \(\lambda<\mu\)). Expected waiting time in queue satisfies
   \[
     \mathbb{E}[W]=\frac{1}{\mu-\lambda},
   \]
-  so wait time grows sharply near saturation.
-  \item \textbf{Retry expectation:} repeated failures produce nonlinear expected attempts.
+  blowing up as \(\rho=\lambda/\mu\uparrow 1$: tiny overload deltas dominate latency tails---engineering intuition beats pretending arrivals are perfectly deterministic.
+
+  \item \textbf{Retry expectation.}
+  If each attempt fails independently with probability \(p_f\) and retries repeat until first success (no cap), successes follow geometric distribution with success probability \(1-p_f\). Expected attempts \(\mathbb{E}[K]=\sum_{n\ge1} n\, p_f^{n-1}(1-p_f)=1/(1-p_f)\). Even modest \(p_f\) inflates load multipliers \(\mathbb{E}[K]\) nonlinearly.
   \item \textbf{Token cost model:} base cost is linear in tokens, expected cost depends on retries and aborts.
   \item \textbf{Termination guards:} bounded steps/tokens/cost enforce finite agent behavior.
 \end{itemize}

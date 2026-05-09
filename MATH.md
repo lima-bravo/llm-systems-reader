@@ -7,6 +7,8 @@ This document defines the required style and structure for the `math_refresher` 
 The refresher exists to help readers who studied undergraduate math in the past but need guided recall now.  
 The goal is memory rekindling and intuition building, not proving theorems from scratch.
 
+The compiled PDF opens with **Preface: Probability Building Blocks** (`math_preface_probability.tex`): Kolmogorov axioms through entropy/KL, each with stated problem, insight, lineage, and mental model. Later `math_chapterNN.tex` files pointer-reference those steps instead of re-deriving probability from scratch.
+
 ## Reader Assumption
 
 - Reader has prior undergraduate exposure.

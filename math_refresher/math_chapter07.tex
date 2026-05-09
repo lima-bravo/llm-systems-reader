@@ -1,7 +1,27 @@
 \section{Chapter 7 Refresher: Efficiency, Scaling, and Mixture-of-Experts --- Systems Arithmetic and Sparse Routing}
 
 \subsection*{Setting the Scene}
-The core mathematics here is systems constraint reasoning. The historical shift to large-scale LLMs forced training/inference analysis to include network and memory constraints, not only FLOPs. The key insight is that bottlenecks migrate.
+Once probabilities and networks are defined, training becomes physics on silicon: bytes move, joules dissipate, routers stall. Preface Step~6 (variance of sums) quietly lurks behind contention noise.
+
+\paragraph{Step A --- Roofline worldview.}
+\textbf{Problem.} MFLOPS dashboards lie when kernels stream weights constantly.
+\textbf{Insight.} Compare arithmetic intensity (FLOPs/byte) against bandwidth-induced slopes---whichever bound bites first wins.
+\textbf{Lineage.} Williams/Waters/Patterson roofline model (2009) repurposed across ML hardware discourse.
+\textbf{Mental model.} If intensity $<$ ridge crossover, buying more TFLOPs wastes money---buy bandwidth or locality instead.
+
+\paragraph{Step B --- Sparsity swaps villains.}
+\textbf{Problem.} Dense matrices saturate compute; sparse routing saves FLOPs but reroutes traffic.
+\textbf{Insight.} MoE trades matmuls for all-to-all collectives---new bottleneck on wires (Preface Step~6 covariance spikes across devices).
+\textbf{Lineage.} Shazeer's Switch Transformer et seq.
+\textbf{Mental model.} Plot effective \(\lambda/\mu\) including dispatch latency before celebrating parameter counts.
+
+\paragraph{Step C --- Capacity factor as queue abstraction.}
+\textbf{Problem.} Experts overload like servers under burst arrivals.
+\textbf{Insight.} Capacity factor overprovisions slots analogous to multi-server queue stability margins---drops mirror admission control.
+\textbf{Lineage.} Queueing tradition (Kendall notation) meets routing papers.
+\textbf{Mental model.} Tail latency dominates UX---average FLOPs/token misleads.
+
+Systems graphs reinterpret probability routines as throughput limits; migrating bottlenecks obey no moral ranking beyond measurement.
 
 \subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
@@ -15,7 +35,7 @@ The core mathematics here is systems constraint reasoning. The historical shift 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Bottleneck triad:} compute, memory bandwidth, and interconnect communication.
-  \item \textbf{MoE routing:} gate scores select top-$k$ experts and renormalize mass on selected experts.
+  \item \textbf{MoE routing:} compute gate logits per token (router network); softmax yields mixture weights; keep top-$k$ experts, zero or mask others, renormalise weights on the surviving experts so each token still mixes convexly over experts it dispatches to; aggregate expert outputs with those weights. Routing induces sparse activation patterns separate from parameter residency.
   \item \textbf{Capacity factor:} finite per-expert token slots induce drop/reroute decisions.
   \item \textbf{Arithmetic intensity:} $\text{FLOPs}/\text{byte}$ predicts memory-bound vs compute-bound behavior.
   \item \textbf{Active vs total parameters:} sparse models can have large total memory footprint while using small active compute per token.

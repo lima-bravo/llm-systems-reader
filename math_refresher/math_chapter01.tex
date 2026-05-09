@@ -1,21 +1,30 @@
 \section{Chapter 1 Refresher: Statistical Learning Foundations for Large Language Models --- Probability, Likelihood, and Calibration}
 
 \subsection*{Setting the Scene}
-Chapter~1 of the reader uses a specific branch of probability theory: the branch that turns uncertain events into measurable predictive statements. In practice, the reader will use four ingredients repeatedly: conditional probability, the chain rule, expectation, and logarithmic scoring.
+Chapter~1 of the reader applies the probability spine summarised in the \emph{Preface: Probability Building Blocks}: Steps~2--4 turn sequential text into products of conditionals; Steps~8--10 justify cross-entropy training as likelihood plus coding intuition; Step~7 motivates interpreting finite corpora as imperfect proxies for expectations.
 
-The path to this toolkit was gradual and each step added a new capability:
+\paragraph{Reasoning cadence (Strang-style).}
+Each numbered derivation below answers an explicit question that bothered practitioners historically:
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{What object is ``predict next token''?} Conditional probability (restrict and renormalise to context).
+  \item \textbf{How do those pieces assemble into a story probability?} Iterated conditioning---Markov's linguistic intuition modernised.
+  \item \textbf{How do we fit parameters?} Fisher-style maximum likelihood $\Rightarrow$ sums of log probabilities.
+  \item \textbf{How do we interpret the scalar loss?} Shannon/Kullback--Leibler information decomposition separates irreducible noise from model mismatch.
+  \item \textbf{Why softmax logits?} Analytic convenience plus numerical stabilisation via shift invariance (engineering cousin of log-sum-exp proofs).
+  \item \textbf{What does calibration add that loss omits?} Reliability of stated probabilities versus empirical hit rates (psychometrics meets scoring rules).
+\end{enumerate}
+
+The critical insight for Chapter~1 is that language modeling does not invent probability theory; it \emph{sequences} classical moves under computational constraints. Logarithms convert products into sums because curvature and gradient variance behave better that way---not because theoreticians prefer prettier notation.
+
+This refresher chapter specialises the preface steps into LM notation; reread the preface whenever conditioning identities feel unmotivated.
+
+\subsection*{Notation Introduced in This Chapter}
 \begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Axiomatic probability (Kolmogorov):} gave a rigorous language for uncertainty over events.
-  \item \textbf{Conditional probability and chain decompositions:} made sequential prediction mathematically legal.
-  \item \textbf{Information theory (Shannon):} interpreted uncertainty as expected coding burden.
-  \item \textbf{Relative entropy (Kullback--Leibler):} measured model mismatch relative to the true distribution.
-  \item \textbf{Statistical learning formulation:} converted these quantities into trainable optimization objectives.
+  \item $x_t$: token at position $t$ in a sequence; $x_{<t}$ denotes all preceding tokens (the context).
+  \item $V$: vocabulary; $|V|$ is vocabulary size.
+  \item $p_\theta(\cdot \mid x_{<t})$: model's conditional distribution over next tokens given context.
+  \item $z_t\in\mathbb{R}^{|V|}$: vector of logits before softmax at position $t$.
 \end{itemize}
-This sequence is exactly the reasoning path used in modern language modeling.
-
-The critical insight for Chapter~1 is that language modeling does not require a new probability theory. It requires careful use of known results in a specific sequence. We use conditional probability to represent next-token prediction, chain rule to represent whole sequences, logarithms to make optimization stable and additive, and information-theoretic quantities to interpret what loss values mean.
-
-The purpose of this refresher is to rebuild that sequence gently. The target is not symbolic performance. The target is that each mathematical move has a clear intent in the reasoning chain.
 
 \subsection*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
@@ -24,24 +33,41 @@ The purpose of this refresher is to rebuild that sequence gently. The target is 
     P(A\mid B)=\frac{P(A\cap B)}{P(B)}.
   \]
   For language modeling, $A$ is ``next token equals $x_t$'' and $B$ is ``context is $x_{<t}$''.
+  \textit{Insight.} Conditioning formalises ``given everything written so far.''
+  \textit{Lineage.} Kolmogorov-era formalism; psychological predecessors debated inverse probability for centuries.
+  \textit{Mental model.} Always ask what slice of $\Omega$ you conditioned on---ambiguous context strings yield ambiguous measures.
 
   \item \textbf{Chain rule as sequence constructor.}
+  Start from the definition of conditional probability in joint form,
+  \[
+    P(A,B)=P(A\mid B)\,P(B).
+  \]
+  Identify $(A,B)$ with ``token $x_T$ takes its realised value \emph{and} prefix $x_{<T}$ takes its realised values''. Then $P(x_{1:T})=P(x_T\mid x_{<T})\,P(x_{<T})$. Peel the same identity off $P(x_{<T})$ to introduce $P(x_{T-1}\mid x_{<T-1})$, and continue until only $P(x_1)$ remains. Induction yields
   \[
     p(x_{1:T}) = \prod_{t=1}^{T} p(x_t \mid x_{<t}).
   \]
-  This is not a modeling trick; it is repeated application of conditional probability.
+  Reading direction: first factor is ``probability of $x_1$ before anything is observed'' (often simplified under a start token convention); each later factor is ``next-token prediction given everything to the left''. This is \emph{not} a modeling trick---it is bookkeeping forced by the definition of conditional probability once you adopt an ordering on positions.
+  \textit{Insight.} Long-range dependence enters only through what you put inside each conditional---the factorisation itself assumes nothing about Markov structure.
+  \textit{Lineage.} Used implicitly by Markov (1913); standard autoregressive NLP since Bengio et al.\ (2003) and contemporaries.
+  \textit{Mental model.} If a factor equals zero, later narrative probability collapses---numerical underflow in logs mirrors this.
 
   \item \textbf{Likelihood to optimization objective.} Maximum likelihood chooses parameters that maximize probability of observed data. Because products are awkward numerically, we apply log:
   \[
     \arg\max_\theta \prod_i a_i(\theta)=\arg\max_\theta \sum_i \log a_i(\theta).
   \]
   Then we minimize negative average log-likelihood (NLL).
+  \textit{Insight.} Likelihood rewards parameters that assign mass to what happened; it is silent about what \emph{could} happen unless regularised.
+  \textit{Lineage.} Fisher's likelihood programme; modern empirical risk minimisation inherits the template.
+  \textit{Mental model.} $\log$ turns ``multiply tiny probabilities'' into ``sum manageable negatives''---mirror of Preface Step~8.
 
   \item \textbf{Expectation as average under a distribution.} If $X$ is discrete:
   \[
     \mathbb{E}[f(X)] = \sum_x p(x)f(x).
   \]
   This lets us interpret empirical losses as estimates of population quantities.
+  \textit{Insight.} Expectation linearises aggregation---bias/variance decompositions for estimators start here.
+  \textit{Lineage.} Integral formulation ascends to Lebesgue; discrete view suffices for finite vocabularies.
+  \textit{Mental model.} Preface Step~5 bridges to finite-batch stochastic optimisation noise.
 
   \item \textbf{Entropy, cross-entropy, and KL in one chain.}
   For distributions $p$ (reference/true) and $q$ (model):
@@ -56,7 +82,10 @@ The purpose of this refresher is to rebuild that sequence gently. The target is 
   \[
     H(p,q) = H(p) + D_{\mathrm{KL}}(p\|q).
   \]
-  This identity explains why minimizing cross-entropy is equivalent to minimizing KL divergence up to an additive term independent of the model.
+  Interpretation in coding language: $H(p,q)$ is how many nats you pay on average if you compress draws from $p$ using an optimal code designed for $q$. Split that bill into two parts: $H(p)$ pays for irreducible uncertainty in $p$ itself; $D_{\mathrm{KL}}(p\|q)$ pays the \emph{extra} bits from model mismatch. Because $H(p)$ does not depend on $q$, minimising $H(p,q)$ over model parameters is the same optimisation problem as minimising $D_{\mathrm{KL}}(p\|q)$; cross-entropy loss is simply the sample estimate of $H(p,q)$.
+  \textit{Insight.} Optimising CE pushes $q$ toward empirical frequencies while respecting parameterisation constraints.
+  \textit{Lineage.} Shannon (entropy/coding); Kullback--Leibler (1951); revived obsessively in deep learning loss engineering.
+  \textit{Mental model.} KL is asymmetric---treat direction carefully when KL penalties anchor policies or priors.
 
   \item \textbf{Softmax as probability map from logits:}
   \[
@@ -67,15 +96,25 @@ The purpose of this refresher is to rebuild that sequence gently. The target is 
     \mathrm{softmax}(z) = \mathrm{softmax}(z - c\mathbf{1}) \quad \text{for any scalar } c.
   \]
 \nobreak
-  Usually $c=\max_i z_i$ to avoid overflow.
+  Proof sketch: multiplying every numerator and the normalising denominator by $e^{-c}$ leaves all ratios unchanged. Choosing $c=\max_i z_i$ forces every exponent to be $\le 0$, so each $e^{z_i-c}\in(0,1]$ and the sum cannot explode upward before you take logs downstream.
+  \textit{Insight.} Softmax is the exponential-family ``linear predictor $\to$ simplex'' map used in multinomial logistic regression for decades.
+  \textit{Lineage.} Statistical mechanics analogies (Boltzmann/Gibbs); modern LM heads inherit the template unchanged.
+  \textit{Mental model.} Large logits amplify sensitivity---temperature scaling literally rescales that curvature.
 
   \item \textbf{Perplexity as exponentiated cross-entropy.}
   \[
     \mathrm{PPL}=\exp(H)
   \]
   when $H$ is in nats. Perplexity is interpretable only with fixed tokenization and log base.
+  \textit{Insight.} Perplexity converts cross-entropy into ``effective branching factor'' language Shannon favoured when estimating English entropy.
+  \textit{Lineage.} Shannon's guessing-game estimates; modern LM tooling reproduces the metaphor for engineers who dislike logs.
+  \textit{Mental model.} Changing tokenizer granularity rescales typical perplexities---never compare runs blindly.
 
-  \item \textbf{Calibration distinction.} A model can assign high probability and still be wrong frequently. Loss and calibration answer different questions.
+  \item \textbf{Calibration distinction (fit vs honesty of confidence).}
+  Training loss averages $-\log q_\theta(\text{true token})$---it measures whether probability mass sits on what happened in data. \emph{Calibration} asks a different question: when the model assigns predicted probability $s$ to its top choice (or to events it phrases as ``confident''), does that choice hit roughly $s$ fraction of the time on held-out slices? A model can achieve moderately good cross-entropy yet assign $0.9$ to answers that are only correct $60\%$ of the time (overconfidence), or spread mass flatly and look calibrated while guessing poorly. Always separate ``did we assign probability to what occurred?'' from ``do stated probabilities match empirical frequencies?''.
+  \textit{Insight.} Proper scoring rules optimise sharpness \emph{and} honesty under correctly specified beliefs; finite-parameter nets rarely satisfy both simultaneously without explicit calibration machinery.
+  \textit{Lineage.} Brier (1950); modern neural calibration literature (Guo et al., 2017, among others).
+  \textit{Mental model.} Deploy metrics conditional on confidence bins---aggregate accuracy hides structured lies about uncertainty.
 \end{itemize}
 
 \subsection*{How These Results Build on Each Other}
