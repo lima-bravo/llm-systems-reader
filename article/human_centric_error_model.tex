@@ -283,8 +283,7 @@ only partially fixable by training. Training can teach the model
 to ask clarifying questions or abstain when prompts look
 underspecified, but it cannot conjure information the user never
 wrote down. A language model has access to its weights and its
-context window.
-It does not have access to the user's calendar, the user's team,
+context window; it does not have access to the user's calendar, the user's team,
 the user's organization's coding conventions, the user's medical
 history, the user's project's constraints, or any of the several
 hundred other things that shape what counts as a good answer in a
@@ -358,6 +357,29 @@ located the failure at the level where the remedy lives, and each
 fix targeted the right intervention point: prompt content for
 context, retrieval for groundedness, prompt specification for
 environment.
+
+It is worth pausing on the groundedness failure to name the
+mechanism behind it. The invented method ---
+\texttt{customers.filter\_by\_region(r)} --- is a product of the
+same training objective that makes the model fluent in the first
+place. Next-token prediction trains on plausibility: method calls
+of the form \texttt{object.verb\_by\_field()} are common patterns
+in the training corpus, and the model produces what is statistically
+likely given the surrounding code. There is no signal in the
+pretraining objective that distinguishes a method that exists in
+the user's actual ORM from one that merely fits the pattern.
+Notice also \emph{where} the failure lands: not in the high-level
+structure of the function (filter, sort by numeric field, return
+names) but in a specific peripheral detail (the exact method
+name). This is characteristic of groundedness failures. The
+skeleton of a correct answer is more strongly represented in
+training data than the specific, deployment-relevant details that
+make the skeleton work. Hallucinated citations, invented API
+endpoints, and fabricated function signatures all follow the
+same shape: the genre is right, the specific referent is not.
+The remedy --- giving the model the ORM schema before generation
+--- works by changing the question from ``what is statistically
+likely'' to ``what is consistent with this document.''
 
 \section*{What the model does not capture}
 

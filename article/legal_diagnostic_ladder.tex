@@ -186,8 +186,26 @@ Made-up regulatory thresholds. Mis-summarized procedural rules.
 The Magesh study [2] showed that even retrieval-augmented legal
 tools, designed to ground their outputs in real authority, fail at
 meaningful rates. Retrieval reduces hallucination; it does not
-eliminate it. The model still has to read the retrieved authority
-faithfully, defer to it when its own parametric prior conflicts,
+eliminate it. Understanding why helps set the right expectations
+for any retrieval-augmented tool.
+
+When a tool retrieves the text of a case and hands it to the
+language model, the model does not transcribe the holding. It
+produces the most plausible continuation of the prompt given the
+retrieved text, which is usually close to faithful but is
+sometimes a fluent paraphrase that subtly alters emphasis,
+scope, or qualification. The model has a prior, baked in during
+training, about what a case is likely to say based on its name,
+jurisdiction, and doctrinal neighbourhood. When that prior
+conflicts with the retrieved text, the model does not always
+defer to the text; it sometimes resolves the conflict by
+producing the answer its prior predicts. The result is an output
+that cites a real case, points to a real source, and still
+misrepresents the holding --- not fabrication in the Mata sense,
+but misreading in the way a rushed human reader might misread,
+at scale and without the fatigue that would signal the risk.
+The model still has to read the retrieved authority
+faithfully, defer to it when its parametric prior conflicts,
 and reconcile contradictions among sources. Each of those steps
 is a place where groundedness can fail even when the citation is
 real.
@@ -280,6 +298,58 @@ The walk located each failure at the rung where the remedy lives.
 Not one of these failures was a hallucination in the headline
 sense. Each would have escaped a workflow that checked structure
 and citations and stopped.
+
+\section*{What the ladder does not capture}
+
+The five-rung framework is useful because it is simple. It is also
+incomplete. Three classes of failure deserve explicit mention
+because they are directly relevant to legal practice and escape
+the ladder entirely.
+
+The first is the \emph{normative} failure. An output can be
+structurally correct, internally coherent, situationally
+appropriate, grounded in real authority, and still wrong ---
+because it reflects a value judgement the lawyer or client did
+not authorise. An AI that applies a statute mechanically to a
+set of facts may produce a conclusion that is legally defensible
+but strategically, ethically, or commercially inadvisable for
+this client in this matter. The five rungs ask whether the answer
+is correct. The normative question asks whether the answer is
+right, and right is not the same thing as correct. That
+judgement belongs to the lawyer, not the tool.
+
+The second is the \emph{adversarial} failure. In document review
+and contract analysis, the AI processes materials that an
+opposing party or third party supplied. A hostile party who
+understands how the tool works can craft a document --- a
+contract redline, a discovery production, a third-party
+submission --- whose text is designed to redirect the model's
+analysis or override its instructions. This is roughly what
+security researchers call prompt injection: malicious
+instructions embedded in content the model is asked to process.
+The ladder will identify the output as a context or groundedness
+failure, but the diagnosis alone does not reveal that the failure
+was induced deliberately. Firms using AI for document review
+in adversarial contexts should treat this as a live risk, not a
+theoretical one.
+
+The third is the \emph{drift} failure. The model's parametric
+knowledge of case law, statutes, and regulatory guidance was
+fixed at its training cutoff. The walking example above already
+surfaces this: one of the cases ``has been distinguished in a
+more recent appellate decision'' --- which is information the
+model could not have had if that decision postdates its training.
+Retrieval-augmented tools partially address this by fetching
+current authority, but only for the specific queries they run;
+the model's background assumptions about doctrinal landscape
+remain frozen. For rapidly evolving areas --- regulatory
+rulemaking, recent circuit splits, new statutory amendments ---
+the gap between what the model ``knows'' and what the law
+currently says is not a grounding failure in the fabrication
+sense. It is a staleness failure that passes every rung of the
+ladder until someone with current doctrinal knowledge reads the
+output. Currency checking, in areas where it matters, remains
+a human responsibility.
 
 \section*{What this means for firms}
 
