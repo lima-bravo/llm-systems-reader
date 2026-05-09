@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, and private corpus gaps filled
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, and refresher alignment gaps filled
 
-The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). §B items remain required for a commercial edition. §C items are optional enhancements.
+The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. Agentic AI, verification cost, and private corpus coverage are now substantive. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. Agentic AI, verification cost, private corpus, and refresher alignment coverage are now substantive. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -129,6 +129,22 @@ A review of `ch12_access_apis_agents_mcp.tex` identified six gaps relative to a 
 
 ---
 
+### A9. ✓ Math refresher alignment with reader — FIXED 2026-05-09
+
+A cross-document audit identified five locations where the reader uses mathematical tools or formulas not covered in the companion refresher. All five fixed:
+
+| Fix | Refresher chapter | Content added |
+|-----|------------------|---------------|
+| **Fix 1** | math_chapter05 | Positional encodings: sinusoidal absolute PE (formula), ALiBi (linear bias formula), RoPE (rotation matrix + relative-position identity); glossary entries; worked RoPE mini example ($d_k=2$, $m=1$, $n=3$, $\theta=\pi/6$); intuition checkpoints |
+| **Fix 2** | math_chapter02 | Constrained optimisation: Lagrange multiplier setup ($\nabla f = \lambda\nabla g$), Lagrangian definition, Chinchilla compute-optimal allocation ($N^\star\propto C^{1/2}$); partition function / normalising constant; DPO $Z(x)$ cancellation in ratio $\pi^\star(y^+)/\pi^\star(y^-)$; glossary entries |
+| **Fix 3** | math_chapter08 | SVD: $M=U\Sigma V^\top$ decomposition, Eckart--Young theorem ($M_r$ is optimal rank-$r$ approx, error $=\sqrt{\sum_{i>r}\sigma_i^2}$), singular spectrum diagnosis for LoRA rank budget; glossary entries; worked mini example ($3\times2$ matrix, rank-1 approx, 90\% energy captured) |
+| **Fix 4** | math_chapter04 | Unigram-LM EM: probabilistic segmentation setup ($p(\mathbf{x})=\prod p(t_i)$), E-step (Viterbi), M-step (frequency normalisation), pruning; connection to SentencePiece / LLaMA tokenizers; why private-corpus token extension requires EM restart; glossary; worked mini example (\texttt{low} with 4-segmentation vocabulary) |
+| **Fix 5** | math_chapter10 | BM25: full formula with IDF, TF saturation, length normalisation ($k_1$, $b$); RRF: $1/(k+r_\mathrm{bm25})+1/(k+r_\mathrm{dense})$ with $k=60$ rationale; hybrid retrieval motivation; glossary; worked BM25 single-term calculation; worked 3-chunk RRF fusion example |
+
+`math_chapter02.tex`, `math_chapter04.tex`, `math_chapter05.tex`, `math_chapter08.tex`, `math_chapter10.tex` all updated.
+
+---
+
 ### A5. LaTeX document class — production risk (still pending)
 
 `\documentclass{article}` works for a draft but produces a PDF without chapters, odd/even page handling, or standard front-matter conventions expected by publishers. Before any external submission:
@@ -229,4 +245,4 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ---
 
-*Last updated: 2026-05-09 (agentic AI pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content.*
+*Last updated: 2026-05-09 (refresher alignment pass). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF).*
