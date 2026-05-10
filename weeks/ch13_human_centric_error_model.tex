@@ -616,10 +616,17 @@ model that looks capable in evaluation settings and is brittle in
 the particular corner of the problem space the deployment
 actually requires. This is distinct from drift (the world has not
 changed) and from environment failure (the prompt is
-well-specified). The remedy is targeted evaluation on
-representative examples drawn from the actual deployment
-distribution, conducted before the model is relied on in that
-context rather than after the first production incident.
+well-specified). Distributional mismatch can surface on the
+five-axis ladder as a grounding failure: the model produces
+confident claims that fail external verification. The ladder
+correctly names the symptom; it does not identify the cause as a
+training-deployment distribution gap. The distinction matters for
+remediation: retrieval and tool use reduce individual grounding
+errors but do not address the underlying mismatch. The remedy is
+targeted evaluation on representative examples drawn from the
+actual deployment distribution, conducted before the model is
+relied on in that context rather than after the first production
+incident.
 
 These six classes require different remediation than the ladder
 provides: alignment and value work for normative failures;

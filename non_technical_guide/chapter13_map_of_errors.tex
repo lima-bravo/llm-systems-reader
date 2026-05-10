@@ -497,14 +497,16 @@ occurrence.
 The fifth is the \emph{compounding} failure. The ladder
 evaluates a single output. Many real uses of LLMs are chains:
 summarise these documents, then compare the summaries, then
-draw a conclusion. Each step may pass the ladder individually.
-But errors from an early step enter the next step as premises,
-and errors compound. An output that is 95\% reliable at each
-step falls below 60\% reliability across ten chained steps
---- the errors do not add, they multiply. The remedy is not
-to improve each step further but to checkpoint: treat each
-intermediate output as a hypothesis to verify before passing
-it to the next step.
+draw a conclusion. Each step may pass the ladder individually
+--- a chain in which every individual step passes the ladder
+is not therefore safe. The ladder has no view of accumulated
+error across steps. Errors from an early step enter the next
+step as premises, and they compound. An output that is 95\%
+reliable at each step falls below 60\% reliability across ten
+chained steps --- the errors do not add, they multiply. The
+remedy is not to improve each step further but to checkpoint:
+treat each intermediate output as a hypothesis to verify
+before passing it to the next step.
 
 The sixth is the \emph{coverage} failure. A model fine-tuned
 for a particular kind of work performs well where that
@@ -515,9 +517,15 @@ may underperform on speciality areas or unusual edge cases
 alignment between the training population and the deployment
 population is imperfect. Coverage failures are distinct from
 drift (which is about change over time) and from grounding
-failures (which can appear anywhere). The remedy is
-evaluation on the actual deployment population, not only on
-benchmarks that may not represent it.
+failures (which can appear anywhere). A coverage failure
+can appear on the ladder as a grounding failure: the output
+contains confident claims that turn out to be wrong. The
+ladder correctly surfaces the symptom; it does not identify
+the cause as a training-deployment mismatch. Applying the
+grounding remedy --- retrieval, tool use, verification ---
+addresses individual claims but not the underlying problem.
+The structural remedy is evaluation on the actual deployment
+population, not only on benchmarks that may not represent it.
 
 Each of the six classes requires a different response.
 Normative failures call for governance and ethics review.

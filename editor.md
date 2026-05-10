@@ -4,7 +4,7 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), article structural reorder (taxonomy before ladder), ch13 structural reorder + six-class taxonomy completion, and NTG ch13 structural reorder + six-class taxonomy completion complete
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), article structural reorder (taxonomy before ladder), ch13 + NTG ch13 structural reorder + six-class taxonomy completion, and ladder-relationship notes for compounding/coverage complete across all documents
 
 The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). NTG→main backport applied (2026-05-09): three improvements identified from NTG writing applied to main reader ch09 and ch13 (see §A13). Article editorial pass applied (2026-05-09): both standalone articles updated for Feynman Standard and voice consistency (see §A14). §B items remain required for a commercial edition. §C items are optional enhancements.
 
@@ -207,6 +207,21 @@ Final pass to bring the non-technical guide from educational to equipped: reader
 | `chapter15_closing_note.tex` | "A Closing Note, and Where to Go Next" — returns to preface promises; consolidates what the reader now holds (the mechanism, not just the vocabulary); separates what will change (specific models/architectures) from what will not (objective → plausibility gap; preference model → pattern-matcher; form-without-reference problem). Annotated further reading: technical companion; three key papers (Vaswani 2017, Ouyang 2022, Schaeffer 2023); two popular books (Mitchell 2019, Christian 2020); guidance on reading lab blogs critically. |
 
 `non_technical_guide.tex` updated: `chapter14_what_to_ask` added to `\mainmatter`; `chapter15_closing_note` added to `\backmatter`.
+
+---
+
+### A20. ✓ Ladder-relationship notes for compounding and coverage — FIXED 2026-05-10
+
+The compounding and coverage/distributional escape classes lacked explicit notes about how (or whether) they appear when a reader walks the five-axis ladder. Without these notes, a reader who encounters a coverage failure on the ladder would diagnose it as a grounding failure and apply the wrong remedy; a reader who chains steps and walks each one individually would see nothing wrong and conclude the chain is safe.
+
+**Change applied to all four documents:**
+
+| Class | Note added |
+|-------|-----------|
+| **Compounding** | A chain in which every individual step passes the ladder is not therefore safe — the ladder has no view of accumulated error across steps. (The three technical documents already had this note; the NTG version was weakened to "Each step may pass the ladder individually" and was strengthened to be explicit.) |
+| **Coverage / distributional mismatch** | Coverage failures can surface on the ladder as grounding failures. The ladder correctly names the symptom; it does not identify the cause as a training-deployment distribution gap. Applying the grounding remedy — retrieval, verification, tool use — addresses individual claims but not the structural problem. The structural remedy is deployment-distribution evaluation. |
+
+**Files changed:** `non_technical_guide/chapter13_map_of_errors.tex`, `weeks/ch13_human_centric_error_model.tex`, `article/human_centric_error_model.tex`, `article/legal_diagnostic_ladder.tex`.
 
 ---
 
