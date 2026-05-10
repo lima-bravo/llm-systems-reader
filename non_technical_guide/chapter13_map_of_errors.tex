@@ -170,6 +170,12 @@ grounding mechanism that does not by itself solve context.
 Tool use is an environment-importing mechanism whose contract
 is structural. The ladder makes these connections explicit.
 
+The five axes map single-output failures. Six further failure
+classes exist alongside them that fall outside the
+single-output frame: normative, adversarial, drift,
+complacency, compounding, and coverage failures. The chapter
+maps all of these before demonstrating the ladder in practice.
+
 \subsection*{What goes wrong}
 
 The model itself has failure modes worth disclosing in
@@ -358,6 +364,21 @@ that can query a database can delegate fact lookup. The
 pattern in each case is to take the work that demands
 grounding and move it outside the language model entirely.
 
+Grounding failures are compounded by a problem the model
+cannot solve from the inside. The model writes with the same
+assured, confident prose regardless of whether the underlying
+claim is well-attested or thinly supported. A sentence about
+a famous historical fact and a sentence about an invented one
+look identical on the page. This means the reader cannot use
+the model's apparent certainty as a guide to which claims
+need checking. A hedged sentence does not mean the claim is
+uncertain; a confident sentence does not mean it is reliable.
+The practical consequence is that verification cannot be
+applied selectively to claims that sound uncertain. All
+factual claims need the same scrutiny --- not because all are
+equally likely to be wrong, but because the surface of the
+text gives no reliable signal of which are.
+
 In diagnosis, grounding failures call for a particular
 discipline. Treat any factual claim by the model as a
 hypothesis. If the claim matters, verify it. If it cannot be
@@ -412,11 +433,109 @@ Practitioners who become good at LLMs are practitioners who
 have learned which parts of their environment need importing
 for which kinds of question.
 
+\section{What the ladder does not catch}
+\addcontentsline{toc}{section}{What the ladder does not catch}
+
+The five axes map the full range of single-output failures:
+everything that can go wrong when a single prompt produces a
+single response. But several failure classes exist alongside
+them that fall outside that single-output frame entirely.
+These are worth knowing before walking the ladder, because
+they require different detection strategies and different
+remedies --- and the ladder, by itself, does not surface them.
+
+The first is the \emph{normative} failure: an output that is
+structurally fine, internally coherent, situationally
+appropriate, factually grounded, and environmentally informed
+but that is, by some standard the user holds, simply wrong
+--- offensive, biased, unethical, in conflict with the values
+the user expected the system to hold. These failures live in
+Chapter~9's territory rather than this one. The five axes
+ask whether the answer is correct; the normative dimension
+asks whether the answer is right, and right is not the same
+thing as correct. A related version operates at the
+population level: an output correct for one user may be part
+of a pattern that, across many users, produces systematic
+harm. Chapter~11 is where population-level monitoring belongs.
+
+The second is the \emph{adversarial} failure: an output
+induced by a malicious party manipulating one of the inputs
+--- the prompt, a retrieved document, a tool result. The
+ladder will identify the failure (most often as a context or
+grounding failure), but the diagnosis does not explain that
+an attacker caused it. A particularly subtle form: an
+attacker who can place content in documents the model will be
+asked to read --- a contract being reviewed, a web page being
+summarised, an email being processed --- can embed
+instructions in that content. The model, trained to follow
+instructions, may follow them without signalling that
+anything is amiss. Chapter~12 is where the discipline of
+prompt injection and confused-deputy defences belongs.
+
+The third is the \emph{drift} failure: an output that is
+fine considered as a single artefact but that, considered as
+part of a stream of similar outputs over time, indicates that
+the system's behaviour has changed in a way the operator did
+not anticipate. Drift is detected statistically rather than
+individually, and the monitoring infrastructure of
+Chapter~11 is what catches it.
+
+The fourth is the \emph{complacency} failure. The ladder
+assumes an active reviewer examining each output carefully.
+Human-factors research has documented what happens to
+vigilance in high-volume, mostly-correct review settings:
+after a long run of correct outputs, attention decays. The
+reviewer is still present; the review becomes perfunctory.
+The record shows that review happened; it does not show how
+carefully. The effective error rate of a human-plus-model
+system can rise substantially over time not because the model
+degrades but because the reviewer does. The remedy is in the
+workflow: rotation, sampling-based spot checks, and review
+metrics that measure quality of review rather than merely its
+occurrence.
+
+The fifth is the \emph{compounding} failure. The ladder
+evaluates a single output. Many real uses of LLMs are chains:
+summarise these documents, then compare the summaries, then
+draw a conclusion. Each step may pass the ladder individually.
+But errors from an early step enter the next step as premises,
+and errors compound. An output that is 95\% reliable at each
+step falls below 60\% reliability across ten chained steps
+--- the errors do not add, they multiply. The remedy is not
+to improve each step further but to checkpoint: treat each
+intermediate output as a hypothesis to verify before passing
+it to the next step.
+
+The sixth is the \emph{coverage} failure. A model fine-tuned
+for a particular kind of work performs well where that
+training was dense and less well at the edges of that task
+space. A tool calibrated primarily on mainstream use cases
+may underperform on speciality areas or unusual edge cases
+--- not because the model hallucinates but because the
+alignment between the training population and the deployment
+population is imperfect. Coverage failures are distinct from
+drift (which is about change over time) and from grounding
+failures (which can appear anywhere). The remedy is
+evaluation on the actual deployment population, not only on
+benchmarks that may not represent it.
+
+Each of the six classes requires a different response.
+Normative failures call for governance and ethics review.
+Adversarial failures call for pipeline defences and
+adversarial testing. Drift calls for statistical monitoring.
+Complacency calls for workflow design. Compounding calls for
+checkpoints at each step. Coverage failures call for
+deployment-specific evaluation. The ladder, which follows,
+addresses the five-axis single-output failures directly.
+Knowing both the map and the tool makes the walk more useful.
+
 \section{Walking the ladder}
 \addcontentsline{toc}{section}{Walking the ladder}
 
-When an output arrives that strikes the user as wrong, the
-recommended walk is bottom-up.
+With the full failure landscape in view, the ladder's scope
+is clear: it is a diagnostic procedure for the five-axis
+failures --- the single-output failures that a systematic
+walk can surface. Walk it bottom-up.
 
 \begin{enumerate}
   \item \textbf{Structure.} Does the output parse, compile,
@@ -621,52 +740,6 @@ increasingly the \emph{system's} responsibility, and at the
 top the responsibility belongs to the human writing the
 prompt. The ladder makes the locus of intervention explicit.
 
-\section{What the ladder does not catch}
-\addcontentsline{toc}{section}{What the ladder does not catch}
-
-The five-axis framework is useful because it is simple. It is
-also incomplete. A few classes of failure deserve mention as
-cases where the ladder helps less than one might hope.
-
-The first is the \emph{normative} failure: an output that is
-structurally fine, internally coherent, situationally
-appropriate, factually grounded, and environmentally informed
-but that is, by some standard the user holds, simply wrong ---
-offensive, biased, unethical, in conflict with the values the
-user expected the system to hold. These failures live in
-Chapter~9's territory rather than this one. The five axes
-ask whether the answer is correct; the normative dimension
-asks whether the answer is right, and right is not the same
-thing as correct.
-
-The second is the \emph{adversarial} failure: an output that
-has been induced by a malicious party manipulating one of the
-inputs --- the prompt, a retrieved document, a tool result.
-The ladder will identify the failure (most often as a context
-or grounding failure), but the diagnosis does not by itself
-explain that the failure was caused by an attacker. The
-adversarial framing is its own discipline, and Chapter~12's
-treatment of prompt injection and confused-deputy attacks is
-where it belongs.
-
-The third is the \emph{drift} failure: an output that is fine
-considered as a single artefact but that, considered as part
-of a stream of similar outputs over time, indicates that the
-system's behaviour has changed in a way the operator did not
-anticipate. Drift is detected statistically rather than
-individually, and the monitoring infrastructure of Chapter~11
-is what catches it.
-
-The fourth is the \emph{collective-impact} failure: an output
-that may be correct for the individual user who received it
-but that contributes to a pattern of harm at the population
-level. A model that produces correct medical advice for the
-average patient may produce systematically worse advice for a
-minority subgroup. A model that produces correct recommendations
-in aggregate may produce a homogenisation of behaviour that
-is harmful in the long run. These failures live in
-Chapter~11's territory and are not visible from inspecting
-individual outputs.
 
 \section*{Closing thought}
 \addcontentsline{toc}{section}{Closing thought}

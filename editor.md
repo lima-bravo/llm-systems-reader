@@ -4,11 +4,11 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), article structural reorder (taxonomy before ladder), and ch13 structural reorder + six-class taxonomy completion complete
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), article structural reorder (taxonomy before ladder), ch13 structural reorder + six-class taxonomy completion, and NTG ch13 structural reorder + six-class taxonomy completion complete
 
 The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). NTG→main backport applied (2026-05-09): three improvements identified from NTG writing applied to main reader ch09 and ch13 (see §A13). Article editorial pass applied (2026-05-09): both standalone articles updated for Feynman Standard and voice consistency (see §A14). §B items remain required for a commercial edition. §C items are optional enhancements.
 
-**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. NTG now meets the Feynman Standard across all chapters, has a worked diagnosis example for the five-axis model, a practical synthesis for non-technical readers deploying these systems, and a closing note that returns to the preface's promises. Main reader ch09 now derives sycophancy from the margin-only identifiability of Bradley-Terry; ch13 now carries the full six-class escape taxonomy (compositional degradation and distributional mismatch added in §A18), applies the "map then tool" structure (escape classes section now precedes the diagnostic ladder section), includes calibration failure within the groundedness axis, and expands the adversarial item with the indirect prompt injection mechanism. Both standalone articles now carry the full five-axis model with mechanism explanations plus a complete six-class taxonomy of failures that escape the ladder: normative, adversarial (with indirect injection mechanism), drift, complacency, compositional degradation, and distributional mismatch. Calibration failure is named and explained within the groundedness section of all three documents. Address §B items before any external review or classroom pilot.
+**Verdict:** §A is complete. All three readers (main, math refresher, non-technical guide) are editorially consistent. The "map then tool" principle is now applied uniformly across all five documents (NTG ch13, main reader ch13, engineering article, legal article — all teach the full failure taxonomy before demonstrating the ladder). NTG now meets the Feynman Standard across all chapters, has a worked diagnosis example for the five-axis model, a practical synthesis for non-technical readers deploying these systems, and a closing note that returns to the preface's promises. Main reader ch09 now derives sycophancy from the margin-only identifiability of Bradley-Terry; ch13 now carries the full six-class escape taxonomy (compositional degradation and distributional mismatch added in §A18), applies the "map then tool" structure (escape classes section now precedes the diagnostic ladder section), includes calibration failure within the groundedness axis, and expands the adversarial item with the indirect prompt injection mechanism. Both standalone articles now carry the full five-axis model with mechanism explanations plus a complete six-class taxonomy of failures that escape the ladder: normative, adversarial (with indirect injection mechanism), drift, complacency, compositional degradation, and distributional mismatch. Calibration failure is named and explained within the groundedness section of all three documents. Address §B items before any external review or classroom pilot.
 
 ---
 
@@ -207,6 +207,38 @@ Final pass to bring the non-technical guide from educational to equipped: reader
 | `chapter15_closing_note.tex` | "A Closing Note, and Where to Go Next" — returns to preface promises; consolidates what the reader now holds (the mechanism, not just the vocabulary); separates what will change (specific models/architectures) from what will not (objective → plausibility gap; preference model → pattern-matcher; form-without-reference problem). Annotated further reading: technical companion; three key papers (Vaswani 2017, Ouyang 2022, Schaeffer 2023); two popular books (Mitchell 2019, Christian 2020); guidance on reading lab blogs critically. |
 
 `non_technical_guide.tex` updated: `chapter14_what_to_ask` added to `\mainmatter`; `chapter15_closing_note` added to `\backmatter`.
+
+---
+
+### A19. ✓ NTG ch13 structural reorder + six-class taxonomy completion — FIXED 2026-05-10
+
+`non_technical_guide/chapter13_map_of_errors.tex` brought into alignment with the "map then tool" principle and the six-class escape taxonomy.
+
+**Structural reorder (section order change):**
+
+| Before | After |
+|--------|-------|
+| `\section{The five axes, in plain language}` | `\section{The five axes, in plain language}` |
+| `\section{Walking the ladder}` | `\section{What the ladder does not catch}` (rewritten, see below) |
+| `\section{A worked diagnosis}` | `\section{Walking the ladder}` |
+| `\section{Connections to earlier chapters}` | `\section{A worked diagnosis}` |
+| `\section{What the ladder does not catch}` | `\section{Connections to earlier chapters}` |
+
+- New opening of escape classes section: "The five axes map the full range of single-output failures... Several failure classes exist alongside them that fall outside that single-output frame entirely. These are worth knowing before walking the ladder..."
+- New closing transition: names a different response for each of the six classes; bridges explicitly to the ladder as a procedure for the five-axis failures.
+- New opening of `\section{Walking the ladder}`: "With the full failure landscape in view, the ladder's scope is clear: it is a diagnostic procedure for the five-axis failures --- the single-output failures that a systematic walk can surface."
+
+**Taxonomy rewritten (four classes replaced/added):**
+
+| Fix | Gap | Change |
+|-----|-----|--------|
+| **Calibration failure** | Grounding section recommended verification but did not explain why expressed confidence cannot be used to triage which claims to check | Added paragraph: model writes with uniform confident prose regardless of reliability; cannot use surface certainty to prioritise verification; all factual claims require the same scrutiny |
+| **Normative item expanded** | Collective-impact (population-level harm) was a separate fourth item; this is governance territory (Ch11), not a ladder-escape class | Folded population-level harm into the normative item as a related variant; normative item now covers both individual and collective normative failures |
+| **Complacency added** | Missing from NTG (present in main reader ch13, both articles, NTG ch11) | Added as fourth class: vigilance decay in high-volume mostly-correct settings; review becomes perfunctory; record shows it happened, not how carefully; remedy is workflow (rotation, spot checks, review quality metrics) |
+| **Compounding added** | Missing from NTG entirely | Added as fifth class: errors multiply across chained steps; 95% per step → below 60% on ten-step chain; remedy is checkpointing, not step improvement |
+| **Coverage added** | Missing from NTG entirely | Added as sixth class: fine-tuning population ≠ deployment population; underperformance at edges; distinct from drift and hallucination; remedy is deployment-specific evaluation |
+
+**"Where we stand" roadmap paragraph added:** "The five axes map single-output failures. Six further failure classes exist alongside them that fall outside the single-output frame: normative, adversarial, drift, complacency, compounding, and coverage failures. The chapter maps all of these before demonstrating the ladder in practice."
 
 ---
 
