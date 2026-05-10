@@ -5,12 +5,15 @@
 \chapter{Memory the Model Doesn't Have}
 \label{ntg:ch10}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Imagine a support engineer's internal chatbot, asked at nine in
+\paragraph{The problem.} Imagine a support engineer's internal chatbot, asked at nine in
 the morning about a customer's outage that started overnight.
 The model has been pretrained, instruction-tuned, and aligned.
 It has been carefully evaluated against safety and quality
@@ -39,9 +42,7 @@ component of a larger system. Doing so without breaking the
 trustworthiness of the larger system is the work of this
 chapter.
 
-\subsection*{How we got here}
-
-The history of fetching fresh information into a downstream
+\paragraph{How we got here.} The history of fetching fresh information into a downstream
 process is the history of \emph{information retrieval}, which
 is older than the field of machine learning by several
 decades.
@@ -97,9 +98,7 @@ in Chapter~12. Tool use shifted, in about eighteen months,
 from a research curiosity to a discipline with versioned
 interfaces, schemas, and audit trails.
 
-\subsection*{Where we stand}
-
-A modern LLM application is a pipeline. The user's query
+\paragraph{Where we stand.} A modern LLM application is a pipeline. The user's query
 enters. It is, often, rewritten by a query-understanding step
 that expands abbreviations, resolves ambiguities, and extracts
 the actual information need. The rewritten query is sent to a
@@ -131,9 +130,7 @@ ratings. The system is, in the language of software
 engineering, a perfectly normal piece of distributed software
 with a peculiar component at its centre.
 
-\subsection*{What goes wrong}
-
-The system boundary --- the place where the model meets the
+\paragraph{What goes wrong.} The system boundary --- the place where the model meets the
 retriever, the tools, and the user --- is where most user-
 visible failures happen.
 

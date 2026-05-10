@@ -5,12 +5,15 @@
 \chapter{From Letters to Vectors}
 \label{ntg:ch4}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-A computer cannot read words. It can read numbers. The neural
+\paragraph{The problem.} A computer cannot read words. It can read numbers. The neural
 network we described in Chapter~3 takes a list of numbers as
 input, performs arithmetic on them, and produces a list of
 numbers as output. Before any of the apparatus of the previous
@@ -31,9 +34,7 @@ miscounts letters in a word, the way the same sentence in two
 languages costs different amounts to process, the way bias in
 the training corpus survives into the model's behaviour.
 
-\subsection*{How we got here}
-
-The earliest computational treatments of language took the
+\paragraph{How we got here.} The earliest computational treatments of language took the
 \emph{word} as the unit of analysis. This was intuitive --- a
 dictionary is a list of words --- and almost immediately
 catastrophic. English has too many words. Inflectional
@@ -126,9 +127,7 @@ observed remain present, in modified form, in the embeddings of
 modern models, and they continue to be one of the things that
 makes the language modelling pipeline work.
 
-\subsection*{Where we stand}
-
-A modern tokenizer is a small, deterministic, frozen artefact.
+\paragraph{Where we stand.} A modern tokenizer is a small, deterministic, frozen artefact.
 It is trained once, before the main model training begins, on a
 representative sample of the corpus. After that, it is fixed for
 the life of the model: changing it would invalidate every token
@@ -149,9 +148,7 @@ plus the attention machinery of Chapter~5 --- operates on these
 vectors and produces, at the end, a probability distribution
 over which token should come next.
 
-\subsection*{What goes wrong}
-
-Tokenization is a quiet source of several user-visible quirks.
+\paragraph{What goes wrong.} Tokenization is a quiet source of several user-visible quirks.
 
 The most consequential is the multilingual disparity. The same
 sentence in Thai, Amharic, or Burmese costs typically two to

@@ -5,12 +5,15 @@
 \chapter{How Machines Learn from Their Mistakes}
 \label{ntg:ch2}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Chapter~1 told us \emph{what} we want a language model to do:
+\paragraph{The problem.} Chapter~1 told us \emph{what} we want a language model to do:
 look at the words so far and produce a sensible weighting over
 the words that might come next. It said almost nothing about
 \emph{how} the model came to be able to do that. We now face
@@ -29,9 +32,7 @@ at all. The slightly less remarkable thing is what it costs in
 electricity, in chips, in human attention, and in the design
 choices that surround it.
 
-\subsection*{How we got here}
-
-The mathematics of descending a function by following its slope
+\paragraph{How we got here.} The mathematics of descending a function by following its slope
 is older than electricity. In 1847 the French mathematician
 Augustin-Louis Cauchy described, in a short note to the French
 Academy of Sciences, the method we now call \emph{gradient
@@ -112,9 +113,7 @@ argument changed how compute is allocated across the industry,
 and it is the reason the headline parameter count of new
 models has, in the past three years, mostly stopped going up.
 
-\subsection*{Where we stand}
-
-A modern training recipe is a long sequence of small choices,
+\paragraph{Where we stand.} A modern training recipe is a long sequence of small choices,
 each of which has been worked out by trial and error over a
 decade. Choose AdamW. Pick a peak learning rate (a number that
 controls how big each step downhill is) and start it at zero,
@@ -145,9 +144,7 @@ two in either direction. The qualitative point is that
 training a frontier model is a financial and industrial
 undertaking on the scale of building a new aircraft.
 
-\subsection*{What goes wrong}
-
-The dramatic failures of training are visible. A loss curve that
+\paragraph{What goes wrong.} The dramatic failures of training are visible. A loss curve that
 suddenly spikes upward and never recovers. A gradient that
 explodes after fifty thousand steps and turns the rest of the
 run into nonsense. A divergence at the end of week three that

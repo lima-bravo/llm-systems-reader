@@ -5,12 +5,15 @@
 \chapter{Pretraining and the Birth of GPT}
 \label{ntg:ch6}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Picture an engineer in 2018, holding a fresh implementation of
+\paragraph{The problem.} Picture an engineer in 2018, holding a fresh implementation of
 the Transformer architecture from the previous chapter and a
 hard drive full of crawled web text. The model runs. The text
 is there. The question is what to do with the text in order to
@@ -38,9 +41,7 @@ The same model, after the additional steps of Chapter~9, is
 the assistant on the other side of every chat interface you
 have used in the last three years.
 
-\subsection*{How we got here}
-
-The connection between language modelling and information
+\paragraph{How we got here.} The connection between language modelling and information
 theory is older than the field. Claude Shannon, in a 1951
 paper called \emph{Prediction and Entropy of Printed English},
 estimated the predictability of the language by playing a
@@ -119,9 +120,7 @@ ideas in all of them are, with very few exceptions, the
 Transformer of Chapter~5 trained by the procedure described in
 this chapter.
 
-\subsection*{Where we stand}
-
-A modern pretraining run has the following character. The data
+\paragraph{Where we stand.} A modern pretraining run has the following character. The data
 is a curated corpus on the order of trillions of tokens,
 assembled from the public web, books, code repositories,
 academic papers, and a varying mix of licensed proprietary
@@ -153,9 +152,7 @@ assistant is the manufactured product. The two are different
 artefacts, with different behaviours, and the language we use
 to discuss them should reflect the difference.
 
-\subsection*{What goes wrong}
-
-Pretraining on internet-scale text has costs that the loss
+\paragraph{What goes wrong.} Pretraining on internet-scale text has costs that the loss
 function does not see.
 
 The training data contains copyrighted material, which the

@@ -5,12 +5,15 @@
 \chapter{Adapting a Giant Model}
 \label{ntg:ch8}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Picture a small product team that has just downloaded an
+\paragraph{The problem.} Picture a small product team that has just downloaded an
 open-weight 70-billion-parameter language model from one of
 the major laboratories. The model writes Python, summarises
 French literature, drafts polite refusals to requests for
@@ -37,9 +40,7 @@ them. The chapter is about the techniques --- some technical,
 some operational --- that make that building possible at the
 budget of an ordinary product team.
 
-\subsection*{How we got here}
-
-The original idea, which the field tried first and largely
+\paragraph{How we got here.} The original idea, which the field tried first and largely
 abandoned, was \emph{full fine-tuning}: take the pretrained
 model, continue training it on your domain-specific data, and
 ship the result. Full fine-tuning has the virtue of conceptual
@@ -117,9 +118,7 @@ higher precision. The combination made the adaptation of
 class graphics card. It is the production default for most
 adaptation work today.
 
-\subsection*{Where we stand}
-
-The modern view treats a deployed model not as a single
+\paragraph{Where we stand.} The modern view treats a deployed model not as a single
 monolithic artefact but as a pair: a large, rarely-changing
 base model stored in compressed form, and a small, frequently-
 changing adaptation stored separately. The base is shared
@@ -147,9 +146,7 @@ this area have stabilised enough that picking the right
 quantisation for a given deployment is more an engineering
 question than a research one.
 
-\subsection*{What goes wrong}
-
-The mathematical assumption behind LoRA --- that the directions
+\paragraph{What goes wrong.} The mathematical assumption behind LoRA --- that the directions
 of useful adaptation are few --- is empirical. For some tasks
 the assumption holds well and a small adapter recovers nearly
 all of full fine-tuning. For other tasks, especially those that

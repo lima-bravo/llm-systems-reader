@@ -82,6 +82,42 @@
   {\par\medskip}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CHAPTER OPENER — "SETTING THE SCENE" DESIGN (Option B)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage[framemethod=default]{mdframed}
+
+% Small uppercase sans-serif label replacing \section*{Setting the Scene}.
+% Sits directly below the chapter title rule, no blank line before prose.
+\newcommand{\scenelabel}{%
+  \par\vspace{4pt}%
+  \noindent{\sffamily\footnotesize\MakeUppercase{Setting the scene}}%
+  \par\nobreak\vspace{2pt}%
+}
+
+% Left-bordered orientation strip: lists the chapter's opening topics
+% so the reader knows what the "Setting the Scene" section covers
+% before the prose begins.
+%
+% Usage:
+%   \begin{scenestrip}
+%     \sceneitem{The problem}
+%     \sceneitem{How we got here}
+%     \sceneitem{Where we stand}
+%     \sceneitem{What goes wrong}
+%   \end{scenestrip}
+\newmdenv[
+  topline=false, bottomline=false, rightline=false,
+  linewidth=1.5pt, linecolor=black!25,
+  innerleftmargin=10pt, innerrightmargin=0pt,
+  innertopmargin=3pt, innerbottommargin=3pt,
+  skipabove=4pt, skipbelow=10pt
+]{scenestrip}
+
+% One navigation entry inside the strip.
+\newcommand{\sceneitem}[1]{\noindent{\small\sffamily #1}\par\vspace{1pt}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FIGURES AND DIAGRAMS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

@@ -5,12 +5,15 @@
 \chapter{A Map of How LLMs Go Wrong}
 \label{ntg:ch13}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-The twelve chapters that came before have each ended with a
+\paragraph{The problem.} The twelve chapters that came before have each ended with a
 section called \emph{What goes wrong, and why}. By now the
 reader has met a substantial vocabulary of LLM failure modes:
 hallucination, miscalibration, prompt brittleness, the
@@ -45,9 +48,7 @@ the bottom, less well as one ascends. Walking the ladder, when
 an answer arrives that smells wrong, is the discipline this
 chapter recommends.
 
-\subsection*{How we got here}
-
-The study of language as a layered phenomenon is older than
+\paragraph{How we got here.} The study of language as a layered phenomenon is older than
 the language model. Linguists since at least the early
 twentieth century have distinguished between the structure of
 an utterance (its syntax), the meaning it conveys (its
@@ -120,9 +121,7 @@ What is not contested is that the failure modes are real,
 that they are characteristic, and that they are not going
 away merely as a consequence of further scaling.
 
-\subsection*{Where we stand}
-
-The model this chapter develops has five axes, arranged from
+\paragraph{Where we stand.} The model this chapter develops has five axes, arranged from
 the mechanical to the human.
 
 \textbf{Structure.} Whether the output is well-formed for the
@@ -176,9 +175,7 @@ normative, adversarial, drift, and complacency. The chapter
 introduces all of these before demonstrating the ladder in
 practice.
 
-\subsection*{What goes wrong}
-
-The model itself has failure modes worth disclosing in
+\paragraph{What goes wrong.} The model itself has failure modes worth disclosing in
 advance.
 
 The first is the temptation to use it mechanically, as if the

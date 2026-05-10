@@ -5,12 +5,15 @@
 \chapter{How You Talk to a Model Today}
 \label{ntg:ch12}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-The previous eleven chapters described how to build the
+\paragraph{The problem.} The previous eleven chapters described how to build the
 artefact at the centre of a Large Language Model product. This
 chapter describes how engineers actually use one. The two are
 not the same.
@@ -40,9 +43,7 @@ the SDKs in detail. The non-technical reader does need to know
 that the surface exists, what kinds of things move across it,
 and what kinds of things go wrong when they move incorrectly.
 
-\subsection*{How we got here}
-
-The first widely available LLM API was OpenAI's GPT-3
+\paragraph{How we got here.} The first widely available LLM API was OpenAI's GPT-3
 completions endpoint in 2020. The contract was simple. A
 developer sent a string of text. The endpoint returned a
 string of text. There was no notion of conversation, no
@@ -108,9 +109,7 @@ protocol, and integration becomes plumbing. Standardisation
 mattered, in the same way that standardisation has always
 mattered in computing.
 
-\subsection*{Where we stand}
-
-A modern LLM application is a layered stack. At the bottom are
+\paragraph{Where we stand.} A modern LLM application is a layered stack. At the bottom are
 the model parameters and the inference runtime that runs them.
 Above that is the wire protocol, typically OpenAI-compatible
 chat completions with streaming. Above that is the SDK --- a
@@ -133,9 +132,7 @@ above the SDK. None of this is free in practice, but the
 modularity is real, and it is the property that has let the
 ecosystem evolve as fast as it has.
 
-\subsection*{What goes wrong}
-
-The transition from research demonstration to production
+\paragraph{What goes wrong.} The transition from research demonstration to production
 system is where the failure modes accumulate.
 
 Rate limits turn into cascading retries that overwhelm the

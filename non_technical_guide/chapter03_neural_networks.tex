@@ -5,12 +5,15 @@
 \chapter{Networks of Simple Decisions}
 \label{ntg:ch3}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-We have, by now, a sense of what we want a Large Language Model
+\paragraph{The problem.} We have, by now, a sense of what we want a Large Language Model
 to do (Chapter~1) and a sense of how the model is improved over
 time (Chapter~2). What we have not yet looked at is what is
 \emph{inside} the model. The training procedure of the previous
@@ -30,9 +33,7 @@ historical accident that has outlasted its usefulness, and you
 should think of the units as small mathematical decision-makers
 rather than as anything resembling the cells in your skull.
 
-\subsection*{How we got here}
-
-The idea that a network of simple computing units could learn a
+\paragraph{How we got here.} The idea that a network of simple computing units could learn a
 useful function from examples is older than the computers that
 could run it. Warren McCulloch, a neurophysiologist, and Walter
 Pitts, a young logician, published a paper in 1943 that
@@ -109,9 +110,7 @@ on specialist hardware. The combination of a working algorithm
 labelled images), and enough cheap computation (the GPU) had
 converged. The field has not stopped accelerating since.
 
-\subsection*{Where we stand}
-
-A modern neural network used inside a Large Language Model is a
+\paragraph{Where we stand.} A modern neural network used inside a Large Language Model is a
 tall stack of small mathematical operations. Each layer of the
 stack takes a list of numbers as input, multiplies the list by a
 table of weights to produce a new list, adds a small adjustment
@@ -142,9 +141,7 @@ stack of small operations, each one slightly transforming a
 list of numbers, with adjustments that the training procedure
 slowly tuned.
 
-\subsection*{What goes wrong}
-
-The failure modes of neural networks are part of the
+\paragraph{What goes wrong.} The failure modes of neural networks are part of the
 engineering vocabulary of the field, and they recur often
 enough that even a non-technical reader benefits from
 recognising them.

@@ -1,6 +1,6 @@
 \chapter{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
 
-\section*{Setting the Scene}
+\scenelabel
 Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish. But attention alone is position-blind: the formula $\mathrm{softmax}(QK^\top/\sqrt{d_k})V$ treats all positions identically unless position is injected explicitly. This chapter covers both the attention mechanism and the positional encoding family that completes it.
 
 \paragraph{Step A --- bilinear compatibility.}

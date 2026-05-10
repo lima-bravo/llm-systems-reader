@@ -5,12 +5,15 @@
 \chapter{Trust, Governance, and Who Is Responsible}
 \label{ntg:ch11}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Suppose you have built and deployed everything in the previous
+\paragraph{The problem.} Suppose you have built and deployed everything in the previous
 ten chapters. Your model is pretrained, aligned, retrieval-
 grounded, tool-equipped, and evaluated. It runs in production
 and is being used by your customers, your employees, or your
@@ -37,9 +40,7 @@ that has had to deploy systems whose failures matter. The
 techniques have been adapted to AI. They are imperfect. They
 are also the best tools we have.
 
-\subsection*{How we got here}
-
-Safety-critical engineering has been a serious discipline
+\paragraph{How we got here.} Safety-critical engineering has been a serious discipline
 since at least the 1970s. Nancy Leveson at MIT, in a series
 of books and papers culminating in \emph{Engineering a Safer
 World} in 2011, showed that accidents in complex systems are
@@ -103,9 +104,7 @@ builds an LLM product today and is not aware of these
 frameworks is building a product that will not be deployable
 in many of the markets it might want to enter.
 
-\subsection*{Where we stand}
-
-A modern AI governance stack treats the deployed system as a
+\paragraph{Where we stand.} A modern AI governance stack treats the deployed system as a
 \emph{socio-technical artefact}: a model, plus an operator,
 plus the users, plus the data flowing in and out, plus the
 regulatory context that frames the whole. The engineering
@@ -159,9 +158,7 @@ measured. Anomalies are surfaced. Regressions are caught.
 The monitoring is the difference between a system that is
 known to be safe and a system that is hoped to be safe.
 
-\subsection*{What goes wrong}
-
-The first failure of governance is to treat it as paperwork.
+\paragraph{What goes wrong.} The first failure of governance is to treat it as paperwork.
 A model card that no one updates after the first deployment
 is worse than no model card, because it gives false
 reassurance. An assurance case written by the engineering

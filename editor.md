@@ -4,7 +4,7 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (four escape classes + calibration), article + ch13 + NTG ch13 structural reorder (taxonomy before ladder), and compounding/coverage relocated from escape classes to grounding subsection + ladder walk across all documents
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (four escape classes + calibration), article + ch13 + NTG ch13 structural reorder (taxonomy before ladder), compounding/coverage relocated across all documents, and chapter opener design (Option B orientation strip) applied across all three books
 
 The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). NTG→main backport applied (2026-05-09): three improvements identified from NTG writing applied to main reader ch09 and ch13 (see §A13). Article editorial pass applied (2026-05-09): both standalone articles updated for Feynman Standard and voice consistency (see §A14). §B items remain required for a commercial edition. §C items are optional enhancements.
 
@@ -207,6 +207,28 @@ Final pass to bring the non-technical guide from educational to equipped: reader
 | `chapter15_closing_note.tex` | "A Closing Note, and Where to Go Next" — returns to preface promises; consolidates what the reader now holds (the mechanism, not just the vocabulary); separates what will change (specific models/architectures) from what will not (objective → plausibility gap; preference model → pattern-matcher; form-without-reference problem). Annotated further reading: technical companion; three key papers (Vaswani 2017, Ouyang 2022, Schaeffer 2023); two popular books (Mitchell 2019, Christian 2020); guidance on reading lab blogs critically. |
 
 `non_technical_guide.tex` updated: `chapter14_what_to_ask` added to `\mainmatter`; `chapter15_closing_note` added to `\backmatter`.
+
+---
+
+### A22. ✓ Chapter opener design — Option B orientation strip — FIXED 2026-05-10
+
+The three books used a cascade of three heading levels at the start of every chapter: `\chapter{}` → `\section*{Setting the Scene}` → `\subsection*{The problem}` (NTG) before any prose reached the reader. The main reader used `\paragraph{}` run-in heads, which was better, but still opened with the large "Setting the Scene" section heading. The math refresher had a `\section*{Setting the Scene}` before its contextual note.
+
+**Design applied (Option B — orientation strip):**
+
+- `\section*{Setting the Scene}` + `\addcontentsline{...}` removed from all chapters across all three books.
+- Replaced with `\scenelabel` — a small uppercase sans-serif label at body-text level, no heading weight.
+- In the main reader (all 13 chapters) and NTG (chapters 1–13): immediately followed by `\begin{scenestrip}` — a left-bordered compact list of the four sub-items (The problem / How we got here / Where we stand / What goes wrong) — giving the reader an explicit map before the prose begins.
+- NTG chapters: `\subsection*{The problem}` etc. converted to `\paragraph{The problem.}` run-in heads, matching the main reader's style.
+- Math refresher (all 13 chapters): `\scenelabel` only — no strip, since these chapters use a different contextual-note structure rather than the four-part pattern.
+
+**Macros added:**
+- `\scenelabel` — small uppercase label.
+- `scenestrip` environment (mdframed with left line only, `linecolor=black!25`).
+- `\sceneitem{...}` — one navigation entry in the strip.
+Added to `preamble.tex` (main reader), `non_technical_guide/preamble.tex`, and `math_refresher/math_refresh.tex`.
+
+**Files changed:** `preamble.tex`, `non_technical_guide/preamble.tex`, `math_refresher/math_refresh.tex`, all `weeks/ch*.tex` (13 files), all `non_technical_guide/chapter01–13.tex` (13 files), all `math_refresher/math_chapter*.tex` (13 files).
 
 ---
 

@@ -5,12 +5,15 @@
 \chapter{The Idea That a Word Predicts the Next Word}
 \label{ntg:ch1}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-Consider for a moment what it means to predict the next word. You
+\paragraph{The problem.} Consider for a moment what it means to predict the next word. You
 are reading this sentence. Your eye has not yet reached its end,
 and yet some part of you is already guessing how it will finish.
 The guess is not certain. It is not arbitrary either. It is
@@ -44,9 +47,7 @@ number is meant to capture how often a continuation like this
 has, in the machine's experience, followed a prefix like that.
 Nothing more. Nothing less.
 
-\subsection*{How we got here}
-
-The idea that one symbol in a sequence depends on the symbols
+\paragraph{How we got here.} The idea that one symbol in a sequence depends on the symbols
 before it is older than the computer.
 
 In 1913 the Russian mathematician Andrey Markov sat down with a
@@ -132,9 +133,7 @@ that had been a research curiosity for fifty years was a
 consumer product. Almost everyone reading this book has by now
 spoken to one.
 
-\subsection*{Where we stand}
-
-The lineage converged on a remarkably simple recipe. Take a
+\paragraph{Where we stand.} The lineage converged on a remarkably simple recipe. Take a
 neural network --- we will see in Chapter~3 what one of those is.
 Show it a long sequence of words. Ask it to predict, at each
 position in the sequence, what the next word is going to be ---
@@ -168,9 +167,7 @@ data was filtered and ordered, and the additional steps we will
 describe in Chapter~9 that turned a fluent autocomplete into
 something that resembles an assistant.
 
-\subsection*{What goes wrong}
-
-A model trained the way we just described is, by construction,
+\paragraph{What goes wrong.} A model trained the way we just described is, by construction,
 the most plausible thing the model can say given the prompt. The
 most plausible thing is not the same as the true thing. It is
 not the same as the most useful thing. It is not the same as

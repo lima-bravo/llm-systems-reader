@@ -5,12 +5,15 @@
 \chapter{Why Bigger Sometimes Helps}
 \label{ntg:ch7}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-A modern frontier model has hundreds of billions of parameters,
+\paragraph{The problem.} A modern frontier model has hundreds of billions of parameters,
 sometimes more than a trillion. The internal arithmetic of such
 a model does not fit on a single computer chip. Neither do the
 intermediate values it produces while running, nor the
@@ -33,9 +36,7 @@ The answer to the question of how big a model should be is
 inseparable from the answer to how efficiently the budget can
 be spent.
 
-\subsection*{How we got here}
-
-The first models too large to fit on a single graphics card
+\paragraph{How we got here.} The first models too large to fit on a single graphics card
 were trained with a technique called \emph{data parallelism}.
 The idea is simple: every worker holds a complete copy of the
 model and processes a different slice of the training data, and
@@ -102,9 +103,7 @@ appeal is clean: you get the parameter count of a much larger
 dense model at the per-token compute of a much smaller one,
 because most of the experts sit out most of the time.
 
-\subsection*{Where we stand}
-
-A modern training stack composes several forms of parallelism
+\paragraph{Where we stand.} A modern training stack composes several forms of parallelism
 at once, with the choice tuned to the specific cluster's
 network topology. Mixed-precision arithmetic --- using lower-
 precision numbers for most calculations and higher-precision
@@ -130,9 +129,7 @@ point is that the field is making progress on several axes at
 once, and that ``how much compute did this cost'' is a less
 useful summary than it used to be.
 
-\subsection*{What goes wrong}
-
-The dramatic failure modes of distributed training are visible:
+\paragraph{What goes wrong.} The dramatic failure modes of distributed training are visible:
 a network partition that hangs a job for hours before anyone
 notices, a subtle ordering bug in the communication between
 workers that corrupts gradients silently and produces a model

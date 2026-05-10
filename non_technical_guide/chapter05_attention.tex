@@ -5,12 +5,15 @@
 \chapter{Attention, or How a Machine Reads}
 \label{ntg:ch5}
 
-\section*{Setting the Scene}
-\addcontentsline{toc}{section}{Setting the Scene}
+\scenelabel
+\begin{scenestrip}
+\sceneitem{The problem}
+\sceneitem{How we got here}
+\sceneitem{Where we stand}
+\sceneitem{What goes wrong}
+\end{scenestrip}
 
-\subsection*{The problem}
-
-A sentence is a sequence in which almost any word can, in
+\paragraph{The problem.} A sentence is a sequence in which almost any word can, in
 principle, depend on almost any other. The pronoun in the last
 clause may refer to a noun in the first. The verb tense at the
 end of a paragraph may be set by an adverb at the beginning. The
@@ -42,9 +45,7 @@ brute arithmetic rather than by anything resembling cognition.
 The trick is that the brute arithmetic, applied at scale,
 produces something that often looks like cognition.
 
-\subsection*{How we got here}
-
-The earliest neural networks for sequences were \emph{recurrent}.
+\paragraph{How we got here.} The earliest neural networks for sequences were \emph{recurrent}.
 Jeffrey Elman, a cognitive scientist at the University of
 California, San Diego, published a paper in 1990 with the
 unpretentious title \emph{Finding Structure in Time}. Elman's
@@ -110,9 +111,7 @@ of that paper. The 2017 publication date is, in retrospect, the
 moment when the present era of artificial intelligence became
 inevitable.
 
-\subsection*{Where we stand}
-
-The modern Transformer is a stack of identical building blocks.
+\paragraph{Where we stand.} The modern Transformer is a stack of identical building blocks.
 Each block takes its input as a list of vectors --- one per
 token, the vectors we constructed in Chapter~4 --- and produces
 a refined list of the same shape. Inside each block, two things
@@ -147,9 +146,7 @@ layer that produces, for each position in the sequence, a
 weighting over the tokens that might come next --- exactly the
 weighting we described in Chapter~1.
 
-\subsection*{What goes wrong}
-
-The Transformer's design has several characteristic failure
+\paragraph{What goes wrong.} The Transformer's design has several characteristic failure
 modes that are visible to anyone using a modern LLM in earnest.
 
 The first is cost in long contexts. The attention step, by its
