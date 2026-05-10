@@ -90,6 +90,12 @@ and failures are rare. At the top, the model is, in a precise
 sense, at the mercy of the human, and failures are inevitable
 unless the human compensates.
 
+The five axes map single-output failures. Six additional failure
+classes exist alongside them that the single-output frame cannot
+reach: normative, adversarial, drift, complacency, compositional
+degradation, and distributional mismatch. The chapter maps all
+eleven before demonstrating the ladder in practice.
+
 The pedagogical use of the model is twofold. For users, it is a
 diagnostic ladder: when an answer arrives that smells wrong, walk
 the axes and ask which one has failed. For engineers, it is a way
@@ -129,7 +135,9 @@ By the end of this chapter, you should be able to:
         covered in earlier chapters of this book.
   \item State the limits of the model: where the axes overlap,
         where diagnosis is interpretive rather than algorithmic,
-        and what kinds of failure escape the framework entirely.
+        and which six failure classes escape the framework
+        entirely (normative, adversarial, drift, complacency,
+        compositional degradation, distributional mismatch).
   \item Use the model to communicate with non-specialist
         stakeholders --- users, regulators, auditors, executives
         --- about LLM errors in language they can act on.
@@ -157,8 +165,10 @@ By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Locus of intervention: which axes call for model-side
         change versus system-side change.
-  \item Limits of the framework: normative, adversarial, and
-        drift failures that escape the five axes.
+  \item Limits of the framework: six failure classes that escape
+        the five axes --- normative, adversarial, drift,
+        complacency, compositional degradation, and
+        distributional mismatch.
 \end{itemize}
 
 \section{Notation and Standing Assumptions}
@@ -393,6 +403,19 @@ delegate fact lookup. The pattern in each case is to take the work
 that demands grounding and move it outside the language model
 entirely.
 
+Grounding failures are compounded by a calibration problem. The
+model's expressed confidence --- the surface certainty of its
+prose --- is not a reliable signal of actual reliability. A
+hallucinated statistic arrives in the same confident register as
+a verified fact. Token-level probabilities correlate with accuracy
+above chance, and the internal signal is non-zero, but the
+correlation is not strong enough to substitute for external
+verification and is inaccessible to users who read prose rather
+than logits. The practical consequence is that expressed
+confidence cannot be used to triage which claims need checking.
+The discipline of treating every factual claim as a hypothesis
+applies uniformly, not selectively to claims that sound uncertain.
+
 In diagnosis, grounding failures call for a particular discipline.
 Treat any factual claim by the model as a hypothesis. If the claim
 matters, verify it. If it cannot be verified, do not use it. The
@@ -443,8 +466,179 @@ model needed to see. Practitioners who become good at LLMs are
 practitioners who have learned which parts of their environment
 need importing for which kinds of question.
 
+\section{What the Model Does Not Capture}
+
+The five axes map the full range of single-output failures ---
+everything diagnosable when a specific output is in front of you.
+Six additional failure classes exist alongside them; they escape
+the single-output frame entirely and require different detection
+and remediation. The diagnostic ladder in the next section
+addresses only the five axes. Knowing what lies beyond them before
+walking makes the ladder's scope explicit and its limits visible.
+
+The first is the \emph{normative} failure: an output that is
+structurally fine, internally coherent, situationally appropriate,
+factually grounded, and environmentally informed but that is, by
+some standard the user holds, simply wrong --- offensive, biased,
+unethical, in conflict with values the user expects the system to
+hold. These failures live in Chapter~9's territory rather than
+this chapter's. The five axes ask whether the answer is correct;
+the normative dimension asks whether the answer is right, and
+right is not the same thing as correct.
+
+The second is the \emph{adversarial} failure: an output that has
+been deliberately induced by a malicious prompt, a poisoned
+retrieval source, or a manipulated tool. The most practically
+important variant for systems in production is \emph{indirect
+prompt injection}: malicious instructions embedded not in the
+user's prompt but in content the model is asked to process ---
+retrieved documents, tool outputs, web pages fetched by an agent
+(Chapter~12). A retrieval pipeline (Chapter~10) that fetches
+arbitrary external content is processing potential adversarial
+inputs on every call. The model has no reliable mechanism to
+distinguish instructions from data; text that looks like a
+document to the system designer may be interpreted as a prompt
+extension by the model. These failures cross the trust boundaries
+of Chapters~10 and~12 and are addressed by defenses in depth ---
+input sanitization, output schema enforcement, privilege
+separation between retrieval and execution --- rather than by
+diagnostic ladders.
+
+The third is the \emph{drift} failure: an output that was correct
+yesterday and is wrong today because the world has changed. This
+is a failure of the system's integration with reality, not of any
+single output. The remedy lives in monitoring, evaluation, and
+governance (Chapter~11).
+
+The fourth is the \emph{automation complacency} failure: an output
+that a human reviewer would have caught if they were producing the
+output themselves, but did not catch because they were in a
+verification role rather than a production role. This failure
+interacts with all five axes and deserves more attention than it
+typically receives.
+
+The human-factors literature has documented automation complacency
+since the 1980s. Parasuraman and Manzey's review
+\citep{parasuraman2010complacency} established the consistent
+finding: humans monitoring automated systems miss anomalies at
+significantly higher rates than humans performing the same task
+manually, with the effect size depending on how plausible the
+automated output appears and how rarely errors occur. Both
+conditions are routinely present in LLM deployments.
+
+LLM outputs are fluent by construction. A wrong answer arrives in
+the same register, the same sentence structure, and the same
+apparent confidence as a correct one. The five-axis taxonomy
+exists precisely because these failures are hard to detect by
+reading --- the output must be interrogated, not just consumed.
+Under time pressure, a reviewer who sees a fluent, well-structured
+response to a familiar question will process it more shallowly
+than a reviewer producing the answer from scratch, because shallow
+processing is the default mode for text that reads like it is
+probably correct. This is not a failure of character or
+attention; it is the normal operation of a cognitive system
+designed to allocate effort efficiently.
+
+The practical consequence is that human verification of LLM
+output is not a reliable substitute for human production of the
+same output, even when the reviewer is competent and the task
+is familiar. Three patterns make the effect worse in practice:
+
+\begin{itemize}
+  \item \emph{Low base rate of errors.} When the LLM is accurate
+        95\% of the time, reviewers experience 95 correct outputs
+        for every 5 wrong ones. After a sufficient run of correct
+        outputs, the prior that the next output is also correct
+        becomes strong, and vigilance falls. The errors that matter
+        most --- the 5\% --- arrive at the moment of lowest
+        vigilance.
+  \item \emph{Plausibility of the error class.} The diagnostic
+        ladder makes clear that grounding failures --- the model
+        asserting a false fact fluently --- are the hardest axis
+        to detect. These are also the failures most vulnerable to
+        complacency, because a grounding failure is invisible
+        unless the reviewer independently knows the fact in
+        question.
+  \item \emph{Throughput pressure.} Automation is often deployed
+        to increase throughput. Higher throughput means less time
+        per output for the reviewer. The two effects --- less time
+        available, more outputs per hour --- compound the
+        complacency effect rather than cancelling it.
+\end{itemize}
+
+\Cons\ The engineering implication is that a human-in-the-loop
+review step should not be counted as a reliable error-catching
+mechanism unless the review conditions are specifically designed
+to support active verification: enough time per output to
+interrogate rather than scan, periodic calibration cases
+(known-error outputs inserted to keep reviewers in an active
+detection mode), and metrics on review accuracy, not just review
+throughput. Chapter~10 (\S\ref{sec:verification-cost-erosion})
+derives the economic conditions under which verification overhead
+erodes the benefit of LLM deployment; the complacency effect
+raises the effective error rate seen by users above the raw model
+error rate, which shifts the break-even threshold further.
+
+The fifth is the \emph{compositional degradation} failure. When a
+task requires chaining multiple inferences --- a multi-step
+reasoning trace, an agentic pipeline that calls several tools in
+sequence, a code refactor threading through five interdependent
+modules --- errors compound across steps. A model that achieves
+accuracy $p$ on each step achieves approximately $p^k$ accuracy
+on a chain of $k$ steps under the optimistic assumption of step
+independence; in practice, early errors constrain the solution
+space for later steps and the compounding is worse. No individual
+step fails the five-axis ladder in a way that a walk of that step
+alone would catch; each step can be structurally valid, internally
+coherent, contextually appropriate, grounded, and environmentally
+specified, and the chain still produces a wrong final answer
+because an early error propagated. The remedy is not a better
+prompt but a better architecture: decompose at checkpoints, verify
+intermediate outputs rather than only the final output, and build
+observable intermediate states that a human or automated verifier
+can inspect. Agent evaluation (Chapter~12) and staged
+human-in-the-loop review (Chapter~11) are the primary loci of
+intervention.
+
+The sixth is the \emph{distributional mismatch} failure. A model
+is shaped not only by its pretraining corpus but by its fine-tuning
+and alignment distribution (Chapter~9). The tasks most heavily
+represented in the supervised fine-tuning and RLHF phases become
+the model's modal behavior; tasks at the periphery of that
+distribution receive attenuated, lower-quality performance ---
+not because the relevant knowledge is absent from pretraining but
+because the gradient signal during fine-tuning shaped behavior
+toward the center of the training-task distribution. A model that
+achieves high performance on a broad evaluation benchmark may
+underperform on the specific domain, register, or procedural
+context of a given deployment. The diagnostic signature is a
+model that looks capable in evaluation settings and is brittle in
+the particular corner of the problem space the deployment
+actually requires. This is distinct from drift (the world has not
+changed) and from environment failure (the prompt is
+well-specified). The remedy is targeted evaluation on
+representative examples drawn from the actual deployment
+distribution, conducted before the model is relied on in that
+context rather than after the first production incident.
+
+These six classes require different remediation than the ladder
+provides: alignment and value work for normative failures;
+security engineering and defense in depth (Chapters~10,~12) for
+adversarial failures; monitoring and governance cycles
+(Chapter~11) for drift; deliberate review-quality engineering for
+complacency; architectural decomposition and staged verification
+for compositional failures; deployment-specific evaluation for
+distributional mismatch. The ladder below addresses the five-axis
+failures --- the class most commonly encountered in practice and
+most directly remedied by prompt, system design, and process
+changes. Hold the axes loosely: they are not orthogonal, failures
+often span multiple, and the ordering is a heuristic, not a
+theorem.
+
 \section{The Diagnostic Ladder}
 
+With the full failure landscape in view, the ladder's scope is
+clear: it is a systematic procedure for the five-axis failures.
 The five axes form a ladder because they are arranged in roughly
 increasing distance from what the LLM can reliably do on its own.
 The ordering is empirical, not theoretical, but it is robust enough
@@ -500,157 +694,6 @@ had been correct, would have made the others correctable: a
 grounded answer in the wrong tone can be fixed by the user, but
 a fluent answer about a fact that does not exist cannot. The
 limiting axis is the one to pay first.
-
-\section{Connections to Earlier Chapters}
-
-The five axes connect to the technical mechanisms of earlier
-chapters in ways that are worth making explicit. Engineers who
-hold the ladder in mind have a way of mapping user-facing
-complaints onto technical interventions.
-
-\textbf{Structure} is the territory of decoding (Chapter~6),
-constrained sampling, and the structured-output contracts of tool
-use (Chapter~12). The mathematical objects involved are the
-softmax distribution, the JSON-schema-validating sampler, and the
-function-calling JSON contract.
-
-\textbf{Meaning} is the territory of cross-entropy training
-(Chapter~1), embeddings (Chapter~4), and the inference-compute
-trade-offs of self-checking and chain-of-thought (Chapter~6). The
-mathematical objects involved are the cross-entropy gradient, the
-embedding-space cosine similarity, and the sampling distributions
-that drive temperature and majority voting.
-
-\textbf{Context} is the territory of in-context learning
-(Chapter~6), prompt construction (Chapter~10), system prompts
-(Chapter~12), and the tone-and-style components of alignment
-(Chapter~9). The mathematical objects involved are the
-preference-model log-likelihood, the few-shot prompt format, and
-the RLHF KL penalty that keeps the policy from over-tuning.
-
-\textbf{Grounding} is the territory of retrieval (Chapter~10), tool
-use, the symbol-grounding literature \citep{harnad1990symbol,
-bender2020climbing}, and the memorization-versus-hallucination
-distinction of Chapter~6. The mathematical objects involved are
-BM25, the dense-retrieval inner product, the ReAct loop, and the
-verification predicates of Chapter~11's hazard analysis.
-
-\textbf{Environment} is the territory of system design rather than
-model design. Long-context architectures (Chapter~5) extend how
-much environment can be imported. Agent loops (Chapter~12)
-accumulate environment over time. Documentation, logging, and
-incident reporting (Chapter~11) make the environment the
-\emph{system} sees explicit and auditable.
-
-The general pattern is that lower axes are increasingly
-\emph{model-side}, while higher axes are increasingly
-\emph{system-side}. A team that wants to improve structure will
-work on decoding; a team that wants to improve grounding will
-work on retrieval; a team that wants to improve environment will
-work on their prompt-construction discipline. The ladder makes the
-locus of intervention explicit.
-
-\section{What the Model Does Not Capture}
-
-The taxonomy is useful because it is simple. It is also incomplete.
-A few classes of failure deserve mention as cases where the model
-helps less than one might hope.
-
-The first is the \emph{normative} failure: an output that is
-structurally fine, internally coherent, situationally appropriate,
-factually grounded, and environmentally informed but that is, by
-some standard the user holds, simply wrong --- offensive, biased,
-unethical, in conflict with values the user expects the system to
-hold. These failures live in Chapter~9's territory rather than
-this chapter's. The five axes ask whether the answer is correct;
-the normative dimension asks whether the answer is right, and
-right is not the same thing as correct.
-
-The second is the \emph{adversarial} failure: an output that has
-been deliberately induced by a malicious prompt, a poisoned
-retrieval source, or a manipulated tool. These failures cross the
-trust boundaries of Chapter~10 and Chapter~12 and are addressed by
-defenses in depth rather than by diagnostic ladders.
-
-The third is the \emph{drift} failure: an output that was correct
-yesterday and is wrong today because the world has changed. This
-is a failure of the system's integration with reality, not of any
-single output. The remedy lives in monitoring, evaluation, and
-governance (Chapter~11).
-
-The fourth is the \emph{automation complacency} failure: an output
-that a human reviewer would have caught if they were producing the
-output themselves, but did not catch because they were in a
-verification role rather than a production role. This failure
-interacts with all five axes and deserves more attention than it
-typically receives.
-
-The human-factors literature has documented automation complacency
-since the 1980s. Parasuraman and Manzey's review
-\citep{parasuraman2010complacency} established the consistent
-finding: humans monitoring automated systems miss anomalies at
-significantly higher rates than humans performing the same task
-manually, with the effect size depending on how plausible the
-automated output appears and how rarely errors occur. Both
-conditions are routinely present in LLM deployments.
-
-LLM outputs are fluent by construction. A wrong answer arrives in
-the same register, the same sentence structure, and the same
-apparent confidence as a correct one. The five-axis taxonomy
-exists precisely because these failures are hard to detect by
-reading — the output must be interrogated, not just consumed.
-Under time pressure, a reviewer who sees a fluent, well-structured
-response to a familiar question will process it more shallowly
-than a reviewer producing the answer from scratch, because shallow
-processing is the default mode for text that reads like it is
-probably correct. This is not a failure of character or
-attention; it is the normal operation of a cognitive system
-designed to allocate effort efficiently.
-
-The practical consequence is that human verification of LLM
-output is not a reliable substitute for human production of the
-same output, even when the reviewer is competent and the task
-is familiar. Three patterns make the effect worse in practice:
-
-\begin{itemize}
-  \item \emph{Low base rate of errors.} When the LLM is accurate
-        95\% of the time, reviewers experience 95 correct outputs
-        for every 5 wrong ones. After a sufficient run of correct
-        outputs, the prior that the next output is also correct
-        becomes strong, and vigilance falls. The errors that matter
-        most --- the 5\% --- arrive at the moment of lowest
-        vigilance.
-  \item \emph{Plausibility of the error class.} The diagnostic
-        ladder makes clear that grounding failures --- the model
-        asserting a false fact fluently --- are the hardest axis
-        to detect. These are also the failures most vulnerable to
-        complacency, because a grounding failure is invisible
-        unless the reviewer independently knows the fact in
-        question.
-  \item \emph{Throughput pressure.} Automation is often deployed
-        to increase throughput. Higher throughput means less time
-        per output for the reviewer. The two effects --- less time
-        available, more outputs per hour --- compound the
-        complacency effect rather than cancelling it.
-\end{itemize}
-
-\Cons\ The engineering implication is that a human-in-the-loop
-review step should not be counted as a reliable error-catching
-mechanism unless the review conditions are specifically designed
-to support active verification: enough time per output to
-interrogate rather than scan, periodic calibration cases
-(known-error outputs inserted to keep reviewers in an active
-detection mode), and metrics on review accuracy, not just review
-throughput. Chapter~10 (\S\ref{sec:verification-cost-erosion})
-derives the economic conditions under which verification overhead
-erodes the benefit of LLM deployment; the complacency effect
-raises the effective error rate seen by users above the raw model
-error rate, which shifts the break-even threshold further.
-
-The five-axis model is meant for the user-facing case in which a
-single output is in front of you and you want to know what to do.
-For everything else, the earlier chapters remain the authoritative
-reference.
 
 \section{Worked Example: Diagnosing a Wrong Code Suggestion}
 
@@ -740,6 +783,55 @@ system. It is visible only to the user, who knows what they meant.
 The diagnostic value of the environment axis is precisely that it
 names the class of failure no engineering intervention can prevent:
 the failure that belongs to the human end of the loop.
+
+\section{Connections to Earlier Chapters}
+
+The five axes connect to the technical mechanisms of earlier
+chapters in ways that are worth making explicit. Engineers who
+hold the ladder in mind have a way of mapping user-facing
+complaints onto technical interventions.
+
+\textbf{Structure} is the territory of decoding (Chapter~6),
+constrained sampling, and the structured-output contracts of tool
+use (Chapter~12). The mathematical objects involved are the
+softmax distribution, the JSON-schema-validating sampler, and the
+function-calling JSON contract.
+
+\textbf{Meaning} is the territory of cross-entropy training
+(Chapter~1), embeddings (Chapter~4), and the inference-compute
+trade-offs of self-checking and chain-of-thought (Chapter~6). The
+mathematical objects involved are the cross-entropy gradient, the
+embedding-space cosine similarity, and the sampling distributions
+that drive temperature and majority voting.
+
+\textbf{Context} is the territory of in-context learning
+(Chapter~6), prompt construction (Chapter~10), system prompts
+(Chapter~12), and the tone-and-style components of alignment
+(Chapter~9). The mathematical objects involved are the
+preference-model log-likelihood, the few-shot prompt format, and
+the RLHF KL penalty that keeps the policy from over-tuning.
+
+\textbf{Grounding} is the territory of retrieval (Chapter~10), tool
+use, the symbol-grounding literature \citep{harnad1990symbol,
+bender2020climbing}, and the memorization-versus-hallucination
+distinction of Chapter~6. The mathematical objects involved are
+BM25, the dense-retrieval inner product, the ReAct loop, and the
+verification predicates of Chapter~11's hazard analysis.
+
+\textbf{Environment} is the territory of system design rather than
+model design. Long-context architectures (Chapter~5) extend how
+much environment can be imported. Agent loops (Chapter~12)
+accumulate environment over time. Documentation, logging, and
+incident reporting (Chapter~11) make the environment the
+\emph{system} sees explicit and auditable.
+
+The general pattern is that lower axes are increasingly
+\emph{model-side}, while higher axes are increasingly
+\emph{system-side}. A team that wants to improve structure will
+work on decoding; a team that wants to improve grounding will
+work on retrieval; a team that wants to improve environment will
+work on their prompt-construction discipline. The ladder makes the
+locus of intervention explicit.
 
 \section{Bridges to Other Weeks}
 
