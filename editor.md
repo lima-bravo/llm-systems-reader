@@ -4,7 +4,7 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), article structural reorder (taxonomy before ladder), ch13 + NTG ch13 structural reorder + six-class taxonomy completion, and ladder-relationship notes for compounding/coverage complete across all documents
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (four escape classes + calibration), article + ch13 + NTG ch13 structural reorder (taxonomy before ladder), and compounding/coverage relocated from escape classes to grounding subsection + ladder walk across all documents
 
 The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). NTG→main backport applied (2026-05-09): three improvements identified from NTG writing applied to main reader ch09 and ch13 (see §A13). Article editorial pass applied (2026-05-09): both standalone articles updated for Feynman Standard and voice consistency (see §A14). §B items remain required for a commercial edition. §C items are optional enhancements.
 
@@ -207,6 +207,20 @@ Final pass to bring the non-technical guide from educational to equipped: reader
 | `chapter15_closing_note.tex` | "A Closing Note, and Where to Go Next" — returns to preface promises; consolidates what the reader now holds (the mechanism, not just the vocabulary); separates what will change (specific models/architectures) from what will not (objective → plausibility gap; preference model → pattern-matcher; form-without-reference problem). Annotated further reading: technical companion; three key papers (Vaswani 2017, Ouyang 2022, Schaeffer 2023); two popular books (Mitchell 2019, Christian 2020); guidance on reading lab blogs critically. |
 
 `non_technical_guide.tex` updated: `chapter14_what_to_ask` added to `\mainmatter`; `chapter15_closing_note` added to `\backmatter`.
+
+---
+
+### A21. ✓ Escape classes reduced to four; compounding/coverage relocated — FIXED 2026-05-10
+
+Compounding and coverage removed from the escape classes section in all four documents. Neither truly escapes the ladder: compounding is addressed by applying the ladder at each intermediate step; coverage surfaces on the ladder as a grounding failure (correct symptom, different systemic remedy). Including them in the escape section muddled the concept of "escape" and would lead readers to distrust the ladder in cases where it is still applicable.
+
+**Escape classes section** (all four documents): four classes only — normative, adversarial, drift, complacency. All roadmap text, learning objectives, and LLM Components Covered updated from six to four.
+
+**Compounding note relocated to ladder walk section** (all four documents): "For tasks that chain multiple inference steps, apply the ladder at each intermediate output, not only at the final result. A chain where every individual step passes is not therefore correct; errors from early steps propagate as premises into later ones." Technical documents include $p^k$ formula and chapter references.
+
+**Coverage note relocated to grounding subsection** (all four documents): "When grounding failures appear consistently in a specific domain/context, the root cause may be distributional misalignment. Retrieval and verification address individual errors but not the underlying pattern. The systemic remedy is evaluation on the actual deployment population." Each document uses register-appropriate framing (legal article uses practice-area language).
+
+**Files changed:** `non_technical_guide/chapter13_map_of_errors.tex`, `weeks/ch13_human_centric_error_model.tex`, `article/human_centric_error_model.tex`, `article/legal_diagnostic_ladder.tex`, `editor.md`.
 
 ---
 

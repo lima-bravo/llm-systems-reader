@@ -90,11 +90,10 @@ and failures are rare. At the top, the model is, in a precise
 sense, at the mercy of the human, and failures are inevitable
 unless the human compensates.
 
-The five axes map single-output failures. Six additional failure
+The five axes map single-output failures. Four additional failure
 classes exist alongside them that the single-output frame cannot
-reach: normative, adversarial, drift, complacency, compositional
-degradation, and distributional mismatch. The chapter maps all
-eleven before demonstrating the ladder in practice.
+reach: normative, adversarial, drift, and complacency. The chapter
+maps all nine before demonstrating the ladder in practice.
 
 The pedagogical use of the model is twofold. For users, it is a
 diagnostic ladder: when an answer arrives that smells wrong, walk
@@ -135,9 +134,8 @@ By the end of this chapter, you should be able to:
         covered in earlier chapters of this book.
   \item State the limits of the model: where the axes overlap,
         where diagnosis is interpretive rather than algorithmic,
-        and which six failure classes escape the framework
-        entirely (normative, adversarial, drift, complacency,
-        compositional degradation, distributional mismatch).
+        and which four failure classes escape the framework
+        entirely (normative, adversarial, drift, complacency).
   \item Use the model to communicate with non-specialist
         stakeholders --- users, regulators, auditors, executives
         --- about LLM errors in language they can act on.
@@ -165,10 +163,9 @@ By the end of this chapter, you should be able to:
 \begin{itemize}
   \item Locus of intervention: which axes call for model-side
         change versus system-side change.
-  \item Limits of the framework: six failure classes that escape
-        the five axes --- normative, adversarial, drift,
-        complacency, compositional degradation, and
-        distributional mismatch.
+  \item Limits of the framework: four failure classes that escape
+        the five axes --- normative, adversarial, drift, and
+        complacency.
 \end{itemize}
 
 \section{Notation and Standing Assumptions}
@@ -423,6 +420,15 @@ careful practitioner builds workflows that make verification cheap
 (retrieval, citations, linked sources) so that grounding failures
 are catchable by construction.
 
+When grounding failures appear consistently in a specific domain,
+register, or procedural context, the root cause may be
+distributional: the model's fine-tuning distribution is
+misaligned with the deployment distribution (Chapter~9). Retrieval
+and tool use reduce individual grounding errors but do not address
+the underlying mismatch. The systemic remedy is targeted evaluation
+on representative examples from the actual deployment distribution,
+not per-call augmentation.
+
 \subsection{Environment: did the prompt encode the situation?}
 
 The fifth axis sits at the human end of the ladder, and is the
@@ -579,68 +585,16 @@ erodes the benefit of LLM deployment; the complacency effect
 raises the effective error rate seen by users above the raw model
 error rate, which shifts the break-even threshold further.
 
-The fifth is the \emph{compositional degradation} failure. When a
-task requires chaining multiple inferences --- a multi-step
-reasoning trace, an agentic pipeline that calls several tools in
-sequence, a code refactor threading through five interdependent
-modules --- errors compound across steps. A model that achieves
-accuracy $p$ on each step achieves approximately $p^k$ accuracy
-on a chain of $k$ steps under the optimistic assumption of step
-independence; in practice, early errors constrain the solution
-space for later steps and the compounding is worse. No individual
-step fails the five-axis ladder in a way that a walk of that step
-alone would catch; each step can be structurally valid, internally
-coherent, contextually appropriate, grounded, and environmentally
-specified, and the chain still produces a wrong final answer
-because an early error propagated. The remedy is not a better
-prompt but a better architecture: decompose at checkpoints, verify
-intermediate outputs rather than only the final output, and build
-observable intermediate states that a human or automated verifier
-can inspect. Agent evaluation (Chapter~12) and staged
-human-in-the-loop review (Chapter~11) are the primary loci of
-intervention.
-
-The sixth is the \emph{distributional mismatch} failure. A model
-is shaped not only by its pretraining corpus but by its fine-tuning
-and alignment distribution (Chapter~9). The tasks most heavily
-represented in the supervised fine-tuning and RLHF phases become
-the model's modal behavior; tasks at the periphery of that
-distribution receive attenuated, lower-quality performance ---
-not because the relevant knowledge is absent from pretraining but
-because the gradient signal during fine-tuning shaped behavior
-toward the center of the training-task distribution. A model that
-achieves high performance on a broad evaluation benchmark may
-underperform on the specific domain, register, or procedural
-context of a given deployment. The diagnostic signature is a
-model that looks capable in evaluation settings and is brittle in
-the particular corner of the problem space the deployment
-actually requires. This is distinct from drift (the world has not
-changed) and from environment failure (the prompt is
-well-specified). Distributional mismatch can surface on the
-five-axis ladder as a grounding failure: the model produces
-confident claims that fail external verification. The ladder
-correctly names the symptom; it does not identify the cause as a
-training-deployment distribution gap. The distinction matters for
-remediation: retrieval and tool use reduce individual grounding
-errors but do not address the underlying mismatch. The remedy is
-targeted evaluation on representative examples drawn from the
-actual deployment distribution, conducted before the model is
-relied on in that context rather than after the first production
-incident.
-
-These six classes require different remediation than the ladder
+These four classes require different remediation than the ladder
 provides: alignment and value work for normative failures;
 security engineering and defense in depth (Chapters~10,~12) for
 adversarial failures; monitoring and governance cycles
 (Chapter~11) for drift; deliberate review-quality engineering for
-complacency; architectural decomposition and staged verification
-for compositional failures; deployment-specific evaluation for
-distributional mismatch. The ladder below addresses the five-axis
-failures --- the class most commonly encountered in practice and
-most directly remedied by prompt, system design, and process
-changes. Hold the axes loosely: they are not orthogonal, failures
-often span multiple, and the ordering is a heuristic, not a
-theorem.
+complacency. The ladder below addresses the five-axis failures
+--- the class most commonly encountered in practice and most
+directly remedied by prompt, system design, and process changes.
+Hold the axes loosely: they are not orthogonal, failures often
+span multiple, and the ordering is a heuristic, not a theorem.
 
 \section{The Diagnostic Ladder}
 
@@ -701,6 +655,17 @@ had been correct, would have made the others correctable: a
 grounded answer in the wrong tone can be fixed by the user, but
 a fluent answer about a fact that does not exist cannot. The
 limiting axis is the one to pay first.
+
+For tasks that chain multiple inference steps --- a multi-step
+reasoning trace, an agentic pipeline, a code refactor threading
+through interdependent modules --- apply the ladder at each
+intermediate output, not only at the final result. A chain where
+every individual step passes the five-axis walk is not therefore
+correct: accuracy $p$ on each step gives approximately $p^k$
+reliability on a $k$-step chain under step independence, and
+early errors constrain downstream reasoning. The architectural
+remedy is checkpointing and intermediate verification
+(Chapters~11,~12), not per-step prompt improvement.
 
 \section{Worked Example: Diagnosing a Wrong Code Suggestion}
 

@@ -65,7 +65,7 @@ The model is not a theory. It is a vocabulary, with a procedure
 attached, designed to be useful in conversations with stakeholders
 who do not have a year to spend on neural-network internals. The
 full failure landscape has two parts: the five-axis failures that
-the ladder addresses directly, and six additional classes that
+the ladder addresses directly, and four additional classes that
 escape the single-output frame entirely. This article maps both,
 then shows the ladder in action.
 
@@ -275,6 +275,15 @@ workflows that make verification cheap (retrieval, citations,
 linked sources) so that groundedness failures are catchable by
 construction.
 
+When groundedness failures appear consistently in a specific
+domain, register, or deployment context, the root cause may be
+distributional: the model's fine-tuning distribution is
+misaligned with the deployment distribution. Retrieval and tool
+use reduce individual groundedness errors but do not address the
+underlying mismatch. The systemic remedy is targeted evaluation on
+representative examples from the actual deployment distribution,
+not per-call augmentation.
+
 \section*{Environment: did the prompt encode the situation?}
 
 The fifth axis sits at the human end of the ladder, and is the
@@ -372,58 +381,13 @@ how carefully. The model's failure rate may be constant; the
 effective error rate seen by users rises as vigilance decays.
 The ladder can only be climbed by someone who is still climbing.
 
-The fifth is \emph{compositional degradation}. When a task
-requires chaining multiple inferences --- a function that calls
-three helpers, an argument that applies four tests in sequence, a
-data pipeline that transforms through five stages --- errors
-compound. A model that is ninety-five percent reliable on each
-step is below sixty percent reliable on a ten-step chain. No
-single step fails the ladder in a way that a five-axis walk would
-catch; each step can be structurally valid, internally coherent,
-contextually appropriate, grounded, and environmentally specified,
-and the chain still produces a wrong final answer because an early
-error propagated. The remedy is not a better prompt but a better
-architecture: decompose, verify at each stage rather than only
-at the end, and build checkpoints that a human or automated
-verifier can inspect.
-
-The sixth is \emph{distributional mismatch}. A model is shaped
-by its fine-tuning and alignment distribution, not only its
-pretraining corpus. The tasks most heavily represented in the
-fine-tuning phase become the model's modal behavior; tasks at
-the periphery of that distribution receive attenuated,
-lower-quality performance --- not because the relevant information
-is absent from pretraining but because the model's behavior was
-tuned toward the center of the task distribution, not toward the
-specific edges. A model that performs impressively on a broad
-benchmark may be unreliable in the specific domain, register, or
-procedural context of a given deployment. The diagnostic signature
-is a system that looks capable in demonstrations and is brittle
-in the particular corner of the problem space you actually need.
-Distributional mismatch can surface on the five-axis ladder as a
-grounding failure: the model produces confident claims that the
-deployment domain would recognise as wrong. The ladder correctly
-names the symptom; the cause, and therefore the remedy, are
-different. Improving retrieval or adding verification addresses
-individual claims; the structural problem is a training-deployment
-distribution gap that only deployment-distribution evaluation can
-establish. The remedy is targeted evaluation on representative
-examples drawn from the real deployment distribution before
-relying on general benchmark numbers.
-
-These six classes require different remediation than the ladder
+These four classes require different remediation than the ladder
 provides: governance and value alignment for normative failures;
 security engineering for adversarial failures; monitoring and
 refresh cycles for drift; sustained reviewer discipline for
-complacency; architectural decomposition for compositional
-failures; deployment-specific evaluation for distributional
-mismatch. The ladder also does not address conversation-level
-degradation --- earlier errors propagating into later outputs,
-instruction drift across a long session, the model losing track
-of constraints set at the session's start --- which require
-evaluation at the session level, not the output level. Hold the
-axes loosely: they are not orthogonal, failures often span
-multiple, and the ordering is a heuristic, not a theorem.
+complacency. Hold the axes loosely: they are not orthogonal,
+failures often span multiple, and the ordering is a heuristic,
+not a theorem.
 
 \section*{Walking the ladder}
 
@@ -451,8 +415,17 @@ diagnose and cheaper to remedy than higher-axis ones. A
 practitioner who jumps straight to ``the model hallucinated'' may
 have missed a context failure that does not require any change to
 the model at all. Conversely, a practitioner who never considers
-groundedness will deploy systems that are confidently wrong about the
-world.
+groundedness will deploy systems that are confidently wrong about
+the world.
+
+For tasks that chain multiple inference steps --- a function
+calling helpers, a pipeline transforming through several stages,
+an agent loop accumulating decisions --- apply the ladder at each
+intermediate output, not only at the final result. A chain where
+every individual step passes the five-axis walk is not therefore
+correct; errors from early steps propagate as premises into later
+ones. The remedy is checkpointing and intermediate verification,
+not per-step prompt improvement.
 
 Return to the developer with the customer-records function. We
 walk the ladder.

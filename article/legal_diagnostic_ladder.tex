@@ -83,7 +83,7 @@ checked less consistently, and environment usually not at all.
 That asymmetry is where the silent damage tends to live.
 
 The five rungs address single-output failures --- everything
-diagnosable when a specific draft is in front of you. Six
+diagnosable when a specific draft is in front of you. Four
 additional failure classes exist alongside them that the
 rung-by-rung walk cannot catch; they require different detection
 and remediation. The article maps both before demonstrating the
@@ -251,6 +251,15 @@ review workflows in which groundedness is catchable by
 construction --- citation auditing, source linking, mandatory
 KeyCite or Shepard's verification on every cite the AI produces.
 
+When groundedness failures appear consistently in a specific
+practice area --- specialty courts, narrow regulatory domains,
+emerging statutory areas --- the root cause may be that the
+tool's fine-tuning distribution is misaligned with that niche.
+Retrieval and citation verification address individual errors but
+not the underlying pattern. The systemic remedy is practice-area
+evaluation on representative matters before deploying the tool in
+that context, not per-matter augmentation.
+
 \section*{Environment: did the prompt encode what you know?}
 
 The fifth rung sits at the human end of the ladder and is the
@@ -350,57 +359,14 @@ vigilantly. The bar records whether review happened, not how
 carefully. The tool's failure rate may be constant; the effective
 error rate seen by clients rises as vigilance decays.
 
-The fifth is the \emph{compositional} failure. Legal analysis
-characteristically requires chaining multiple inferences:
-determining standing, then jurisdiction, then the applicable
-standard of review, then whether the facts satisfy each element
-of the test. When a model works through a multi-step analysis,
-errors compound across the chain. A model that is highly reliable
-on each individual step may produce a wrong final conclusion
-because a subtle error in an early step --- a mischaracterization
-of the standard, a slightly wrong reading of the procedural
-posture --- propagates through the downstream reasoning. No single
-step fails the five-rung ladder in a way that a careful reading
-of that step alone would catch; the failure is a property of the
-chain, not of any individual link. Multi-step doctrinal analysis
-deserves verification not only at the conclusion but at each
-material intermediate step.
-
-The sixth is the \emph{coverage} failure. A legal AI tool is
-shaped not only by what it has seen but by what its fine-tuning
-and evaluation emphasized. Tools trained and benchmarked on broad
-legal research tasks may have attenuated, lower-quality performance
-in specific niches --- specialty courts, narrow regulatory domains,
-emerging statutory areas, non-majority jurisdictions --- not
-because the relevant authority is absent from training data but
-because the model's behavior was shaped toward the modal legal
-task, not toward the specific practice area. A tool that performs
-impressively on mainstream commercial litigation research may be
-unreliable in the particular procedural context, doctrinal niche,
-or jurisdiction of a given matter. A coverage failure can present
-on the ladder as a grounding failure: the model states holdings,
-statutory elements, or procedural requirements with confidence,
-and they turn out to be wrong for the specific practice area. The
-ladder correctly names the symptom as a grounding failure; it does
-not identify the cause as a training-coverage mismatch. Applying
-the grounding remedy --- retrieval, citation checking, source
-verification --- addresses individual errors but not the
-structural problem. The structural remedy is targeted evaluation
-on representative examples from the specific practice area before
-deploying the tool in that context, rather than relying on general
-benchmark performance.
-
-These six failure classes require different responses than the
+These four failure classes require different responses than the
 ladder provides: professional-conduct governance for normative
 failures; security protocols for adversarial failures;
 currency-checking workflows for drift; sustained oversight
-culture for complacency; intermediate-step verification for
-compositional failures; practice-area evaluation before
-deployment for coverage failures. The ladder below does not
-address them. It is a procedure for the five-rung failures ---
-the class that shows up most often in practice and that yields
-most directly to prompt discipline, retrieval, and reviewer
-skill.
+culture for complacency. The ladder below does not address them.
+It is a procedure for the five-rung failures --- the class that
+shows up most often in practice and that yields most directly to
+prompt discipline, retrieval, and reviewer skill.
 
 \section*{Walking the ladder}
 
@@ -441,6 +407,15 @@ The walk located each failure at the rung where the remedy lives.
 Not one of these failures was a hallucination in the headline
 sense. Each would have escaped a workflow that checked structure
 and citations and stopped.
+
+For multi-step doctrinal analysis --- determining standing, then
+jurisdiction, then the applicable standard, then element
+satisfaction --- apply the ladder at each material intermediate
+step, not only at the final conclusion. A chain where every
+individual step passes the five-rung walk is not therefore sound;
+a subtle mischaracterization of the standard in an early step
+propagates through the downstream reasoning without any single
+link appearing defective.
 
 \section*{What this means for firms}
 

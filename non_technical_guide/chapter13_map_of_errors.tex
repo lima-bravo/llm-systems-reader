@@ -170,11 +170,11 @@ grounding mechanism that does not by itself solve context.
 Tool use is an environment-importing mechanism whose contract
 is structural. The ladder makes these connections explicit.
 
-The five axes map single-output failures. Six further failure
-classes exist alongside them that fall outside the
-single-output frame: normative, adversarial, drift,
-complacency, compounding, and coverage failures. The chapter
-maps all of these before demonstrating the ladder in practice.
+The five axes map single-output failures. Four further failure
+classes exist alongside them that the ladder cannot reach:
+normative, adversarial, drift, and complacency. The chapter
+introduces all of these before demonstrating the ladder in
+practice.
 
 \subsection*{What goes wrong}
 
@@ -387,6 +387,15 @@ workflows that make verification cheap (retrieval, citations,
 linked sources) so that grounding failures are catchable by
 construction.
 
+When grounding failures appear consistently in a specific
+domain or type of question, the root cause may be a mismatch
+between where the model was calibrated and where it is being
+used. The per-call remedy --- better retrieval, more
+verification --- addresses individual errors but not the
+underlying pattern. The systemic remedy is evaluation on the
+actual deployment population before relying on the tool at
+scale.
+
 \subsection*{Environment: did the prompt encode the situation?}
 
 The fifth axis sits at the human end of the ladder, and is
@@ -494,48 +503,14 @@ workflow: rotation, sampling-based spot checks, and review
 metrics that measure quality of review rather than merely its
 occurrence.
 
-The fifth is the \emph{compounding} failure. The ladder
-evaluates a single output. Many real uses of LLMs are chains:
-summarise these documents, then compare the summaries, then
-draw a conclusion. Each step may pass the ladder individually
---- a chain in which every individual step passes the ladder
-is not therefore safe. The ladder has no view of accumulated
-error across steps. Errors from an early step enter the next
-step as premises, and they compound. An output that is 95\%
-reliable at each step falls below 60\% reliability across ten
-chained steps --- the errors do not add, they multiply. The
-remedy is not to improve each step further but to checkpoint:
-treat each intermediate output as a hypothesis to verify
-before passing it to the next step.
-
-The sixth is the \emph{coverage} failure. A model fine-tuned
-for a particular kind of work performs well where that
-training was dense and less well at the edges of that task
-space. A tool calibrated primarily on mainstream use cases
-may underperform on speciality areas or unusual edge cases
---- not because the model hallucinates but because the
-alignment between the training population and the deployment
-population is imperfect. Coverage failures are distinct from
-drift (which is about change over time) and from grounding
-failures (which can appear anywhere). A coverage failure
-can appear on the ladder as a grounding failure: the output
-contains confident claims that turn out to be wrong. The
-ladder correctly surfaces the symptom; it does not identify
-the cause as a training-deployment mismatch. Applying the
-grounding remedy --- retrieval, tool use, verification ---
-addresses individual claims but not the underlying problem.
-The structural remedy is evaluation on the actual deployment
-population, not only on benchmarks that may not represent it.
-
-Each of the six classes requires a different response.
-Normative failures call for governance and ethics review.
-Adversarial failures call for pipeline defences and
-adversarial testing. Drift calls for statistical monitoring.
-Complacency calls for workflow design. Compounding calls for
-checkpoints at each step. Coverage failures call for
-deployment-specific evaluation. The ladder, which follows,
-addresses the five-axis single-output failures directly.
-Knowing both the map and the tool makes the walk more useful.
+The four classes require different detection strategies than
+the ladder provides. Normative failures call for governance
+and ethics review. Adversarial failures call for pipeline
+defences and adversarial testing. Drift calls for statistical
+monitoring. Complacency calls for workflow design. The ladder,
+which follows, addresses the five-axis single-output failures
+directly. Knowing both the map and the tool makes the walk
+more useful.
 
 \section{Walking the ladder}
 \addcontentsline{toc}{section}{Walking the ladder}
@@ -598,6 +573,13 @@ through a follow-up; a fluent answer about a fact that does
 not exist cannot be fixed by the user at all, because the
 user did not know the fact was wrong. The limiting axis is
 the one to pay first.
+
+For workflows that chain multiple steps --- summarising
+several documents, then comparing the summaries, then drawing
+a conclusion --- apply the ladder at each intermediate output,
+not only at the final result. A chain where every individual
+step passes the ladder is not therefore safe: errors from an
+early step enter the next as premises and compound.
 
 \section{A worked diagnosis}
 \addcontentsline{toc}{section}{A worked diagnosis}
