@@ -82,6 +82,13 @@ groundedness; the middle rungs --- meaning and context --- are
 checked less consistently, and environment usually not at all.
 That asymmetry is where the silent damage tends to live.
 
+The five rungs address single-output failures --- everything
+diagnosable when a specific draft is in front of you. Six
+additional failure classes exist alongside them that the
+rung-by-rung walk cannot catch; they require different detection
+and remediation. The article maps both before demonstrating the
+ladder in practice.
+
 The examples below draw from the work most law firms now ask AI to
 help with: legal research, document review, drafting (memos,
 briefs, contracts, client correspondence), analysis (issue
@@ -277,48 +284,15 @@ on the firm's intranet, in the matter management system, or
 attached to the email that arrived this morning. It lives in the
 lawyer's head. Importing it into the prompt is the lawyer's job.
 
-\section*{Walking the ladder}
+\section*{Beyond the five rungs}
 
-A senior associate sends you a draft summary judgment brief
-generated with AI assistance. You walk the rungs.
-
-\emph{Structure} passes: the brief is properly formatted, the
-citations are Bluebooked, the table of authorities is generated.
-\emph{Meaning} passes: the argument is internally consistent.
-\emph{Context} fails: the brief is written in the aggressive
-register the partner reserves for trial-bound matters, but this is
-a settlement-track case in which the client wants to look
-reasonable to the bench. You revise the prompt to specify the
-strategic posture and the desired register. The brief comes back
-softer.
-
-\emph{Groundedness} fails on cite-check: one of the supporting
-cases has been distinguished in a more recent appellate decision
-and another, on closer reading, does not actually stand for the
-proposition the brief cites it for. You ask for the AI's source
-links, audit them, and instruct the next draft to use only cases
-the citator confirms as currently good law for the proposition
-asserted.
-
-\emph{Environment} fails last. The partner's strategy is to lead
-with the dispositive jurisdictional argument and reserve the
-substantive arguments for a later motion if the jurisdictional
-play fails. The AI did not know that. The brief covers all four
-issues with equal weight. You add the strategic priority to the
-prompt --- ``lead with jurisdictional, hold the substantive
-arguments in reserve'' --- and the next draft reflects it.
-
-The walk located each failure at the rung where the remedy lives.
-Not one of these failures was a hallucination in the headline
-sense. Each would have escaped a workflow that checked structure
-and citations and stopped.
-
-\section*{What the ladder does not capture}
-
-The five-rung framework is useful because it is simple. It is also
-incomplete. Six classes of failure deserve explicit mention
-because they are directly relevant to legal practice and escape
-the ladder entirely.
+The five rungs map single-output failures --- everything
+diagnosable when a specific draft is in front of you. Six
+additional failure classes exist alongside them; they escape
+the rung-by-rung frame and require different detection and
+remediation. The ladder addresses only the five rungs. Knowing
+what lies beyond them before walking makes the ladder's scope
+explicit and its limits visible.
 
 The first is the \emph{normative} failure. An output can be
 structurally correct, internally coherent, situationally
@@ -349,21 +323,20 @@ theoretical one.
 
 The third is the \emph{drift} failure. The model's parametric
 knowledge of case law, statutes, and regulatory guidance was
-fixed at its training cutoff. The walking example above already
-surfaces this: one of the cases ``has been distinguished in a
-more recent appellate decision'' --- which is information the
-model could not have had if that decision postdates its training.
-Retrieval-augmented tools partially address this by fetching
-current authority, but only for the specific queries they run;
-the model's background assumptions about doctrinal landscape
-remain frozen. For rapidly evolving areas --- regulatory
-rulemaking, recent circuit splits, new statutory amendments ---
-the gap between what the model ``knows'' and what the law
-currently says is not a grounding failure in the fabrication
-sense. It is a staleness failure that passes every rung of the
-ladder until someone with current doctrinal knowledge reads the
-output. Currency checking, in areas where it matters, remains
-a human responsibility.
+fixed at its training cutoff. Legal practice surfaces this
+regularly: a case that was good law when the tool last trained
+may have been distinguished, reversed, or superseded by the time
+the memo reaches the client. Retrieval-augmented tools partially
+address this by fetching current authority, but only for the
+specific queries they run; the model's background assumptions
+about the doctrinal landscape remain frozen. For rapidly evolving
+areas --- regulatory rulemaking, recent circuit splits, new
+statutory amendments --- the gap between what the model ``knows''
+and what the law currently says is not a grounding failure in the
+fabrication sense. It is a staleness failure that passes every
+rung of the ladder until someone with current doctrinal knowledge
+reads the output. Currency checking, in areas where it matters,
+remains a human responsibility.
 
 The fourth is the \emph{complacency} failure. The duty of
 competence is not only a duty to establish a review process; it
@@ -408,6 +381,58 @@ or jurisdiction of a given matter. The remedy is targeted
 evaluation on representative examples from the specific practice
 area before deploying the tool in that context, rather than
 relying on general benchmark performance.
+
+These six failure classes require different responses than the
+ladder provides: professional-conduct governance for normative
+failures; security protocols for adversarial failures;
+currency-checking workflows for drift; sustained oversight
+culture for complacency; intermediate-step verification for
+compositional failures; practice-area evaluation before
+deployment for coverage failures. The ladder below does not
+address them. It is a procedure for the five-rung failures ---
+the class that shows up most often in practice and that yields
+most directly to prompt discipline, retrieval, and reviewer
+skill.
+
+\section*{Walking the ladder}
+
+The five rungs form a diagnostic ladder ordered from what the AI
+can most reliably handle to what only the lawyer can supply.
+With the full failure landscape in view, the ladder's scope is
+clear: it is a procedure for the five-rung failures. A senior
+associate sends you a draft summary judgment brief generated with
+AI assistance. You walk the rungs.
+
+\emph{Structure} passes: the brief is properly formatted, the
+citations are Bluebooked, the table of authorities is generated.
+\emph{Meaning} passes: the argument is internally consistent.
+\emph{Context} fails: the brief is written in the aggressive
+register the partner reserves for trial-bound matters, but this is
+a settlement-track case in which the client wants to look
+reasonable to the bench. You revise the prompt to specify the
+strategic posture and the desired register. The brief comes back
+softer.
+
+\emph{Groundedness} fails on cite-check: one of the supporting
+cases has been distinguished in a more recent appellate decision
+and another, on closer reading, does not actually stand for the
+proposition the brief cites it for. You ask for the AI's source
+links, audit them, and instruct the next draft to use only cases
+the citator confirms as currently good law for the proposition
+asserted.
+
+\emph{Environment} fails last. The partner's strategy is to lead
+with the dispositive jurisdictional argument and reserve the
+substantive arguments for a later motion if the jurisdictional
+play fails. The AI did not know that. The brief covers all four
+issues with equal weight. You add the strategic priority to the
+prompt --- ``lead with jurisdictional, hold the substantive
+arguments in reserve'' --- and the next draft reflects it.
+
+The walk located each failure at the rung where the remedy lives.
+Not one of these failures was a hallucination in the headline
+sense. Each would have escaped a workflow that checked structure
+and citations and stopped.
 
 \section*{What this means for firms}
 

@@ -63,7 +63,11 @@ the top, the model is, in a precise sense, at the mercy of the
 human, and failures are inevitable unless the human compensates.
 The model is not a theory. It is a vocabulary, with a procedure
 attached, designed to be useful in conversations with stakeholders
-who do not have a year to spend on neural-network internals.
+who do not have a year to spend on neural-network internals. The
+full failure landscape has two parts: the five-axis failures that
+the ladder addresses directly, and six additional classes that
+escape the single-output frame entirely. This article maps both,
+then shows the ladder in action.
 
 \section*{Why a layered model, and why now}
 
@@ -316,90 +320,16 @@ Practitioners who become good at LLMs are practitioners who have
 learned which parts of their environment need importing for which
 kinds of question.
 
-\section*{Walking the ladder}
+\section*{Beyond the five axes}
 
-The five axes form a ladder because they are arranged in roughly
-increasing distance from what the LLM can reliably do on its own.
-The recommended walk, when an output arrives that strikes you as
-wrong, is bottom-up:
-\begin{enumerate}
-  \item \emph{Structure}: does the output parse, compile, validate
-        against its schema?
-  \item \emph{Meaning}: read it as a self-contained artifact ---
-        does it contradict itself?
-  \item \emph{Context}: is it appropriate for the situation,
-        audience, and purpose?
-  \item \emph{Groundedness}: are the factual claims true?
-  \item \emph{Environment}: was the question itself fully
-        specified?
-\end{enumerate}
-
-The discipline is that lower-axis failures are typically easier to
-diagnose and cheaper to remedy than higher-axis ones. A
-practitioner who jumps straight to ``the model hallucinated'' may
-have missed a context failure that does not require any change to
-the model at all. Conversely, a practitioner who never considers
-groundedness will deploy systems that are confidently wrong about the
-world.
-
-Return to the developer with the customer-records function. We
-walk the ladder.
-
-\emph{Structure} passes: the function parses and imports.
-\emph{Meaning} passes: it does not contradict itself; the type
-signature matches the return. \emph{Context} fails: the codebase
-uses a particular ORM and the model wrote raw list comprehensions
-instead. We add the codebase conventions to the prompt and the
-model writes ORM code.
-
-The function still produces wrong output. We walk again. Structure,
-meaning, context now all pass. \emph{Groundedness} fails: the model
-called \texttt{customers.filter\_by\_region(r)}, a method that
-looked plausible but does not exist on the actual ORM. We give the
-model the ORM definitions, by retrieval, and it picks a real
-method.
-
-The function still produces wrong output. The methods are real.
-The output is sensibly wrong: the regions are off.
-\emph{Environment} fails: in this codebase, ``region'' is a sales
-territory id, not a country code. The user assumed the model could
-see what they meant by region. It could not. The user specifies
-what region means, and the function works.
-
-The walk shows the discipline. We did not stop at the first axis
-that passed. We did not jump to the most exotic explanation. We
-located the failure at the level where the remedy lives, and each
-fix targeted the right intervention point: prompt content for
-context, retrieval for groundedness, prompt specification for
-environment.
-
-It is worth pausing on the groundedness failure to name the
-mechanism behind it. The invented method ---
-\texttt{customers.filter\_by\_region(r)} --- is a product of the
-same training objective that makes the model fluent in the first
-place. Next-token prediction trains on plausibility: method calls
-of the form \texttt{object.verb\_by\_field()} are common patterns
-in the training corpus, and the model produces what is statistically
-likely given the surrounding code. There is no signal in the
-pretraining objective that distinguishes a method that exists in
-the user's actual ORM from one that merely fits the pattern.
-Notice also \emph{where} the failure lands: not in the high-level
-structure of the function (filter, sort by numeric field, return
-names) but in a specific peripheral detail (the exact method
-name). This is characteristic of groundedness failures. The
-skeleton of a correct answer is more strongly represented in
-training data than the specific, deployment-relevant details that
-make the skeleton work. Hallucinated citations, invented API
-endpoints, and fabricated function signatures all follow the
-same shape: the genre is right, the specific referent is not.
-The remedy --- giving the model the ORM schema before generation
---- works by changing the question from ``what is statistically
-likely'' to ``what is consistent with this document.''
-
-\section*{What the model does not capture}
-
-The taxonomy is useful because it is simple. It is also incomplete.
-Six classes of failure escape it.
+The five axes map the full range of single-output failures ---
+everything that can go wrong when a specific output is in front
+of you and you are examining it. Six additional failure classes
+exist alongside them; they escape the single-output frame
+entirely and require different detection and remediation. The
+ladder addresses only the five axes. Knowing what lies beyond
+them before walking makes the ladder's scope explicit and its
+limits visible.
 
 The first is \emph{normative}. An output that is structurally
 fine, internally coherent, situationally appropriate, factually
@@ -474,19 +404,102 @@ The remedy is targeted evaluation on representative examples drawn
 from the real deployment distribution before relying on general
 benchmark numbers.
 
-The five-axis model is meant for the user-facing case in which a
-single output is in front of you and you want to know what to do.
-It also does not address conversation-level degradation ---
-earlier errors propagating into later outputs, instruction drift
-across a long session, the model losing track of constraints set
-at the session's start --- which require evaluation at the session
-level, not the output level. For everything else, the broader
-engineering literature on safety, adversarial robustness, and
-operational monitoring remains the authoritative reference. Hold
-the ladder loosely. The axes are not orthogonal; failures often
-span multiple. The ordering is a heuristic, not a theorem. The
-model is at its most useful in the conversation, not in the
-algorithm.
+These six classes require different remediation than the ladder
+provides: governance and value alignment for normative failures;
+security engineering for adversarial failures; monitoring and
+refresh cycles for drift; sustained reviewer discipline for
+complacency; architectural decomposition for compositional
+failures; deployment-specific evaluation for distributional
+mismatch. The ladder also does not address conversation-level
+degradation --- earlier errors propagating into later outputs,
+instruction drift across a long session, the model losing track
+of constraints set at the session's start --- which require
+evaluation at the session level, not the output level. Hold the
+axes loosely: they are not orthogonal, failures often span
+multiple, and the ordering is a heuristic, not a theorem.
+
+\section*{Walking the ladder}
+
+The five axes form a ladder because they are arranged in roughly
+increasing distance from what the LLM can reliably do on its own.
+The ladder is a procedure for the five-axis failures --- the class
+most commonly encountered in practice and most directly remedied
+by prompt, system design, and process changes. The recommended
+walk, when an output arrives that strikes you as wrong, is
+bottom-up:
+\begin{enumerate}
+  \item \emph{Structure}: does the output parse, compile, validate
+        against its schema?
+  \item \emph{Meaning}: read it as a self-contained artifact ---
+        does it contradict itself?
+  \item \emph{Context}: is it appropriate for the situation,
+        audience, and purpose?
+  \item \emph{Groundedness}: are the factual claims true?
+  \item \emph{Environment}: was the question itself fully
+        specified?
+\end{enumerate}
+
+The discipline is that lower-axis failures are typically easier to
+diagnose and cheaper to remedy than higher-axis ones. A
+practitioner who jumps straight to ``the model hallucinated'' may
+have missed a context failure that does not require any change to
+the model at all. Conversely, a practitioner who never considers
+groundedness will deploy systems that are confidently wrong about the
+world.
+
+Return to the developer with the customer-records function. We
+walk the ladder.
+
+\emph{Structure} passes: the function parses and imports.
+\emph{Meaning} passes: it does not contradict itself; the type
+signature matches the return. \emph{Context} fails: the codebase
+uses a particular ORM and the model wrote raw list comprehensions
+instead. We add the codebase conventions to the prompt and the
+model writes ORM code.
+
+The function still produces wrong output. We walk again. Structure,
+meaning, context now all pass. \emph{Groundedness} fails: the model
+called \texttt{customers.filter\_by\_region(r)}, a method that
+looked plausible but does not exist on the actual ORM. We give the
+model the ORM definitions, by retrieval, and it picks a real
+method.
+
+The function still produces wrong output. The methods are real.
+The output is sensibly wrong: the regions are off.
+\emph{Environment} fails: in this codebase, ``region'' is a sales
+territory id, not a country code. The user assumed the model could
+see what they meant by region. It could not. The user specifies
+what region means, and the function works.
+
+The walk shows the discipline. We did not stop at the first axis
+that passed. We did not jump to the most exotic explanation. We
+located the failure at the level where the remedy lives, and each
+fix targeted the right intervention point: prompt content for
+context, retrieval for groundedness, prompt specification for
+environment.
+
+It is worth pausing on the groundedness failure to name the
+mechanism behind it. The invented method ---
+\texttt{customers.filter\_by\_region(r)} --- is a product of the
+same training objective that makes the model fluent in the first
+place. Next-token prediction trains on plausibility: method calls
+of the form \texttt{object.verb\_by\_field()} are common patterns
+in the training corpus, and the model produces what is statistically
+likely given the surrounding code. There is no signal in the
+pretraining objective that distinguishes a method that exists in
+the user's actual ORM from one that merely fits the pattern.
+Notice also \emph{where} the failure lands: not in the high-level
+structure of the function (filter, sort by numeric field, return
+names) but in a specific peripheral detail (the exact method
+name). This is characteristic of groundedness failures. The
+skeleton of a correct answer is more strongly represented in
+training data than the specific, deployment-relevant details that
+make the skeleton work. Hallucinated citations, invented API
+endpoints, and fabricated function signatures all follow the
+same shape: the genre is right, the specific referent is not.
+The remedy --- giving the model the ORM schema before generation
+--- works by changing the question from ``what is statistically
+likely'' to ``what is consistent with this document.''
 
 \section*{Why this matters}
 

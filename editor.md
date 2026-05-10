@@ -4,7 +4,7 @@
 
 ---
 
-## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article verification+complacency additions, and article error taxonomy completion complete
+## Current status: STRONG DRAFT — blocking structural issues resolved; agentic AI, verification, private corpus, refresher alignment, NTG editorial fixes, Feynman Standard mechanism pass, NTG completion pass, NTG→main backport, article error taxonomy completion (six classes + calibration), and article structural reorder (taxonomy before ladder) complete
 
 The manuscript has genuine distinction. The voice is right, the intellectual spine is right, the systems framing is right. The §A blocking issues have been resolved (2026-05-09). Six agentic AI coverage gaps in ch12 addressed (2026-05-09). Verification cost erosion added across ch10, ch12, ch13 (2026-05-09). Private corpus / vocabulary gap treatment added across ch04, ch08, ch10 (2026-05-09). Five math refresher alignment gaps fixed (2026-05-09): positional encodings (ch05), constrained optimisation/partition functions (ch02), SVD/Eckart-Young (ch08), Unigram-LM EM (ch04), BM25/RRF formulas (ch10). Non-technical guide editorial fixes applied (2026-05-09): two factual corrections, Schaeffer balance, vocabulary gap, automation complacency, verification cost inversion, voice pass (see §A10). Feynman Standard mechanism pass applied (2026-05-09): standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04, ch05, ch08 (see §A11). NTG completion pass applied (2026-05-09): remaining Feynman Standard gaps in ch03 and ch09 fixed; worked diagnosis example added to ch13; practical synthesis chapter (ch14) and closing note with further reading (ch15) written and registered (see §A12). NTG→main backport applied (2026-05-09): three improvements identified from NTG writing applied to main reader ch09 and ch13 (see §A13). Article editorial pass applied (2026-05-09): both standalone articles updated for Feynman Standard and voice consistency (see §A14). §B items remain required for a commercial edition. §C items are optional enhancements.
 
@@ -210,6 +210,22 @@ Final pass to bring the non-technical guide from educational to equipped: reader
 
 ---
 
+### A17. ✓ Article structural reorder: taxonomy before ladder — FIXED 2026-05-09
+
+Both articles restructured so the full failure taxonomy is taught before the ladder is demonstrated.
+
+**Pedagogical rationale**: The ladder is most useful as a reasoning tool when the reader already has a map of all the territory it operates in. The previous structure taught the ladder first, then disclosed its limits as a coda. Readers encountered the six escape classes after the walk was complete, making them feel like footnotes. The new structure teaches the full failure landscape first, then shows the ladder in action — the walk becomes a demonstration of a known tool against a known map.
+
+**Changes made (both articles)**:
+- Added roadmap paragraph to intro section: five-rung failures (single-output) + six escape classes (outside the frame); article maps both before demonstrating the ladder.
+- Renamed and moved "What the model/ladder does not capture" to before "Walking the ladder"; renamed to "Beyond the five axes" / "Beyond the five rungs" to signal its role as a map extension rather than a coda.
+- Updated opening of moved section: frames it as completing the map before the walk, not as disclosing the ladder's limits after the walk.
+- Added closing transition in moved section: names the different remediation required for each of the six classes; bridges explicitly to the ladder as a procedure for the five-axis failures.
+- Updated opening of "Walking the ladder": makes the ladder's scope explicit — a procedure for the five-axis/rung failures — before beginning the example.
+- Fixed forward reference in legal article drift paragraph: "The walking example above already surfaces this" → "Legal practice surfaces this regularly" (section now precedes the walk).
+
+---
+
 ### A16. ✓ Article error taxonomy completion — FIXED 2026-05-09
 
 Both articles now carry a complete six-class error taxonomy beyond the five-axis ladder. Four classes were added or expanded in this pass.
@@ -362,4 +378,4 @@ Add a `Makefile` or `latexmk` config and document a Docker/Nix build environment
 
 ---
 
-*Last updated: 2026-05-09 (article error taxonomy completion — §A16). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`, all 14 `non_technical_guide/*.tex` files. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF). NTG editorial review: full read of all 14 chapters; seven fixes applied (see §A10). Feynman Standard: standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04 (embedding geometry), ch05 (attention weight production), ch08 (LoRA low-rank justification) (see §A11).*
+*Last updated: 2026-05-09 (article structural reorder: taxonomy before ladder — §A17). Review basis: `main.tex`, all `weeks/*.tex`, `math_refresher/math_refresh.tex`, `math_preface_probability.tex`, `math_chapter01.tex`–`math_chapter13.tex`, `preamble.tex`, `VOICE.md`, `editorial_reader.md`, `editorial_refresh.md`, all 14 `non_technical_guide/*.tex` files. Chapter title mapping verified by grep on section headers. Agentic AI gap analysis: full read of `ch12_access_apis_agents_mcp.tex` (1,509 lines pre-edit), cross-check against ch09/ch10/ch11/ch13 for agent-relevant content. Refresher alignment: cross-document audit of all 13 reader chapters against 13 refresher chapters; five gaps identified and filled (positional encodings, constrained optimisation/partition functions, SVD/Eckart-Young, Unigram-LM EM, BM25/RRF). NTG editorial review: full read of all 14 chapters; seven fixes applied (see §A10). Feynman Standard: standard codified in STRUCTURE.md and preface; mechanism subsections added to NTG ch04 (embedding geometry), ch05 (attention weight production), ch08 (LoRA low-rank justification) (see §A11).*
