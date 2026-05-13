@@ -1,4 +1,5 @@
 \chapter{Pretraining, GPT-Style Models, and In-Context Learning}
+\label{chap:pretraining}
 \label{sec:ch6-pretrain}
 
 \scenelabel
@@ -163,7 +164,7 @@ By the end of this chapter, you should be able to:
 
 GPT-style pretraining optimizes a single objective: maximize the
 autoregressive log-likelihood of text under the causal factorization
-from Chapter~1:
+from Chapter~\ref{chap:stat-foundations}:
 \begin{equation}
 \label{eq:ch6-pretrain-obj}
 \mathcal{L}(\theta)
@@ -207,7 +208,7 @@ Eq.~\eqref{eq:ch6-memorization}).
 Standing assumptions are:
 \textbf{(A5.1)} Chinchilla exponents $(\alpha, \beta)$ and the
 compute-optimal form $(N^\star, D^\star) \propto C^{1/2}$ are imported
-from Chapter~2 (assumption A2.2) and extrapolate only within the fit
+from Chapter~\ref{chap:optimization} (assumption A2.2) and extrapolate only within the fit
 range.
 \textbf{(A5.2)} Mechanistic hypotheses for in-context learning
 (implicit Bayesian inference, induction heads, gradient descent in
@@ -229,7 +230,7 @@ worth understanding.
 
 \subsection{Autoregressive (Causal) LM}
 
-Eq.~\eqref{eq:ch6-pretrain-obj}, with a causal mask (Chapter~5).
+Eq.~\eqref{eq:ch6-pretrain-obj}, with a causal mask (Chapter~\ref{chap:transformer}).
 Every position is both a training \emph{context} and a training
 \emph{target}: the cross-entropy is summed over all $T$ positions in a
 single forward pass. Architectures: GPT family, Llama, Mistral,
@@ -336,7 +337,7 @@ copyrighted; some jurisdictions permit text-and-data mining, others
 require opt-in. Responsible pipelines now maintain a per-document
 provenance log (source URL, crawl date, license detection, opt-out
 signals), and the regulatory surface (EU AI Act, US state laws,
-individual suits) is rapidly evolving. This becomes a Chapter~11
+individual suits) is rapidly evolving. This becomes a Chapter~\ref{chap:governance}
 governance input: your assurance case requires a defensible data
 provenance record.
 
@@ -355,7 +356,7 @@ fixed-length batches. Padding wastes FLOPs. The canonical solution is
 \emph{packing}: concatenate multiple short documents into a single
 sequence of length $T$, separated by the end-of-document token
 (\texttt{<|endoftext|>}, a.k.a.\ \texttt{<eos>}). Combined with a
-\emph{block-diagonal} attention mask (Chapter~5), attention cannot leak
+\emph{block-diagonal} attention mask (Chapter~\ref{chap:transformer}), attention cannot leak
 across documents within the same packed sequence, preserving the
 per-document autoregressive factorization.
 
@@ -379,14 +380,14 @@ the compute a uniform full-length pretrain would cost.
 
 \section{Scaling Laws Revisited: Compute-Optimal Training}
 
-From Chapter~2, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
+From Chapter~\ref{chap:optimization}, the Chinchilla joint law~\citep{hoffmann2022chinchilla}
 is
 \begin{equation}
 \label{eq:ch6-chinchilla}
 L(N, D) \;=\; E + \frac{A}{N^\alpha} + \frac{B}{D^\beta}.
 \end{equation}
 
-\begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Chapter~2]
+\begin{derivation}[compute-optimal $(N^\star, D^\star)$, recap of Chapter~\ref{chap:optimization}]
 Fix $C \approx 6\,N D$. Minimizing Eq.~\eqref{eq:ch6-chinchilla}
 subject to $N D = C/6$ via the Lagrangian
 $\mathcal{J}(N, D, \mu) = L(N, D) - \mu\,(N D - C/6)$ yields the
@@ -480,7 +481,7 @@ trained autoregressive LM, implements the rule ``given
 \emph{previous-token head} (layer 1) and a \emph{copy-on-match head}
 (layer 2). The emergence of this circuit during training coincides
 with a sharp drop in in-context loss. Strength: mechanistically
-grounded in the architecture of Chapter~5. Weakness: extends only to
+grounded in the architecture of Chapter~\ref{chap:transformer}. Weakness: extends only to
 the copy-like component of ICL.
 
 \textbf{Gradient descent in the forward pass}
@@ -750,7 +751,7 @@ distribution. If not, switch metrics before making causal claims.
 For safety-relevant claims (e.g., ``the model cannot do $X$ at our
 scale''), conservative practice assumes smooth scaling and budgets
 for the predicted performance of a larger model under the same
-metric. Governance (Chapter~11) should require that any
+metric. Governance (Chapter~\ref{chap:governance}) should require that any
 ``non-emergence'' argument used in an assurance case be replicated
 under at least one continuous metric; a single-metric
 non-capability claim is not evidence.
@@ -800,7 +801,7 @@ probe regime without new measurement.
   \item Output filters alone are insufficient: the training data
         itself must be treated as a privacy asset.
 \end{itemize}
-Chapter~11 (Governance) returns to memorization as a residual risk in
+Chapter~\ref{chap:governance} (Governance) returns to memorization as a residual risk in
 the assurance case.
 
 \section{Systems Engineering Implications}
@@ -854,7 +855,7 @@ Operations & Prompt drift & Snapshot prompts in logs; alert on
         regressions occur on API upgrades.
   \item \textbf{Fluency as correctness}. Fluent-but-wrong outputs
         read more plausibly than hesitant-but-right outputs;
-        calibration probes (Chapter~1) are essential.
+        calibration probes (Chapter~\ref{chap:stat-foundations}) are essential.
   \item \textbf{Contamination-as-capability}. A benchmark the model
         has already seen can create the illusion of generalization.
         Cutoff-date discipline matters.

@@ -68,71 +68,41 @@ answer matters.
 \section*{How we got here}
 \addcontentsline{toc}{section}{How we got here}
 
-It is worth remembering that the field has a history.
+It is worth remembering that the field has a history --- and that
+the history is longer than the headlines suggest.
 
-In 1913 the Russian mathematician Andrey Markov sat down with a
-copy of Pushkin's \emph{Eugene Onegin} and counted, by hand, the
-alternation of vowels and consonants across twenty thousand
-letters. He did this, in part, to make a philosophical point ---
-that the law of large numbers did not require independent trials,
-as a colleague had argued, but extended to chains of conditional
-dependence as well. It was an argument with a contemporary; it
-turned out, accidentally, to be the founding act of statistical
-language modelling. Markov gave us a model of language as a
-sequence of dependencies a full century before we had the data or
-the hardware to make that model useful.
+Statistical language modelling began in 1913, when the Russian
+mathematician Andrey Markov showed that language could be
+described as a chain of conditional dependencies between symbols.
+Claude Shannon, in 1948, gave the field a way to measure how well
+any model captures the regularities of a language --- a yardstick
+that is still in use today. The first artificial neurons appeared
+in the early 1950s, and what followed was three decades of
+alternating promise and disappointment: the perceptron, two AI
+winters when funding collapsed and confidence deflated, the slow
+rehabilitation of multi-layer networks through backpropagation in
+the 1980s, and recurrent architectures in the 1990s that could
+finally hold context across a sequence of words.
 
-Claude Shannon followed in 1948 with his theory of information.
-Shannon was working at Bell Labs on telegraphy, and he wanted to
-measure how much information a transmitted signal carried. As one
-of his examples he turned to English text, and he gave us a way
-to measure how surprising a sequence is and therefore how well a
-model has captured the regularities of the language it is trying
-to describe. He estimated the entropy of English at roughly one
-bit per letter. He gave us a yardstick.
+By 2003 the first recognisably modern neural language model
+existed. By 2013, words could be placed in a geometric space
+where arithmetic on meaning worked: \emph{king minus man plus
+woman} landed near \emph{queen}. By 2015 a mechanism called
+\emph{attention} let a model focus selectively on the parts of
+a sequence that mattered for the next prediction. In 2017, a
+team at Google removed the last architectural constraint and
+published a paper titled, with characteristic understatement,
+\emph{Attention Is All You Need}. The architecture described
+in that paper is still the basis of every system in this book.
 
-For decades after that the field crawled. The 1950s and 1960s saw
-the first artificial neurons (Warren McCulloch and Walter Pitts in
-1943; Frank Rosenblatt's perceptron in 1958). The 1970s saw a
-period that is now politely called the first AI winter, after
-Marvin Minsky and Seymour Papert's 1969 book pointed out the
-mathematical limits of single-layer perceptrons and funding
-collapsed. The 1980s saw the connectionist revival and the
-rediscovery of an algorithm called backpropagation that let
-networks of more than one layer be trained at all (Paul Werbos
-in 1974; David Rumelhart, Geoffrey Hinton, and Ronald Williams in
-1986). The 1990s and early 2000s built recurrent networks for
-sequences and watched them mostly fail at long-range memory, until
-Sepp Hochreiter and J\"urgen Schmidhuber proposed, in 1997, the
-Long Short-Term Memory cell. Yoshua Bengio and his coauthors, in
-2003, built the first recognisably modern neural language model.
-Almost nobody outside the field noticed.
-
-Then the speed picked up. Tom\'a\v{s} Mikolov and his colleagues
-showed in 2013 that words could be embedded in a vector space
-where the geometry encoded surprising amounts of meaning ---
-``king minus man plus woman'' landed near ``queen''. Ilya
-Sutskever, Oriol Vinyals, and Quoc Le followed with sequence-to-
-sequence translation in 2014. Dzmitry Bahdanau, Kyunghyun Cho,
-and Bengio introduced \emph{attention} in 2015. Ashish Vaswani
-and his coauthors at Google removed the recurrence in 2017 in a
-paper they titled, with characteristic understatement,
-\emph{Attention Is All You Need}, and gave us the architecture
-that is still, eight years later, the basis of every system in
-this book.
-
-And then the field stopped crawling. GPT-1 in 2018, GPT-2 in
-2019, GPT-3 in 2020, ChatGPT at the end of 2022, GPT-4 the
-following spring, and a steady cascade of competitors --- Claude
-from Anthropic, Gemini from Google, Llama from Meta, Mistral and
-DeepSeek from Europe and China --- in the years that followed.
-Each of these systems was a substantial engineering effort by
-hundreds of people whose names will not appear in this book. But
-the lineage matters. None of these systems came out of nowhere.
-None of them required anything that we could not, in retrospect,
-have predicted from the trajectory. The whole edifice rests on
-a few sturdy ideas, and this guide is in the business of giving
-you those ideas one at a time.
+Five years of scaling followed. GPT-1 in 2018, GPT-3 in 2020,
+ChatGPT at the end of 2022, and a steady cascade of capable
+competitors in the years after. None of these systems came out
+of nowhere. Each one was possible only because of the step
+before it. The chapters that follow trace that lineage one idea
+at a time, and when you finish you will see the whole edifice
+clearly --- a long tradition of engineering, not a sudden
+apparition.
 
 \section*{What this book is not}
 \addcontentsline{toc}{section}{What this book is not}
@@ -200,16 +170,16 @@ beautifully calibrated sense of plausibility and a great deal of
 memorised plausibility, which is sometimes the same as truth and
 sometimes is not. This is the seed of \emph{hallucination} --- the
 polite name we give to a fluent, confident, plausible, wrong
-answer. We will return to it in Chapter~1, in Chapter~10, and at
-length in Chapter~13.
+answer. We will return to it in Chapter~\ref{chap:stat-foundations}, in Chapter~\ref{chap:systems}, and at
+length in Chapter~\ref{chap:error-model}.
 
 A model that is fluent is not, by default, a model that is
 helpful. A model that has only been trained on the kind of
-prediction we will describe in Chapter~1 will happily complete an
+prediction we will describe in Chapter~\ref{chap:stat-foundations} will happily complete an
 essay that begins ``the best way to commit fraud is''. Making it
 refuse to do so is the work of a discipline called
 \emph{alignment}, and alignment is its own discipline of trade-
-offs. We will see in Chapter~9 how the discipline arrived, what
+offs. We will see in Chapter~\ref{chap:alignment} how the discipline arrived, what
 it bought, and what it cost --- the so-called \emph{alignment
 tax} on capability, the \emph{sycophancy} that emerges when the
 model is rewarded too much for agreeing with the annotator, the
@@ -220,14 +190,14 @@ The careful question that produces a careful answer often differs
 from the careless question that produces a wrong one only by a
 few words. Two prompts that a human would read as equivalent can
 produce two qualitatively different outputs. We call this
-\emph{prompt brittleness}. We will see, in Chapter~5, why the
+\emph{prompt brittleness}. We will see, in Chapter~\ref{chap:transformer}, why the
 mechanism the model uses to read its inputs makes this not just
 possible but inevitable.
 
 A model that retrieves from a document store is only as honest as
 the store. A model that calls a tool is only as careful as the
-tool's contract. We will see, in Chapter~10 and again in
-Chapter~12, how retrieval can hallucinate, how the model can be
+tool's contract. We will see, in Chapter~\ref{chap:systems} and again in
+Chapter~\ref{chap:agents}, how retrieval can hallucinate, how the model can be
 \emph{lost in the middle} of a long context, and how a malicious
 tool output can be crafted to look like a system instruction ---
 the class of attack we call \emph{prompt injection}, which is to
@@ -239,8 +209,9 @@ vocabulary of anyone who deploys these systems into the world,
 and they are increasingly the working vocabulary of anyone who
 relies on someone else's deployment. Every chapter ends with a
 discussion of the characteristic failures of the technique it
-presents. Read those sections carefully. They are where the
-unhelpful intuition that ``the model just knows'' meets the more
+presents. 
+% Read those sections carefully. % NOTE - removed for being to prescriptive to the reader
+They are where the unhelpful intuition that ``the model just knows'' meets the more
 useful intuition of ``the model is doing exactly what we asked,
 and what we asked is not quite what we meant.''
 
@@ -274,12 +245,12 @@ they matter. We write the why first. Then the how.
 
 If you are reading the book front-to-back you will find that the
 chapters build on one another. The notion of a probability
-distribution from Chapter~1 reappears in Chapter~6 as the basis
-of pretraining and again in Chapter~9 as the thing alignment
-modifies. The notion of a vector from Chapter~4 reappears in
-Chapter~5 as the input to attention and in Chapter~10 as the
+distribution from Chapter~\ref{chap:stat-foundations} reappears in Chapter~\ref{chap:pretraining} as the basis
+of pretraining and again in Chapter~\ref{chap:alignment} as the thing alignment
+modifies. The notion of a vector from Chapter~\ref{chap:tokenization} reappears in
+Chapter~\ref{chap:transformer} as the input to attention and in Chapter~\ref{chap:systems} as the
 basis of retrieval. The notion of a trust boundary from
-Chapter~9 reappears in Chapter~12 as the agent-loop invariant.
+Chapter~\ref{chap:alignment} reappears in Chapter~\ref{chap:agents} as the agent-loop invariant.
 You do not have to remember any of this. The book will remind
 you each time it matters.
 

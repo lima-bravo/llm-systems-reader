@@ -1,4 +1,5 @@
 \chapter{Chapter 6 Refresher: Pretraining, GPT-Style Models, and In-Context Learning --- Pretraining Objective and Decoding Controls}
+\label{chap:pretraining}
 
 \scenelabel
 Training optimises Preface Steps~8--10 on teacher-forced contexts; deployment samples from the learned conditional family under budgets and safety envelopes---same \(\theta\), different \emph{pushforward} map from logits to tokens.
@@ -36,7 +37,7 @@ Decoding is theatre lighting on the same actor (\(\theta\)); training chooses th
 \section*{What You Need To Recall Precisely}
 \begin{itemize}[leftmargin=1.5em]
   \item \textbf{Autoregressive NLL objective.}
-  For corpus sequences \(x_{1:T}\), training maximises \(\sum_t \log p_\theta(x_t\mid x_{<t})\), equivalently minimises per-token cross-entropy averaged over positions and documents. This is the Chapter~1 chain rule factorisation evaluated inside the transformer stack that produces conditional softmax parameters at each \(t\).
+  For corpus sequences \(x_{1:T}\), training maximises \(\sum_t \log p_\theta(x_t\mid x_{<t})\), equivalently minimises per-token cross-entropy averaged over positions and documents. This is the Chapter~\ref{chap:stat-foundations} chain rule factorisation evaluated inside the transformer stack that produces conditional softmax parameters at each \(t\).
   \item \textbf{Temperature transform:}
   \[
     p_i(\tau)=\frac{\exp(z_i/\tau)}{\sum_j \exp(z_j/\tau)}.

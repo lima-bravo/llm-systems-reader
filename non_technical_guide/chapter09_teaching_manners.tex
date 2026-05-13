@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Teaching Manners and the Cost of Doing So}
+\label{chap:alignment}
 \label{ntg:ch9}
 
 \scenelabel
@@ -20,7 +21,7 @@ sentence. It will produce coherent prose. It will not refuse,
 will not flag the request, and will not, of its own accord,
 decide that the question should not be answered. This is not
 the model misbehaving. The model is doing exactly what
-Chapter~6 trained it to do, which is to produce the most
+Chapter~\ref{chap:pretraining} trained it to do, which is to produce the most
 plausible continuation of the prefix it was given.
 
 A pretrained language model is a beautifully calibrated
@@ -487,7 +488,7 @@ confident-sounding answers. The aligned model will often
 assert things it should hedge and hedge things it should
 assert. This is one of the things alignment costs, and as of
 this writing it has not been fully resolved. We will return to
-calibration in the error model of Chapter~13.
+calibration in the error model of Chapter~\ref{chap:error-model}.
 
 \paragraph{The alignment tax, observed.} A model that has
 been carefully aligned for safety will, on certain measures,
@@ -513,18 +514,18 @@ sensible discussion about what the values should be.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~6 (the base model that alignment
-modifies), Chapter~8 (the LoRA mechanism that makes the
-adaptation cheap), and Chapter~5 (the architecture in which
+This chapter built on Chapter~\ref{chap:pretraining} (the base model that alignment
+modifies), Chapter~\ref{chap:adaptation} (the LoRA mechanism that makes the
+adaptation cheap), and Chapter~\ref{chap:transformer} (the architecture in which
 the modifications happen). It is the place where the
-calibration property of Chapter~1 comes under pressure, where
-the helpfulness behaviour user-visible in Chapter~12 is
+calibration property of Chapter~\ref{chap:stat-foundations} comes under pressure, where
+the helpfulness behaviour user-visible in Chapter~\ref{chap:agents} is
 manufactured, and where the safety properties evaluated in
-Chapter~10 are produced. Chapter~10 builds the systems that
-wrap aligned models for deployment. Chapter~11 takes up the
+Chapter~\ref{chap:systems} are produced. Chapter~\ref{chap:systems} builds the systems that
+wrap aligned models for deployment. Chapter~\ref{chap:governance} takes up the
 governance question of who is responsible for the values
 encoded in the alignment, and what it would mean to audit them.
-Chapter~13 returns to the failure modes catalogued here as the
+Chapter~\ref{chap:error-model} returns to the failure modes catalogued here as the
 \emph{context} and \emph{environment} axes of the error model.
 The next chapter --- \emph{Memory the Model Doesn't Have} ---
 explains how systems built around aligned models fill in the

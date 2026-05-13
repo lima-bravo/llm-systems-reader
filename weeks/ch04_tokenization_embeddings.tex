@@ -1,4 +1,5 @@
 \chapter{Tokenization and Embeddings — From Text to Vectors}
+\label{chap:tokenization}
 \label{sec:ch4-tokemb}
 
 \scenelabel
@@ -9,7 +10,7 @@
 \sceneitem{What goes wrong}
 \end{scenestrip}
 
-\paragraph{The problem.} Chapter~1 spoke of probabilities over
+\paragraph{The problem.} Chapter~\ref{chap:stat-foundations} spoke of probabilities over
 tokens as if a token were an obvious thing. It is not. A computer
 sees only numbers; a language has, in any reasonable accounting,
 an unbounded number of words, and even an unbounded number of
@@ -230,7 +231,7 @@ deterministic function
 \mathbb{R}^{T \times d}.
 \end{equation}
 See Figure~\ref{fig:week3-pipeline}. After embedding, the rest of the
-Transformer (Chapter~5) operates purely on floats; the model never sees a
+Transformer (Chapter~\ref{chap:transformer}) operates purely on floats; the model never sees a
 character or a Unicode code-point again. The tokenizer is therefore a
 \emph{model boundary}: it defines the alphabet the rest of the system
 will ever perceive, and it must match exactly between training and
@@ -255,7 +256,7 @@ Three engineering claims follow immediately:
         token sequence is unrecoverable downstream (e.g., a
         capitalization lost in lowercasing).
   \item \textbf{Tokenization determines the prior}. Tokens are the
-        atomic events in the cross-entropy of Chapter~1; changing them
+        atomic events in the cross-entropy of Chapter~\ref{chap:stat-foundations}; changing them
         changes both the likelihood surface and the notion of
         perplexity.
 \end{itemize}
@@ -642,7 +643,7 @@ The output layer of a language model computes unnormalized logits
 W_{\mathrm{out}} \in \mathbb{R}^{V \times d},
 \end{equation}
 where $\mathbf{h}$ is the final hidden state and $\mathbf{z}$ is fed
-into the softmax of Chapter~1. \emph{Tying} weights sets
+into the softmax of Chapter~\ref{chap:stat-foundations}. \emph{Tying} weights sets
 $W_{\mathrm{out}} = E$, so the input embedding and the output projection
 share parameters. This halves the embedding parameter budget and,
 empirically, improves perplexity by a small but consistent margin on
@@ -660,7 +661,7 @@ machinery the model cannot distinguish ``dog bites man'' from
 Classical variants (sinusoidal, learned) are additive to the embedding;
 rotary~\citep{su2021rope} and ALiBi~\citep{press2022alibi} are
 multiplicative/additive inside the attention kernel. Positional
-encoding is covered in depth in Chapter~5.
+encoding is covered in depth in Chapter~\ref{chap:transformer}.
 
 \section{The Distributional Hypothesis and Analogy Vectors}
 
@@ -728,7 +729,7 @@ numbers are not comparable across papers.
 
 The practical implication: raw cosine similarity is uninformative
 without centering or whitening. Downstream retrieval pipelines
-(Chapter~10) routinely apply a mean-subtraction or PCA step before
+(Chapter~\ref{chap:systems}) routinely apply a mean-subtraction or PCA step before
 comparing embeddings, and the effectiveness of that step is itself an
 empirical finding, not a theorem.
 
@@ -762,7 +763,7 @@ trained on Google News encode gender stereotypes
 (\texttt{computer\_programmer} is closer to \texttt{man} than to
 \texttt{woman}, \emph{etc.}). Similar patterns recur in modern LLM
 embeddings, although now mediated by the much richer contextualized
-representations of the Transformer stack (Chapter~5).
+representations of the Transformer stack (Chapter~\ref{chap:transformer}).
 
 Three engineering positions on bias in embeddings:
 \begin{itemize}
@@ -774,7 +775,7 @@ Three engineering positions on bias in embeddings:
         output classifiers, and human review are typically more
         effective than post-hoc embedding projections.
 \end{itemize}
-This is reinforced in Chapter~9 (alignment) and Chapter~11 (governance).
+This is reinforced in Chapter~\ref{chap:alignment} (alignment) and Chapter~\ref{chap:governance} (governance).
 
 \section{Systems Engineering Implications}
 
@@ -866,7 +867,7 @@ ratio for each target language and plan context budgets accordingly.
         corpus. Each unknown private term is fragmented into
         sub-tokens whose composite representation encodes nothing
         about the private meaning (see the discussion at
-        \S\ref{sec:private-corpus-vocab-gap} in Chapter~10). The
+        \S\ref{sec:private-corpus-vocab-gap} in Chapter~\ref{chap:systems}). The
         consequence is that the model's understanding of those
         terms is derived from their sub-parts' public-domain
         associations, which may be entirely unrelated.
@@ -882,7 +883,7 @@ ratio for each target language and plan context budgets accordingly.
         sub-tokens, treat vocabulary gap as a deployment risk.
         The same tokenizer that encodes the model is used for this
         measurement; the computation requires no model calls and
-        can be run as part of a pre-deployment checklist. Chapter~8
+        can be run as part of a pre-deployment checklist. Chapter~\ref{chap:adaptation}
         (\S\ref{sec:ch8_private_vocab}) covers vocabulary expansion
         and domain embedding fine-tuning as remedies.
 \end{itemize}
@@ -894,7 +895,7 @@ ratio for each target language and plan context budgets accordingly.
         matrix $E$ feeds directly into the residual stream; positional
         encodings (RoPE, ALiBi) are layered on top.
   \item \textbf{Chapter 6 (Pretraining \& In-Context)}: the effective
-        dataset size $D$ in the Chinchilla law from Chapter~2 is measured
+        dataset size $D$ in the Chinchilla law from Chapter~\ref{chap:optimization} is measured
         in \emph{tokens}; a different tokenizer produces a different
         training compute accounting.
   \item \textbf{Chapter 7 (Efficiency, Scaling, MoE)}: tied embeddings
@@ -932,7 +933,7 @@ ratio for each target language and plan context budgets accordingly.
   \item \citet{bolukbasi2016man} --- gender bias in word embeddings.
   \item \citet{su2021rope}, \citet{press2022alibi} --- modern
         positional encoding schemes (previewed here, developed in
-        Chapter~5).
+        Chapter~\ref{chap:transformer}).
 \end{itemize}
 
 \section{Recommended University Lectures}

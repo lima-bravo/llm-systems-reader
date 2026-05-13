@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{The Idea That a Word Predicts the Next Word}
+\label{chap:stat-foundations}
 \label{ntg:ch1}
 
 \scenelabel
@@ -25,13 +26,13 @@ continuation is given everything it has seen so far.
 
 That is the entire problem of language modelling, written in a
 single sentence. Everything in this guide is, in one way or
-another, the elaboration. The Transformer of Chapter~5 is a
+another, the elaboration. The Transformer of Chapter~\ref{chap:transformer} is a
 particular machinery for assigning those numbers. The training
-process of Chapter~6 is what taught the machinery which numbers
-to assign. The alignment work of Chapter~9 is what later
+process of Chapter~\ref{chap:pretraining} is what taught the machinery which numbers
+to assign. The alignment work of Chapter~\ref{chap:alignment} is what later
 intervened to keep the machinery from assigning high numbers to
 sentences nobody would want it to produce. The failure modes of
-Chapter~13 are, almost without exception, traceable to the gap
+Chapter~\ref{chap:error-model} are, almost without exception, traceable to the gap
 between what makes a continuation \emph{likely} and what makes
 it \emph{true}.
 
@@ -100,10 +101,41 @@ Jelinek, working at IBM in the 1980s, gave us the catchphrase
 improves.'' It was a remark about the willingness of mere counts
 to do the work that elaborate linguistic theory had failed to do.
 
-The neural turn came in 2003. Yoshua Bengio and his coauthors
+While n-gram researchers were filling hard drives with counts,
+a separate tradition was developing in parallel. Researchers
+inspired by neuroscience had been experimenting, since the 1950s,
+with computing systems built from layers of simple units loosely
+modelled on neurons. Each unit receives a list of numbers,
+combines them with a set of adjustable weights, and passes the
+result to the next layer. The weights are the only thing that
+changes during training: show the network an example, measure
+how wrong the output was, and nudge the weights slightly in the
+direction that would have made the answer more correct. Repeat
+millions of times. The weights settle; the network generalises.
+
+The problem was that the earliest versions had only a single
+layer --- input connected directly to output --- and a
+single-layer network can only detect the simplest patterns.
+In 1969, Marvin Minsky and Seymour Papert proved this
+limitation formally, and funding for the whole approach largely
+collapsed. The next step, adding hidden layers between input
+and output, was conceptually straightforward but practically
+blocked: there was no efficient method for adjusting the weights
+deep inside the network based on how wrong the final answer was.
+That problem was solved in 1986, when David Rumelhart, Geoffrey
+Hinton, and Ronald Williams showed how to propagate the error
+signal backwards through the layers, giving each weight its
+share of the blame. Two- and three-layer networks became
+trainable. But even those remained too shallow to capture the
+long-range structure of language, and for another decade and a
+half the architecture continued to underdeliver on its promise.
+By the early 2000s the machinery for going deeper was finally
+ready.
+
+In 2003, Yoshua Bengio and his coauthors
 built a small neural network that learned a continuous
 representation of words --- a list of numbers per word, of the
-sort we will spend Chapter~4 understanding --- and used those
+sort we will spend Chapter~\ref{chap:tokenization} understanding --- and used those
 representations to predict the next one. The network was not
 much better than the n-gram models of the day, and the paper
 went largely unnoticed outside its specialist community. But
@@ -118,7 +150,7 @@ Bengio's idea into something called \emph{word2vec}. The
 geometry of the resulting word vectors --- in which ``king minus
 man plus woman'' landed near ``queen'' --- caught public
 attention in a way that the underlying technology, by then ten
-years old, had not. We will spend Chapter~4 unpacking what this
+years old, had not. We will spend Chapter~\ref{chap:tokenization} unpacking what this
 means. For now it is enough to say that the trick was real, the
 trick had limits, and the trick has now been absorbed into the
 foundations of every model we will discuss.
@@ -134,7 +166,7 @@ consumer product. Almost everyone reading this book has by now
 spoken to one.
 
 \paragraph{Where we stand.} The lineage converged on a remarkably simple recipe. Take a
-neural network --- we will see in Chapter~3 what one of those is.
+neural network --- explored in more depth in Chapter~\ref{chap:neural-networks}.
 Show it a long sequence of words. Ask it to predict, at each
 position in the sequence, what the next word is going to be ---
 not as a single guess, but as a relative weighting over every
@@ -164,7 +196,7 @@ training. Everything else --- the apparent reasoning, the
 apparent helpfulness, the apparent personality --- is a
 consequence of the data the model was trained on, the way the
 data was filtered and ordered, and the additional steps we will
-describe in Chapter~9 that turned a fluent autocomplete into
+describe in Chapter~\ref{chap:alignment} that turned a fluent autocomplete into
 something that resembles an assistant.
 
 \paragraph{What goes wrong.} A model trained the way we just described is, by construction,
@@ -228,7 +260,7 @@ cat sat on the'', might look something like:
 The model, in producing a response, almost never just picks the
 top of the list. It usually samples from the list according to
 the weights, with a temperature setting --- which we will meet
-in Chapter~6 --- that controls how aggressively it favours the
+in Chapter~\ref{chap:pretraining} --- that controls how aggressively it favours the
 top. Sampling from the list is what gives the model its apparent
 creativity, and it is also what gives it its variability: ask
 the same prompt twice and you may get two different answers,
@@ -308,13 +340,13 @@ that a sufficiently large model trained on a sufficiently large
 amount of text has, in order to predict next words well, had to
 build internal representations that are useful for a great many
 tasks the training never asked about. We will return to this in
-Chapter~6 under the name \emph{in-context learning}, and in
-Chapter~7 under the name \emph{scaling laws}.
+Chapter~\ref{chap:pretraining} under the name \emph{in-context learning}, and in
+Chapter~\ref{chap:efficiency} under the name \emph{scaling laws}.
 
 The honest answer to the question ``why does this work'' is
 that we have a partial empirical understanding and a poor
 theoretical one. We know that scale helps. We know roughly
-\emph{how much} it helps, in a way we will quantify in Chapter~7.
+\emph{how much} it helps, in a way we will quantify in Chapter~\ref{chap:efficiency}.
 We do not know, in any deep sense, why next-word prediction
 should produce the breadth of behaviour it does. The most
 useful posture for a non-technical reader is to take this as
@@ -351,14 +383,14 @@ text will be measurably worse at Estonian; a model trained
 without access to a particular pharmacology textbook will not
 have memorised it. This is not a moral failing of the model. It
 is a property of the training data, and it can only be
-addressed by changing the data, by retrieval (Chapter~10), or
+addressed by changing the data, by retrieval (Chapter~\ref{chap:systems}), or
 by accepting the limit.
 
 \paragraph{Bigger is not always better, but bigger usually
 helps.} The relationship between model size, training data
 size, training compute, and resulting capability is not
 mysterious. It has been quantified, for the most part, by the
-papers we will discuss in Chapter~7, beginning with the work
+papers we will discuss in Chapter~\ref{chap:efficiency}, beginning with the work
 of Jared Kaplan and his colleagues at OpenAI in 2020 and
 sharpened by the work of Jordan Hoffmann and his colleagues at
 DeepMind in 2022 (the so-called \emph{Chinchilla} paper). The
@@ -376,7 +408,7 @@ for ``does the model give correct answers'', or ``does the
 model behave safely'', or ``does the model help the user
 accomplish their goal''. Each of those is a separate property
 that has to be added on top, and adding each of them costs
-something in the original capability. Chapter~9 is devoted to
+something in the original capability. Chapter~\ref{chap:alignment} is devoted to
 the trade-offs of doing this.
 
 \section{What goes wrong, and why}
@@ -402,7 +434,7 @@ whatever the surrounding pattern suggests, which is often
 right and is sometimes spectacularly wrong. The model has no
 way of telling these two cases apart from the inside. It treats
 them identically. This is the central, irreducible failure mode
-of the technology, and Chapter~10 (retrieval) and Chapter~13
+of the technology, and Chapter~\ref{chap:systems} (retrieval) and Chapter~\ref{chap:error-model}
 (the error model) are largely about how the engineering works
 around it.
 
@@ -410,7 +442,7 @@ around it.
 does not reliably match its accuracy. A vanilla pretrained
 model is, in fact, reasonably well-calibrated on next-word
 prediction itself. The trouble is that the alignment training
-of Chapter~9 tends to make the model both more helpful and less
+of Chapter~\ref{chap:alignment} tends to make the model both more helpful and less
 calibrated --- it learns to sound confident because users
 prefer confident-sounding answers, and the result is a model
 that sometimes asserts things it should hedge and sometimes
@@ -429,7 +461,7 @@ underlying probabilities. Its correctness is a property of the
 match between what it said and the world, which is a property
 the model has no direct access to. Conflating the three is the
 source of more downstream errors than any architectural
-choice. We will return to this distinction in Chapter~13 as
+choice. We will return to this distinction in Chapter~\ref{chap:error-model} as
 the difference between the \emph{meaning} axis and the
 \emph{groundedness} axis of the error model.
 
@@ -439,7 +471,7 @@ depends on the exact prefix, two prompts that differ in
 seemingly trivial ways --- a comma added, a word reordered, a
 synonym substituted --- can produce qualitatively different
 outputs. The technical name is \emph{prompt brittleness}, and
-we will see in Chapter~5 why the architecture makes this not
+we will see in Chapter~\ref{chap:transformer} why the architecture makes this not
 just possible but inevitable. For the purposes of this chapter,
 the important point is that the variability is intrinsic and
 that it cannot be removed simply by ``writing better prompts'',
@@ -450,15 +482,15 @@ though writing better prompts can certainly reduce it.
 
 This chapter sets up the foundation for everything that follows.
 The notion that a model produces a probability distribution over
-next words reappears in Chapter~5 as the output of the
-Transformer, in Chapter~6 as the basis of pretraining, in
-Chapter~9 as the thing alignment modifies, and in Chapter~13
+next words reappears in Chapter~\ref{chap:transformer} as the output of the
+Transformer, in Chapter~\ref{chap:pretraining} as the basis of pretraining, in
+Chapter~\ref{chap:alignment} as the thing alignment modifies, and in Chapter~\ref{chap:error-model}
 as the source of the \emph{meaning} and \emph{groundedness} axes
 of the error model. The notion that the model is sampling
-rather than answering reappears in Chapter~6 as the temperature
+rather than answering reappears in Chapter~\ref{chap:pretraining} as the temperature
 control. The notion that the model is calibrated only weakly
-reappears in Chapter~9 as a measurable cost of the alignment
-work and in Chapter~10 as the reason retrieval, when done well,
+reappears in Chapter~\ref{chap:alignment} as a measurable cost of the alignment
+work and in Chapter~\ref{chap:systems} as the reason retrieval, when done well,
 helps so much.
 
 This chapter depended on no earlier chapter, and the reader

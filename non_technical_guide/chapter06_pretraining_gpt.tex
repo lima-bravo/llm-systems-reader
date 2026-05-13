@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Pretraining and the Birth of GPT}
+\label{chap:pretraining}
 \label{ntg:ch6}
 
 \scenelabel
@@ -32,12 +33,12 @@ at many things --- ideally, things you had not specifically
 asked it to be good at.
 
 The procedure that emerged is now called \emph{pretraining}. It
-is the procedure of Chapter~1 (predict the next token) and
-Chapter~2 (gradient descent) and Chapter~5 (Transformer),
+is the procedure of Chapter~\ref{chap:stat-foundations} (predict the next token) and
+Chapter~\ref{chap:optimization} (gradient descent) and Chapter~\ref{chap:transformer} (Transformer),
 applied at a scale almost no one anticipated. The result is a
 single model that is, in some broad sense, capable of being
 talked to about almost any subject the training data covered.
-The same model, after the additional steps of Chapter~9, is
+The same model, after the additional steps of Chapter~\ref{chap:alignment}, is
 the assistant on the other side of every chat interface you
 have used in the last three years.
 
@@ -105,7 +106,7 @@ it was robust enough to be reproduced and dramatic enough to
 shift the field's expectations of what a pretrained model
 could do. The authors called the phenomenon \emph{in-context
 learning}. Two years later, the same model would be wrapped in
-the alignment work of Chapter~9 to produce ChatGPT.
+the alignment work of Chapter~\ref{chap:alignment} to produce ChatGPT.
 
 ChatGPT was released on 30 November 2022 as a research
 preview. It crossed a hundred million users in two months ---
@@ -117,7 +118,7 @@ to the public. GPT-4 followed in March 2023. Claude 1, 2, and
 Meta, and DeepSeek and Qwen from Chinese labs filled out the
 landscape over the following two years. The architectural
 ideas in all of them are, with very few exceptions, the
-Transformer of Chapter~5 trained by the procedure described in
+Transformer of Chapter~\ref{chap:transformer} trained by the procedure described in
 this chapter.
 
 \paragraph{Where we stand.} A modern pretraining run has the following character. The data
@@ -135,19 +136,19 @@ model is meant to be good at scientific reasoning, more
 conversational data if the model is meant to be good at
 dialogue.
 
-The model is a Transformer of the kind described in Chapter~5,
-sized according to the Chinchilla scaling law of Chapter~2 to
+The model is a Transformer of the kind described in Chapter~\ref{chap:transformer},
+sized according to the Chinchilla scaling law of Chapter~\ref{chap:optimization} to
 match the available compute and data. It is trained, for
 several weeks to several months, on a cluster of thousands of
 graphics processors. The training procedure is the gradient
-descent of Chapter~2 with the cross-entropy loss of Chapter~1.
+descent of Chapter~\ref{chap:optimization} with the cross-entropy loss of Chapter~\ref{chap:stat-foundations}.
 At the end of the training, the model is a \emph{base model}:
 fluent at completing text in the style of its training corpus,
 capable of in-context learning, but not yet capable of behaving
 as an assistant.
 
 The transformation from a base model into an assistant is the
-subject of Chapter~9. The base model is the raw material; the
+subject of Chapter~\ref{chap:alignment}. The base model is the raw material; the
 assistant is the manufactured product. The two are different
 artefacts, with different behaviours, and the language we use
 to discuss them should reflect the difference.
@@ -173,7 +174,7 @@ trained on data up to October 2023 that is asked, in 2025,
 about events after that date will produce a confident answer
 that is, with respect to those events, fictional. The model has
 no native means of telling the user that the question lies past
-its cut-off. We will see in Chapter~10 how retrieval can fill
+its cut-off. We will see in Chapter~\ref{chap:systems} how retrieval can fill
 the gap, with caveats.
 
 The phenomenon of in-context learning, while striking, is
@@ -214,14 +215,14 @@ follows. Both implications are correct. The flow goes:
         with a human (or, increasingly, another model) preferring
         one over the other. The model is updated to produce
         responses more like the preferred ones. This is the
-        RLHF, DPO, and Constitutional AI work of Chapter~9.
+        RLHF, DPO, and Constitutional AI work of Chapter~\ref{chap:alignment}.
 \end{enumerate}
 
 The pretraining is roughly 90\% of the compute and produces
 roughly 90\% of the model's capability. The two later stages
 adjust the surface behaviour in ways that, at the cost of some
 capability, make the model usable. We will look at the later
-stages in Chapter~9. The rest of this chapter is about
+stages in Chapter~\ref{chap:alignment}. The rest of this chapter is about
 pretraining itself.
 
 \subsection*{What is in the training data}
@@ -315,7 +316,7 @@ trick works as well as it does.
 
 \subsection*{Sampling at the output}
 
-We met the sampling step briefly in Chapter~1. It is worth
+We met the sampling step briefly in Chapter~\ref{chap:stat-foundations}. It is worth
 revisiting in the context of pretraining because the sampling
 choices are part of how the model presents itself to a user.
 
@@ -363,8 +364,8 @@ in 2023 will know nothing of events after 2023. A model trained
 on a corpus that included many copies of a particular conspiracy
 theory will, when asked, sometimes reproduce it. There is no
 fix for this at the model level. The fix is either better data,
-later interventions (Chapter~9), or external knowledge sources
-(Chapter~10).
+later interventions (Chapter~\ref{chap:alignment}), or external knowledge sources
+(Chapter~\ref{chap:systems}).
 
 \paragraph{The cost of pretraining is structural.} A frontier
 pretraining run is a multi-hundred-million-dollar undertaking.
@@ -410,7 +411,7 @@ recently elected official, will receive an answer that is
 plausible but unmoored from the world after the cut-off. The
 model usually does not flag this. The fix is either to ask the
 model only about pre-cut-off topics or to use a retrieval
-system (Chapter~10) that supplies post-cut-off information.
+system (Chapter~\ref{chap:systems}) that supplies post-cut-off information.
 
 \paragraph{Memorisation and leakage.} The model can, under the
 right prompt, reproduce passages from its training corpus
@@ -459,16 +460,16 @@ did not appear to emerge in the generation before it.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~1 (the cross-entropy objective),
-Chapter~2 (the optimisation procedure), Chapter~3 (the deep
-neural network), Chapter~4 (the tokenizer and embeddings), and
-Chapter~5 (the Transformer architecture). It described what
+This chapter built on Chapter~\ref{chap:stat-foundations} (the cross-entropy objective),
+Chapter~\ref{chap:optimization} (the optimisation procedure), Chapter~\ref{chap:neural-networks} (the deep
+neural network), Chapter~\ref{chap:tokenization} (the tokenizer and embeddings), and
+Chapter~\ref{chap:transformer} (the Transformer architecture). It described what
 gets done with all of those components when they are combined
 at scale. Everything that follows assumes a pretrained base
-model: Chapter~7 discusses what to do when the budget for
-pretraining is binding, Chapter~8 discusses how to adapt a
-trained base model cheaply, Chapter~9 turns the base model into
-an assistant, and Chapter~10 wraps the assistant in retrieval
+model: Chapter~\ref{chap:efficiency} discusses what to do when the budget for
+pretraining is binding, Chapter~\ref{chap:adaptation} discusses how to adapt a
+trained base model cheaply, Chapter~\ref{chap:alignment} turns the base model into
+an assistant, and Chapter~\ref{chap:systems} wraps the assistant in retrieval
 and tool use. The next chapter --- \emph{Why Bigger Sometimes
 Helps} --- is the closer look at the scaling laws and the
 recent moves to make them less expensive that we have, so far,

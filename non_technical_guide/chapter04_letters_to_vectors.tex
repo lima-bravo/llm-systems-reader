@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{From Letters to Vectors}
+\label{chap:tokenization}
 \label{ntg:ch4}
 
 \scenelabel
@@ -14,7 +15,7 @@
 \end{scenestrip}
 
 \paragraph{The problem.} A computer cannot read words. It can read numbers. The neural
-network we described in Chapter~3 takes a list of numbers as
+network we described in Chapter~\ref{chap:neural-networks} takes a list of numbers as
 input, performs arithmetic on them, and produces a list of
 numbers as output. Before any of the apparatus of the previous
 chapters can do anything useful with a piece of text, the text
@@ -121,8 +122,8 @@ represented numerically.
 Modern Large Language Models do not, in general, train word
 vectors separately and then plug them into the network. They
 train the embedding as the bottom layer of the same neural
-network we described in Chapter~3, using the same training
-procedure of Chapter~2. The geometric properties Mikolov
+network we described in Chapter~\ref{chap:neural-networks}, using the same training
+procedure of Chapter~\ref{chap:optimization}. The geometric properties Mikolov
 observed remain present, in modified form, in the embeddings of
 modern models, and they continue to be one of the things that
 makes the language modelling pipeline work.
@@ -143,8 +144,8 @@ thousand long, that the trained model uses to represent that
 token internally. The vectors live in a high-dimensional space
 in which directions and distances encode meaning, in a way the
 training procedure discovered without anyone telling it to. The
-rest of the model --- the deep stack of layers from Chapter~3
-plus the attention machinery of Chapter~5 --- operates on these
+rest of the model --- the deep stack of layers from Chapter~\ref{chap:neural-networks}
+plus the attention machinery of Chapter~\ref{chap:transformer} --- operates on these
 vectors and produces, at the end, a probability distribution
 over which token should come next.
 
@@ -184,7 +185,7 @@ like the Latin and Cyrillic letter ``a'') and about invisible
 code points (zero-width spaces, bidirectional override
 characters). An attacker can craft a prompt whose visible text
 says one thing and whose tokenized form says another. We will
-see this attack class properly in Chapter~12.
+see this attack class properly in Chapter~\ref{chap:agents}.
 
 \section{The idea, in plain language}
 
@@ -254,7 +255,7 @@ each different ``meaning'' a word has can be encoded along a
 different one. The direction from ``man'' to ``woman'' is one
 direction. The direction from ``Paris'' to ``France'' is
 another. The direction that distinguishes ``ran'' from ``run''
-is a third. The training procedure of Chapter~2 worked these
+is a third. The training procedure of Chapter~\ref{chap:optimization} worked these
 directions out from the contexts in which the words appeared,
 without being told what any of them meant.
 
@@ -391,7 +392,7 @@ the embedding space encodes meaning geometrically, the
 similarity between two pieces of text can be measured by
 embedding both and computing how close they are in the space.
 This is the basis of the \emph{vector database} that
-underpins the retrieval systems of Chapter~10. It is not a
+underpins the retrieval systems of Chapter~\ref{chap:systems}. It is not a
 perfect measure of meaning --- two pieces of text can be close
 in the embedding space without being equivalent in any deep
 sense --- but it is a much better measure than the keyword
@@ -440,7 +441,7 @@ documentation.
 gap between what a user sees on the screen and what the model
 sees in its input is invisible to most users and to many
 engineers. This is the surface on which several attacks
-operate. We will see in Chapter~12 the class of attacks that
+operate. We will see in Chapter~\ref{chap:agents} the class of attacks that
 exploit invisible Unicode characters, look-alike letters, and
 unexpected normalisations to make the model see one thing while
 the user sees another. The tokenization step is the place where
@@ -450,11 +451,11 @@ the gap is opened.
 \addcontentsline{toc}{section}{Bridges}
 
 This chapter built the bridge from text to numbers that
-everything else in the book takes for granted. Chapter~5 takes
-the embedded tokens as the input to attention. Chapter~6
+everything else in the book takes for granted. Chapter~\ref{chap:transformer} takes
+the embedded tokens as the input to attention. Chapter~\ref{chap:pretraining}
 trains the embedding layer along with the rest of the model and
-gives us the larger context of pretraining. Chapter~10 uses the
-embedding space directly as the basis for retrieval. Chapter~12
+gives us the larger context of pretraining. Chapter~\ref{chap:systems} uses the
+embedding space directly as the basis for retrieval. Chapter~\ref{chap:agents}
 returns to the tokenization gap as the surface on which several
 classes of attack operate. The next chapter --- \emph{Attention,
 or How a Machine Reads} --- shows what the model does with the

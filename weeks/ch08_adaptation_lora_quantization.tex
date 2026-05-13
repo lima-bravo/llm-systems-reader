@@ -1,4 +1,5 @@
 \chapter{Model Adaptation, LoRA, Quantization, and Deployment Reality}
+\label{chap:adaptation}
 
 \scenelabel
 \begin{scenestrip}
@@ -129,7 +130,7 @@ a new task or corpus. For a 70B-parameter model at bfloat16, this means
 touching roughly 140~GB of parameters, and, through AdamW, maintaining
 roughly $6\cdot 70\text{B} = 420\text{G}$ bytes of optimizer state plus
 activations.
-The total VRAM budget under the Chapter~7 arithmetic lands between 0.8 and
+The total VRAM budget under the Chapter~\ref{chap:efficiency} arithmetic lands between 0.8 and
 1.4~TB, which on 80~GB H100s is ten to eighteen GPUs \emph{per training
 job, before any data parallelism}.
 
@@ -137,7 +138,7 @@ The compute budget is equally ungenerous. A full epoch over even a
 modest one-billion-token finetuning corpus requires roughly $6ND =
 6\cdot 70\text{B}\cdot 10^9 = 4.2\cdot 10^{20}$ FLOPs, which is of the
 same order as the pretraining budget of GPT-2.
-If one believes the Chinchilla recipe (Chapter~6), one should expect the
+If one believes the Chinchilla recipe (Chapter~\ref{chap:pretraining}), one should expect the
 compute per parameter per token to be $6$, and the \emph{marginal}
 benefit of full fine-tuning at ten or one hundred million tokens to be
 very small: the gradient signal per parameter is tiny, and most of the
@@ -161,7 +162,7 @@ expensive and slow. Rolling back to the previous model means
 reloading 140~GB into GPU memory, not swapping an adapter.
 
 \paragraph{Safety drift.}
-Alignment behaviour (Chapter~9) is encoded diffusely in the base model's
+Alignment behaviour (Chapter~\ref{chap:alignment}) is encoded diffusely in the base model's
 weights. Full fine-tuning overwrites those weights and typically
 \emph{undoes} alignment, unless the finetuning data is carefully
 mixed with RLHF-trained safety data. This is why unadapter-controlled
@@ -201,7 +202,7 @@ $|\Delta|_{\mathrm{LoRA}} \in [10^{6}, 10^{8}]$, to be compared
 against $N \in [10^{9}, 10^{11}]$ base parameters.
 
 \textbf{Precision formats.}
-Bytes-per-parameter coefficients (extending the Chapter~2 vocabulary
+Bytes-per-parameter coefficients (extending the Chapter~\ref{chap:optimization} vocabulary
 from Eq.~\eqref{eq:ch2-mem-budget}): $b_{\mathrm{fp32}} = 4$,
 $b_{\mathrm{bf16}} = b_{\mathrm{fp16}} = 2$, $b_{\mathrm{fp8}} = 1$,
 $b_{\mathrm{int8}} = 1$, $b_{\mathrm{int4}} = b_{\mathrm{nf4}} = 0.5$
@@ -271,7 +272,7 @@ continuous embeddings prepended to the input or to each attention
 layer. Prefix tuning \citep{li2021prefix}, prompt tuning
 \citep{lester2021prompt}, and P-tuning v2 \citep{liu2022ptuningv2} are
 representative. These are cheap and compose well with
-retrieval-augmentation (Chapter~10), but they are sensitive to scale:
+retrieval-augmentation (Chapter~\ref{chap:systems}), but they are sensitive to scale:
 in the SuperGLUE evaluation reported by \citet{lester2021prompt},
 prompt tuning matches full fine-tuning only as model size
 approaches the multi-billion-parameter regime. Below that scale
@@ -354,7 +355,7 @@ $d=k=4096$, $r=16$, this is $\approx 128\times$.
 \end{derivation}
 
 \Ident\ \emph{LoRA adapter memory budget.} Let $N_{\Delta} = \sum_\ell r_\ell
-(d_\ell + k_\ell)$ over adapted layers $\ell$. Using the Chapter~2 memory
+(d_\ell + k_\ell)$ over adapted layers $\ell$. Using the Chapter~\ref{chap:optimization} memory
 equation (Eq.~\eqref{eq:ch2-mem-budget}), for AdamW training in bf16
 with fp32 master weights and optimizer state,
 \begin{equation}
@@ -577,7 +578,7 @@ Matrix cores on AMD, MXUs on TPUs) are up to $16\times$ faster in
 The result was mixed-precision training
 \citep{micikevicius2018mixed}: compute forward and backward in FP16
 (or BF16), accumulate in FP32, and maintain a FP32 master copy of the
-weights for the optimizer. This is the Chapter~7 arithmetic: weights at
+weights for the optimizer. This is the Chapter~\ref{chap:efficiency} arithmetic: weights at
 bf16, gradients at bf16, AdamW state at fp32.
 
 FP16 and BF16 differ primarily in range. FP16 (IEEE half-precision)
@@ -699,14 +700,14 @@ disproportionately degrade specialized tasks. Calibration sets
 should include representative rare-token data.
 
 \paragraph{Numerical instability in long context.}
-Attention scores grow with context length (Chapter~5). FP8 inference
+Attention scores grow with context length (Chapter~\ref{chap:transformer}). FP8 inference
 at 128k context can overflow if the attention softmax accumulator
 is not kept at higher precision. Most production stacks keep
 softmax in BF16 even when the matmuls are in INT8 or FP8.
 
 \paragraph{Interaction with sampling.}
 Quantization flattens the probability distribution slightly. Under
-aggressive temperature and top-$p$ sampling (Chapter~6), the quantized
+aggressive temperature and top-$p$ sampling (Chapter~\ref{chap:pretraining}), the quantized
 model can produce outputs that the unquantized model would never
 have produced, because low-probability tokens get boosted above the
 nucleus threshold. This is an argument for fixing sampling
@@ -775,7 +776,7 @@ distribution.
 
 A recurring engineering question is: what data do I train my adapter
 on? This chapter deliberately leaves full RLHF, DPO, and
-constitutional-AI treatments to Chapter~9, but the data-engineering
+constitutional-AI treatments to Chapter~\ref{chap:alignment}, but the data-engineering
 discipline carries over.
 
 Three common patterns, with their uses and failure modes.
@@ -838,7 +839,7 @@ adapting the generative model. Triplets can be generated
 synthetically by prompting the generative model to write queries
 for each chunk, then spot-checked by a domain expert. The
 fine-tuned bi-encoder is used to rebuild the index; no change
-to the generative model is required. Chapter~10
+to the generative model is required. Chapter~\ref{chap:systems}
 (\S\ref{sec:private-corpus-vocab-gap}) details the retrieval-
 gap failure modes this addresses.
 
@@ -865,7 +866,7 @@ first-class security consideration: the adapter should be treated
 with the same access classification as the training corpus.
 
 \paragraph{Preference fine-tuning on (prompt, chosen, rejected)
-triples.} The subject of Chapter~9. DPO \citep{rafailov2023direct} and
+triples.} The subject of Chapter~\ref{chap:alignment}. DPO \citep{rafailov2023direct} and
 related algorithms can be run as LoRA adapters on top of a
 supervised fine-tune, giving a three-stage pipeline: base $\to$
 LoRA-SFT $\to$ LoRA-DPO that is entirely composable.
@@ -947,7 +948,7 @@ substantially larger effective GPU fleet by reducing HBM pressure.
 \textbf{Verification and validation.}
 Every adapter is tested against (i) the base-model regression suite,
 (ii) the task-specific eval suite, (iii) a safety tripwire suite
-inherited from Chapter~9, and (iv) a representative sample of
+inherited from Chapter~\ref{chap:alignment}, and (iv) a representative sample of
 production prompts run in shadow mode. Quantized variants re-run all
 four suites, not just a perplexity check.
 
@@ -1001,7 +1002,7 @@ baseline, even if the production recipe is QLoRA.
 \small
 \begin{tabular}{p{4.3cm}|p{4.3cm}|p{4.3cm}}
 \textbf{V-stage} & \textbf{Artefact} & \textbf{Verification activity}\\\hline
-Requirements & Adaptation goal (domain, tone, policy) & Acceptance criteria defined in evaluation language (Chapter~10) \\
+Requirements & Adaptation goal (domain, tone, policy) & Acceptance criteria defined in evaluation language (Chapter~\ref{chap:systems}) \\
 Data spec & Curated (prompt, response) or (prompt, chosen, rejected) corpus & Red-team review; contamination check vs.\ eval sets \\
 Recipe design & LoRA/QLoRA config: layers, rank, learning rate, $\alpha$, epochs & Ablations on rank and layer scope \\
 Training & Adapter artefact $\Delta$ + metrics & Loss curves, eval-loss, compute cost, reproducibility \\
@@ -1080,20 +1081,20 @@ a single 24~GB consumer GPU:
 
 \section{Bridges to Other Weeks}
 
-Chapter~8 sits between pretraining (Chapter~6) and alignment (Chapter~9).
+Chapter~\ref{chap:adaptation} sits between pretraining (Chapter~\ref{chap:pretraining}) and alignment (Chapter~\ref{chap:alignment}).
 Everything in this chapter presupposes a competent base model and
 prepares for preference optimization. The quantization material
-connects back to Chapter~7's arithmetic intensity: a 4-bit model has
+connects back to Chapter~\ref{chap:efficiency}'s arithmetic intensity: a 4-bit model has
 $4\times$ higher arithmetic intensity than its BF16 counterpart, so
 quantization can move a workload from the memory-bound regime to
 the compute-bound regime, improving GPU utilization.
 
-Chapter~9 will show that preference optimization (RLHF, DPO) is most
+Chapter~\ref{chap:alignment} will show that preference optimization (RLHF, DPO) is most
 commonly run as a LoRA on top of an SFT-LoRA, using exactly the
-machinery developed here. Chapter~10's RAG systems will frequently
+machinery developed here. Chapter~\ref{chap:systems}'s RAG systems will frequently
 \emph{replace} adaptation for knowledge injection, and the decision
 between ``adapt vs.\ retrieve'' will be a central engineering tradeoff.
-Chapter~11's governance framework will treat adapters as the primary
+Chapter~\ref{chap:governance}'s governance framework will treat adapters as the primary
 unit of change-control audit.
 
 \section*{Derivation Ledger (Ch. 7)}

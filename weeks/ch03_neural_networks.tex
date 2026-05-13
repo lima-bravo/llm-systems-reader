@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Neural Networks}
+\label{chap:neural-networks}
 \label{sec:neural-networks}
 
 \scenelabel
@@ -15,15 +16,15 @@
 
 \paragraph{The problem.}
 You have, by this point, two of the three things you need to train
-a Large Language Model. From Chapter~1 you have the loss --- the
+a Large Language Model. From Chapter~\ref{chap:stat-foundations} you have the loss --- the
 cross-entropy that asks, of any probability distribution over next
 tokens, how surprised it was by the token that actually came next.
-From Chapter~2 you have the optimiser --- stochastic gradient
+From Chapter~\ref{chap:optimization} you have the optimiser --- stochastic gradient
 descent, with its learning-rate schedules and its bias-corrected
 moments and its Chinchilla-shaped compute budgets. What you do not
 yet have is the \emph{function class} that the optimiser is
 updating. That is the subject of this chapter. Before we can
-compose the Transformer in Chapter~4, we need to introduce, one at
+compose the Transformer in Chapter~\ref{chap:tokenization}, we need to introduce, one at
 a time, the pieces it composes: a layer, a stack of layers, a way
 to compute gradients through that stack, a choice of activation, a
 method for initialising the weights, a normalisation, and a trick
@@ -100,7 +101,7 @@ a residual connection that lets the optimiser learn small
 corrections to an identity mapping rather than the full
 transformation outright. Each of these moves was a response to a
 specific failure of the design that came before; none was
-inevitable. The Transformer of Chapter~4 is what you get when you
+inevitable. The Transformer of Chapter~\ref{chap:tokenization} is what you get when you
 take this neural-network template and add the attention mechanism
 on top.
 
@@ -131,7 +132,7 @@ backpropagation on a whiteboard, you can skim or skip this
 chapter; the material that follows is the foundational floor the
 rest of the book stands on, and it will not surprise you. If you
 have not, this is the chapter where the rest of the book becomes
-legible. Either way, the goal is the same: to arrive at Chapter~4
+legible. Either way, the goal is the same: to arrive at Chapter~\ref{chap:tokenization}
 with the function class in hand, ready to meet the architecture
 that has, for now, eaten the field.
 
@@ -153,14 +154,14 @@ By the end of this chapter, you should be able to:
   \item Initialise the weights of a feed-forward network using
         Xavier or He, justify the variance-preservation argument
         underneath both, and connect that argument to the
-        $1/\sqrt{d_k}$ scaling Chapter~4 derives for attention.
+        $1/\sqrt{d_k}$ scaling Chapter~\ref{chap:tokenization} derives for attention.
   \item Distinguish BatchNorm, LayerNorm, and RMSNorm, and explain
         why Transformers use the latter two and not the first.
   \item Explain residual connections as identity-path stability,
         and state why depth becomes trainable when they are
         present and stalls when they are not.
   \item Identify the MLP block as the foundational primitive that
-        Chapter~4 composes, alongside attention, into the
+        Chapter~\ref{chap:tokenization} composes, alongside attention, into the
         Transformer's feed-forward sublayer.
 \end{itemize}
 
@@ -182,14 +183,14 @@ By the end of this chapter, you should be able to:
 
 \textbf{Forward references}
 \begin{itemize}
-  \item Chapter~4 composes the primitives above into the
+  \item Chapter~\ref{chap:tokenization} composes the primitives above into the
         Transformer's feed-forward block, derives the pre-norm
         placement, and gives the full residual-stream
         interpretation.
-  \item Chapter~7 inserts low-rank deltas (LoRA) into the linear
+  \item Chapter~\ref{chap:efficiency} inserts low-rank deltas (LoRA) into the linear
         layers introduced here and uses He initialisation in the
         process.
-  \item Chapter~8 reuses the logistic sigmoid as the link function
+  \item Chapter~\ref{chap:adaptation} reuses the logistic sigmoid as the link function
         in the Bradley--Terry preference model; the activation
         and the link function happen to be the same scalar
         transform.
@@ -212,15 +213,15 @@ $z^{(\ell)} = W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}$; the
 \emph{post-activation} is
 $h^{(\ell)} = \varphi(z^{(\ell)})$ where $\varphi : \R \to \R$ is
 the elementwise nonlinearity (applied componentwise). The scalar
-loss being minimised is $\mathcal{L}(\theta)$; from Chapter~1, this
+loss being minimised is $\mathcal{L}(\theta)$; from Chapter~\ref{chap:stat-foundations}, this
 is typically the cross-entropy under the empirical distribution.
 
 \textbf{On the symbol $\varphi$ versus $\sigma$.}
 We deliberately use $\varphi$ for the generic activation function,
 not $\sigma$. The reason is that the symbol $\sigma$ is overloaded
-in the rest of the book. Chapter~4 uses $\sigma$ both for the
+in the rest of the book. Chapter~\ref{chap:tokenization} uses $\sigma$ both for the
 activation inside the FFN equation and, in the LayerNorm
-expression, for the per-token standard deviation. Chapter~8 uses
+expression, for the per-token standard deviation. Chapter~\ref{chap:adaptation} uses
 $\sigma(\cdot)$ for the logistic sigmoid as the link function in
 the Bradley--Terry log-likelihood. To avoid confusion, this
 chapter reserves $\sigma$ for the specific logistic sigmoid
@@ -229,7 +230,7 @@ $\sigma(z) = (1 + e^{-z})^{-1}$ and uses $\varphi$ when we mean
 the design choice happens to be.''
 
 \textbf{On the phrase ``chain rule''.}
-Chapter~1 used the phrase ``chain rule'' to refer to the
+Chapter~\ref{chap:stat-foundations} used the phrase ``chain rule'' to refer to the
 \emph{probability} chain rule that factorises a joint distribution
 over a sequence into a product of conditionals,
 $P(x_1, \dots, x_T) = \prod_t P(x_t \mid x_{<t})$. This chapter
@@ -249,11 +250,11 @@ chain rule'' explicitly.
   \item[A3.2] Inputs and parameters are real-valued and finite.
         Implementations evaluate the network in IEEE-754
         floating-point (typically fp32 master weights with bf16
-        compute, per Chapter~2's mixed-precision recipe); we
+        compute, per Chapter~\ref{chap:optimization}'s mixed-precision recipe); we
         ignore the resulting rounding error in derivations and
         flag it explicitly when it matters operationally.
   \item[A3.3] The loss $\mathcal{L}$ is the empirical
-        cross-entropy from Chapter~1, averaged over a minibatch
+        cross-entropy from Chapter~\ref{chap:stat-foundations}, averaged over a minibatch
         of (context, token) pairs. Worked examples in this
         chapter occasionally use the squared-error loss for
         regression-style illustrations; this is a pedagogical
@@ -340,7 +341,7 @@ with parameters $\theta = (W^{(\ell)}, b^{(\ell)})_{\ell=1}^{L}$.
 The final layer typically omits the activation when the output is
 a real-valued vector (regression) or applies a softmax when the
 output is a categorical distribution (classification, including
-language modelling per Chapter~1). The intermediate layers
+language modelling per Chapter~\ref{chap:stat-foundations}). The intermediate layers
 \emph{must} apply a nonlinearity: a composition of affine
 transformations alone is itself affine, so depth without
 nonlinearity buys nothing. We will see in §3 that the choice of
@@ -392,10 +393,10 @@ acknowledged. Trainability is the working subject.
 
 \subsection{The Problem}
 
-Chapter~2 told us how to update parameters once we have a
+Chapter~\ref{chap:optimization} told us how to update parameters once we have a
 gradient: stochastic gradient descent and its momentum-and-Adam
 descendants take a noisy estimate of $\nabla_\theta \mathcal{L}$
-and step against it. Chapter~2 did not tell us how to compute
+and step against it. Chapter~\ref{chap:optimization} did not tell us how to compute
 that gradient. The model in question has, on the small side, a
 hundred million parameters; on the large side, a trillion. A
 direct numerical estimate --- perturb each parameter, re-evaluate
@@ -434,7 +435,7 @@ If $z$ is itself produced by a longer chain, the rule iterates:
 each link in the chain multiplies the upstream gradient by the
 local Jacobian of that link's output with respect to its input.
 This is the calculus chain rule, distinct from (though sharing a
-name with) the probability chain rule of Chapter~1, as flagged in
+name with) the probability chain rule of Chapter~\ref{chap:stat-foundations}, as flagged in
 the notation block above.
 
 \subsection{A Two-Layer Derivation, by Hand}
@@ -572,7 +573,7 @@ and loss, plus one backward pass to compute gradients --- costs
 roughly $2 P + 4 P = 6 P$ FLOPs per training token. With $D$
 tokens of training data and one pass over them, the total
 training compute is $\approx 6 P D$ FLOPs. \emph{This is the
-``$6 N D$'' rule that Chapter~2 used without justification when
+``$6 N D$'' rule that Chapter~\ref{chap:optimization} used without justification when
 deriving the Chinchilla compute-optimal point}: the factor of six
 is exactly the three MACs per parameter per token (one forward,
 two backward) times two FLOPs per MAC. Backpropagation is what
@@ -717,10 +718,10 @@ and $\odot$ is the elementwise (Hadamard) product. The
 \emph{SwiGLU} variant takes $\varphi$ to be Swish, defined as
 $\mathrm{Swish}(z) = z \cdot \sigma(z)$. SwiGLU is the activation
 used inside the FFN block of Llama, PaLM, and most modern
-decoder-only models. Chapter~4's discussion of the Transformer
+decoder-only models. Chapter~\ref{chap:tokenization}'s discussion of the Transformer
 feed-forward block derives the parameter count, FLOP cost, and
 $d_f$ rescaling that SwiGLU implies; here we simply name the
-form so that Chapter~4 has the primitive ready when it composes
+form so that Chapter~\ref{chap:tokenization} has the primitive ready when it composes
 the FFN.
 
 \subsection{A Practitioner's Table}
@@ -855,7 +856,7 @@ reasonable approximation at initialisation). To compensate,
 which is variance-preserving across the linear-then-ReLU
 combination. He init is the modern default for ReLU-family
 networks and is the initialiser cited (typically by name) in the
-LoRA setup of Chapter~7. The factor of two is the only
+LoRA setup of Chapter~\ref{chap:efficiency}. The factor of two is the only
 difference from a naive $1/d_{\mathrm{in}}$; the larger lesson is
 that the right init depends on the activation, not just the
 linear layer.
@@ -863,17 +864,17 @@ linear layer.
 \subsection{Bridge to Chapter 4: the $1/\sqrt{d_k}$ Attention Scale}
 
 The variance-preservation argument used here will reappear in
-Chapter~4 in the context of attention. The dot product $q^\top k$
+Chapter~\ref{chap:tokenization} in the context of attention. The dot product $q^\top k$
 of a query and a key vector, both with $d_k$ components and
 independent zero-mean unit-variance entries, has variance $d_k$
 and standard deviation $\sqrt{d_k}$. Dividing by $\sqrt{d_k}$
 restores unit variance, exactly the same logic that gave us
 $\tau^2 = 1/d_{\mathrm{in}}$ above (square-root rather than full
 inverse because we are scaling the standard deviation rather
-than the variance). Chapter~4 derives this for the specific case
+than the variance). Chapter~\ref{chap:tokenization} derives this for the specific case
 of attention scores; this chapter has given the general form. If
 you find the $1/\sqrt{d_k}$ unmotivated when you reach
-Chapter~4, return here.
+Chapter~\ref{chap:tokenization}, return here.
 
 % --- END §4 ---
 
@@ -990,11 +991,11 @@ specifically when the distinction matters.
 \subsection{Bridge to Chapter 4}
 
 This section has established the normalisers themselves.
-Chapter~4 takes them up in two further directions. First,
+Chapter~\ref{chap:tokenization} takes them up in two further directions. First,
 \emph{placement}: should the normalisation be applied
 \emph{before} or \emph{after} the residual sum at each
 Transformer block (the \emph{pre-norm} versus \emph{post-norm}
-distinction)? Chapter~4's argument is that pre-norm keeps the
+distinction)? Chapter~\ref{chap:tokenization}'s argument is that pre-norm keeps the
 residual path an identity at initialisation, which makes deep
 stacks trainable without elaborate warmup; this is the
 configuration used by GPT-2 onwards and almost every modern
@@ -1004,7 +1005,7 @@ attention and feed-forward sublayers \emph{read from} (via the
 normaliser) and \emph{write back into} (via the residual sum).
 The normaliser, in that view, is what gives each sublayer a
 clean, standardised view of the residual stream's current
-state. Chapter~4 develops both points; the apparatus this
+state. Chapter~\ref{chap:tokenization} develops both points; the apparatus this
 section has provided is what they sit on.
 
 % --- END §5 ---
@@ -1114,17 +1115,17 @@ chapters require it.
 
 \subsection{Bridge to Chapter 4: the Residual Stream}
 
-The Transformer of Chapter~4 is built around residual connections
+The Transformer of Chapter~\ref{chap:tokenization} is built around residual connections
 of the form \eqref{eq:nn-residual}. A Transformer block is two
 residual sublayers stacked: an attention block and a feed-forward
 block, each wrapped in a normaliser (\S\ref{sec:nn-norm}) and a
 residual sum. The accumulation of all these residual additions
-across the stack is what Chapter~4 calls the \emph{residual
+across the stack is what Chapter~\ref{chap:tokenization} calls the \emph{residual
 stream}: a $d$-dimensional vector that propagates from the
 embedding layer to the unembedding, with attention and feed-forward
 sublayers reading from it (via the normaliser) and writing back
 into it (via the residual add). The interpretability framing of
-\citet{elhage2021mathematical}, which Chapter~4 develops, treats
+\citet{elhage2021mathematical}, which Chapter~\ref{chap:tokenization} develops, treats
 this stream as the model's working memory and individual heads
 as components that read specific subspaces and write into others.
 The residual connection introduced here is the substrate that
@@ -1140,7 +1141,7 @@ activation choice, a variance-preserving initialiser, a
 normaliser, and a residual connection --- compose into the
 \emph{feed-forward block} that sits at the heart of every
 Transformer layer. We will not derive the composition here;
-that is Chapter~4's job. We will name it, so the reader knows
+that is Chapter~\ref{chap:tokenization}'s job. We will name it, so the reader knows
 what is coming.
 
 \subsection{The FFN}
@@ -1179,10 +1180,10 @@ sit in the FFN: roughly two-thirds of a Transformer block's
 parameters. The exact ratio depends on the architectural choices
 (GQA reduces attention parameters; SwiGLU adds a third FFN
 projection), but the headline does not change. \emph{The FFN is
-where the Transformer's parameter budget lives.} Chapter~4 walks
+where the Transformer's parameter budget lives.} Chapter~\ref{chap:tokenization} walks
 the FLOP and parameter accounting in full; this section flags the
 result so that adaptation discussions later in the book (LoRA in
-Chapter~7, MoE in Chapter~6) make sense in advance.
+Chapter~\ref{chap:efficiency}, MoE in Chapter~\ref{chap:pretraining}) make sense in advance.
 
 \subsection{The Handoff to Chapter 4}
 
@@ -1193,7 +1194,7 @@ By the end of this chapter you have:
         (\S\ref{sec:nn-function-class}, Eq.~\ref{eq:nn-mlp});
   \item Backpropagation, the $\delta$-recursion, and the
         forward/backward FLOP equivalence underwriting
-        Chapter~2's $6ND$ rule
+        Chapter~\ref{chap:optimization}'s $6ND$ rule
         (\S\ref{sec:nn-backprop},
         Eqs.~\ref{eq:nn-delta-recursion}--\ref{eq:nn-param-grads});
   \item The progression of activations from sigmoid to SwiGLU,
@@ -1214,13 +1215,13 @@ By the end of this chapter you have:
         (\S\ref{sec:nn-residual}, Eq.~\ref{eq:nn-residual}).
 \end{itemize}
 
-Chapter~4 will compose these pieces, add the attention
+Chapter~\ref{chap:tokenization} will compose these pieces, add the attention
 mechanism, derive the $1/\sqrt{d_k}$ scaling using the
 variance-preservation argument from \S\ref{sec:nn-init},
 combine attention and FFN into a single Transformer block via
 two residual sublayers, choose between LayerNorm and RMSNorm and
 between pre-norm and post-norm placement, and walk the FLOP and
-KV-cache accounting that follows. The Transformer of Chapter~4
+KV-cache accounting that follows. The Transformer of Chapter~\ref{chap:tokenization}
 is the arrangement of pieces this chapter has just laid on the
 bench.
 
@@ -1490,7 +1491,7 @@ empirical, motivated by sequence-packing and small-batch
 considerations rather than a theorem. The pre-norm
 configuration is a recipe-conditional empirical observation
 (\S\ref{sec:nn-norm}, with the full argument deferred to
-Chapter~4). Universal approximation
+Chapter~\ref{chap:tokenization}). Universal approximation
 (\S\ref{sec:nn-function-class}) is a true theorem but says
 nothing about trainability and is not load-bearing for any
 engineering decision in the rest of the book.
@@ -1499,7 +1500,7 @@ engineering decision in the rest of the book.
 A3.1 (differentiability almost everywhere, with the convention
 $\varphi'(0) := 0$ at ReLU's kink); A3.2 (finite floating-point
 arithmetic; rounding error flagged where it matters); A3.3 (the
-loss is the cross-entropy from Chapter~1 in the LLM context;
+loss is the cross-entropy from Chapter~\ref{chap:stat-foundations} in the LLM context;
 worked examples occasionally use squared error for regression
 illustrations).
 \end{provedassumed}
@@ -1516,30 +1517,30 @@ follows. The table below indexes the cross-references.
 \textbf{Primitive established here} & \textbf{Used in} \\
 \hline
 Linear layer / MLP composition (\S\ref{sec:nn-function-class}) &
-  Chapter~4 (FFN, $W_Q/W_K/W_V/W_O$ projections), Chapter~7 (LoRA
-  low-rank deltas), Chapter~8 (reward-model and policy networks). \\
+  Chapter~\ref{chap:tokenization} (FFN, $W_Q/W_K/W_V/W_O$ projections), Chapter~\ref{chap:efficiency} (LoRA
+  low-rank deltas), Chapter~\ref{chap:adaptation} (reward-model and policy networks). \\
 Backpropagation (\S\ref{sec:nn-backprop}) &
-  Chapter~2's $6ND$ FLOP rule (justified here), Chapter~4's
+  Chapter~\ref{chap:optimization}'s $6ND$ FLOP rule (justified here), Chapter~\ref{chap:tokenization}'s
   per-block FLOP budgets, every training run in the rest of the
   book. \\
 Activations: GeLU, SwiGLU, $\sigma$
 (\S\ref{sec:nn-activations}) &
-  Chapter~4 (FFN activation), Chapter~8 (Bradley--Terry sigmoid
-  link function), Chapter~5 (softmax decoding). \\
+  Chapter~\ref{chap:tokenization} (FFN activation), Chapter~\ref{chap:adaptation} (Bradley--Terry sigmoid
+  link function), Chapter~\ref{chap:transformer} (softmax decoding). \\
 Variance-preserving init (\S\ref{sec:nn-init}) &
-  Chapter~4's $1/\sqrt{d_k}$ attention scale (same argument),
-  Chapter~7 (LoRA He-init initialisation of the $A$ factor). \\
+  Chapter~\ref{chap:tokenization}'s $1/\sqrt{d_k}$ attention scale (same argument),
+  Chapter~\ref{chap:efficiency} (LoRA He-init initialisation of the $A$ factor). \\
 LayerNorm / RMSNorm (\S\ref{sec:nn-norm}) &
-  Chapter~4 (full LayerNorm/RMSNorm derivation and pre-norm
-  placement), Chapter~6 (MoE block normalisation), Chapter~8
+  Chapter~\ref{chap:tokenization} (full LayerNorm/RMSNorm derivation and pre-norm
+  placement), Chapter~\ref{chap:pretraining} (MoE block normalisation), Chapter~\ref{chap:adaptation}
   (alignment-stage normalisation choices). \\
 Residual connection (\S\ref{sec:nn-residual}) &
-  Chapter~4's residual stream, Chapter~6's MoE block (residual
-  around the routed FFN), Chapter~7 (depth-scaling intuitions
+  Chapter~\ref{chap:tokenization}'s residual stream, Chapter~\ref{chap:pretraining}'s MoE block (residual
+  around the routed FFN), Chapter~\ref{chap:efficiency} (depth-scaling intuitions
   for adapter placement). \\
 The MLP block (\S\ref{sec:nn-mlp-block}) &
-  Chapter~4 (FFN composition), Chapter~6 (MoE replaces the dense
-  FFN with a sparse mixture), Chapter~7 (LoRA adapts the FFN's
+  Chapter~\ref{chap:tokenization} (FFN composition), Chapter~\ref{chap:pretraining} (MoE replaces the dense
+  FFN with a sparse mixture), Chapter~\ref{chap:efficiency} (LoRA adapts the FFN's
   matrices). \\
 \hline
 \end{tabular}
@@ -1642,7 +1643,7 @@ Compact index of the chapter's central identities.
   \item \textbf{Forward / backward FLOP equivalence.}\
         Backward pass costs $\approx 2\times$ forward pass to
         within constants; total $\approx 6P$ FLOPs per training
-        token (justifies the $6ND$ rule of Chapter~2).
+        token (justifies the $6ND$ rule of Chapter~\ref{chap:optimization}).
   \item \textbf{ReLU.}\
         $\varphi(z) = \max(0, z)$, $\varphi'(z) = \mathbb{1}[z>0]$
         --- Eq.~\eqref{eq:nn-relu}.
@@ -1693,9 +1694,9 @@ made networks of a hundred layers train as well as networks of
 ten. None of these moves was inevitable; each was a response to
 a specific failure of the design that came before.
 
-The Transformer of Chapter~4 is what these primitives compose
+The Transformer of Chapter~\ref{chap:tokenization} is what these primitives compose
 into when you also add the attention mechanism. By the end of
-this chapter you should be able to read Chapter~4 as a
+this chapter you should be able to read Chapter~\ref{chap:tokenization} as a
 particular arrangement of pieces you already understand, rather
 than as a list of unfamiliar names. That is the point of putting
 this chapter ahead of the architecture: to make the architecture

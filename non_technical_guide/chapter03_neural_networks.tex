@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Networks of Simple Decisions}
+\label{chap:neural-networks}
 \label{ntg:ch3}
 
 \scenelabel
@@ -14,8 +15,8 @@
 \end{scenestrip}
 
 \paragraph{The problem.} We have, by now, a sense of what we want a Large Language Model
-to do (Chapter~1) and a sense of how the model is improved over
-time (Chapter~2). What we have not yet looked at is what is
+to do (Chapter~\ref{chap:stat-foundations}) and a sense of how the model is improved over
+time (Chapter~\ref{chap:optimization}). What we have not yet looked at is what is
 \emph{inside} the model. The training procedure of the previous
 chapter adjusts a great many internal numbers; we have not said
 how those numbers are arranged, what they do when the model is
@@ -131,11 +132,11 @@ total rather than transform the running total wholesale --- are
 each named contributions of named researchers in the period from
 2010 through about 2017.
 
-The Transformer of Chapter~5 is, in essence, this stack of
+The Transformer of Chapter~\ref{chap:transformer} is, in essence, this stack of
 layers with one further trick on top: each layer does not just
 compute a function of its input; it computes a function of its
 input \emph{and} of an attention-weighted summary of all the
-other inputs in the sequence. We will see in Chapter~5 what
+other inputs in the sequence. We will see in Chapter~\ref{chap:transformer} what
 that means in detail. For now, the picture is enough: a deep
 stack of small operations, each one slightly transforming a
 list of numbers, with adjustments that the training procedure
@@ -170,8 +171,8 @@ human viewer, could cause a state-of-the-art image classifier
 to confidently label it a gibbon. The same phenomenon exists
 for language models, in slightly different form: a prompt
 modified by a few characters can produce qualitatively
-different output. We will see this in Chapter~5 as
-\emph{prompt brittleness} and in Chapter~12 as
+different output. We will see this in Chapter~\ref{chap:transformer} as
+\emph{prompt brittleness} and in Chapter~\ref{chap:agents} as
 \emph{prompt injection}.
 
 \section{The idea, in plain language}
@@ -194,7 +195,7 @@ unchanged''.
 That is, in essence, the entire computation a single artificial
 neuron performs. Several thousand of them in a row constitute a
 \emph{layer}. Several layers stacked on one another constitute
-a \emph{network}. The training of Chapter~2 adjusts the weights
+a \emph{network}. The training of Chapter~\ref{chap:optimization} adjusts the weights
 and the biases. Nothing else in the network changes during
 training.
 
@@ -207,7 +208,7 @@ universal approximation theorems of George Cybenko in 1989 and
 Kurt Hornik in 1991, which proved that a sufficiently wide
 single-layer network can approximate any reasonably well-behaved
 function to any desired accuracy). The theorems do not, however,
-say that the training procedure of Chapter~2 will reliably
+say that the training procedure of Chapter~\ref{chap:optimization} will reliably
 \emph{find} such a representation, and most of the engineering
 of modern neural networks is the work of arranging things so
 that the training procedure does find one.
@@ -259,7 +260,7 @@ actually does}
 
 The picture of a deep stack of weighted-sum-and-nonlinearity
 layers raises an obvious question: how does the training
-procedure of Chapter~2 know which of the millions of weights
+procedure of Chapter~\ref{chap:optimization} know which of the millions of weights
 to nudge, and in which direction?
 
 The answer is \emph{backpropagation}. The name is a contraction
@@ -328,13 +329,13 @@ The network does not contain a database. It does not look
 things up. It is a function from inputs to outputs, computed by
 performing arithmetic on the inputs. The arithmetic is
 parameterised by the weights, and the weights were set by the
-training procedure of Chapter~2. There is no place inside the
+training procedure of Chapter~\ref{chap:optimization}. There is no place inside the
 network where ``what the model knows'' is written down in
 retrievable form. There is only the procedure that, when the
 prompt is the input, produces a particular distribution over
 next words as the output. The distinction between this and
 having a database matters when we discuss retrieval in
-Chapter~10 --- retrieval, in essence, gives the model the
+Chapter~\ref{chap:systems} --- retrieval, in essence, gives the model the
 database it does not have.
 
 The network does not reason in the sense a human does. It
@@ -409,7 +410,7 @@ layers run out of new things to compute, or until the
 additional weights run out of training signal to learn from.
 The right depth for a model depends on the task, on the data,
 on the budget, and on a number of other choices that
-interact. We will see in Chapter~7 that the relationship
+interact. We will see in Chapter~\ref{chap:efficiency} that the relationship
 between depth, width, training data, and capability is one of
 the things the scaling laws were created to make precise.
 
@@ -470,7 +471,7 @@ a model trained predominantly on the public web will inherit
 the public web's distribution of opinions, errors, and
 omissions. There is no architectural fix for this. The fix is
 either better training data (which is expensive and contested),
-retrieval (Chapter~10), or careful prompt engineering at the
+retrieval (Chapter~\ref{chap:systems}), or careful prompt engineering at the
 edge (which is brittle).
 
 \section*{Bridges}
@@ -479,14 +480,14 @@ edge (which is brittle).
 This chapter built on the surprise-minimisation picture of
 Chapters~1 and~2 and gave us the function class --- the deep
 stack of weighted-sum-and-nonlinearity layers --- that the
-training procedure of Chapter~2 is adjusting. Every chapter
-that follows assumes this picture. Chapter~4 puts the
+training procedure of Chapter~\ref{chap:optimization} is adjusting. Every chapter
+that follows assumes this picture. Chapter~\ref{chap:tokenization} puts the
 \emph{embeddings} that turn words into lists of numbers at the
-bottom of the stack. Chapter~5 adds the \emph{attention}
+bottom of the stack. Chapter~\ref{chap:transformer} adds the \emph{attention}
 mechanism, the trick that turned ordinary deep networks into
-the Transformer. Chapter~7 returns to the question of how
+the Transformer. Chapter~\ref{chap:efficiency} returns to the question of how
 deep, how wide, and on how much data, framed as a scaling
-problem. Chapter~8 returns to the question of how to modify a
+problem. Chapter~\ref{chap:adaptation} returns to the question of how to modify a
 trained network without retraining it from scratch. The next
 chapter --- \emph{From Letters to Vectors} --- explains how the
 text on your screen ever becomes a list of numbers in the first

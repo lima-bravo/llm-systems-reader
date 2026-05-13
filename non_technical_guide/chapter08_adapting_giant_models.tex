@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Adapting a Giant Model}
+\label{chap:adaptation}
 \label{ntg:ch8}
 
 \scenelabel
@@ -327,7 +328,7 @@ JSON --- can adapt a model on examples of the desired format.
 
 Several situations do not call for adaptation. A company that
 wants the model to know its product manual is usually better
-served by retrieval (Chapter~10) than by adaptation: retrieval
+served by retrieval (Chapter~\ref{chap:systems}) than by adaptation: retrieval
 gives the model fresh access to the document, where adaptation
 would freeze the document into the weights and require
 retraining whenever the document changes. A company that wants
@@ -380,7 +381,7 @@ query consumes some amount of GPU time. The unit economics of
 the resulting product depend on how aggressively the model can
 be quantised, how efficiently it can be served, and how many
 queries the model can process per second per GPU. The
-infrastructure work of Chapter~7 is what determines those
+infrastructure work of Chapter~\ref{chap:efficiency} is what determines those
 numbers.
 
 \section{What goes wrong, and why}
@@ -429,17 +430,17 @@ adaptation-data leaks dressed up as model leaks.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~3 (the deep neural network whose
-parameters we are now adapting), Chapter~6 (the pretraining
-procedure that produced the base model), and Chapter~7 (the
+This chapter built on Chapter~\ref{chap:neural-networks} (the deep neural network whose
+parameters we are now adapting), Chapter~\ref{chap:pretraining} (the pretraining
+procedure that produced the base model), and Chapter~\ref{chap:efficiency} (the
 serving infrastructure within which adapters are deployed). It
 described how organisations other than the frontier laboratories
-turn open base models into products. Chapter~9 describes a
+turn open base models into products. Chapter~\ref{chap:alignment} describes a
 particular kind of adaptation --- the alignment work --- that the
 frontier laboratories themselves do to turn a base model into
-an assistant. Chapter~10 describes an alternative to adaptation
+an assistant. Chapter~\ref{chap:systems} describes an alternative to adaptation
 for many use cases, retrieval, which avoids freezing rapidly-
-changing knowledge into the model. Chapter~12 returns to the
+changing knowledge into the model. Chapter~\ref{chap:agents} returns to the
 deployment of adapted models from the perspective of the
 developer who is calling them through an API. The next chapter
 --- \emph{Teaching Manners and the Cost of Doing So} --- explains

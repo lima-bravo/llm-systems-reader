@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Attention, or How a Machine Reads}
+\label{chap:transformer}
 \label{ntg:ch5}
 
 \scenelabel
@@ -113,7 +114,7 @@ inevitable.
 
 \paragraph{Where we stand.} The modern Transformer is a stack of identical building blocks.
 Each block takes its input as a list of vectors --- one per
-token, the vectors we constructed in Chapter~4 --- and produces
+token, the vectors we constructed in Chapter~\ref{chap:tokenization} --- and produces
 a refined list of the same shape. Inside each block, two things
 happen.
 
@@ -133,7 +134,7 @@ relevance.
 
 The second is the feed-forward step. The output of attention is
 passed through a small ordinary neural network of the kind we
-described in Chapter~3 --- a couple of layers, each computing
+described in Chapter~\ref{chap:neural-networks} --- a couple of layers, each computing
 weighted sums and nonlinearities. This step does not look at
 other tokens; it processes each token's representation
 independently. Its job is to take the contextually-informed
@@ -144,7 +145,7 @@ between thirty and a hundred such blocks stacked on top of one
 another. The output of the last block is fed into one final
 layer that produces, for each position in the sequence, a
 weighting over the tokens that might come next --- exactly the
-weighting we described in Chapter~1.
+weighting we described in Chapter~\ref{chap:stat-foundations}.
 
 \paragraph{What goes wrong.} The Transformer's design has several characteristic failure
 modes that are visible to anyone using a modern LLM in earnest.
@@ -297,7 +298,7 @@ be computed in another large matrix operation. The whole step
 can be parallelised across the entire sequence at once. A
 Transformer training run can keep a graphics card saturated in
 a way a recurrent network never could. This is the prosaic
-reason the Transformer won. The scaling laws of Chapter~7 --- the
+reason the Transformer won. The scaling laws of Chapter~\ref{chap:efficiency} --- the
 empirical regularity that more compute reliably buys lower loss
 --- are downstream of the fact that the Transformer can spend
 the compute productively.
@@ -353,7 +354,7 @@ which we will discuss below.
 applications built on top of LLMs today, the size of the
 context window --- how much text the model can take in at once
 --- is the constraint that binds first. It binds for retrieval
-systems (Chapter~10), where a longer context lets the system
+systems (Chapter~\ref{chap:systems}), where a longer context lets the system
 include more retrieved documents. It binds for code assistants,
 where a longer context lets the model see more of the
 surrounding code base. It binds for long-document analysis,
@@ -416,7 +417,7 @@ mechanism's content-addressable lookup is sensitive to the exact
 content of every token. Two prompts that differ in a single
 word, or in punctuation, can produce different attention
 patterns and therefore different outputs. We met this in
-Chapter~1 as a consequence of the model producing samples; here
+Chapter~\ref{chap:stat-foundations} as a consequence of the model producing samples; here
 we see it as a consequence of the architecture. The same word
 in two slightly different positions of two slightly different
 sentences will play a different role in attention, and the
@@ -448,16 +449,16 @@ corresponding to any meaningful semantic role.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~3 (the deep stack of layers) and
-Chapter~4 (the embeddings that turn tokens into the vectors the
+This chapter built on Chapter~\ref{chap:neural-networks} (the deep stack of layers) and
+Chapter~\ref{chap:tokenization} (the embeddings that turn tokens into the vectors the
 attention mechanism reads). It is the architectural foundation
-for everything that follows: Chapter~6 trains a Transformer at
-scale, Chapter~7 discusses how big the Transformer can get,
-Chapter~8 modifies a trained Transformer cheaply, and
-Chapter~10 puts a Transformer on top of a retrieval system.
+for everything that follows: Chapter~\ref{chap:pretraining} trains a Transformer at
+scale, Chapter~\ref{chap:efficiency} discusses how big the Transformer can get,
+Chapter~\ref{chap:adaptation} modifies a trained Transformer cheaply, and
+Chapter~\ref{chap:systems} puts a Transformer on top of a retrieval system.
 The lost-in-the-middle effect we have just described will
-reappear in Chapter~10 as a major constraint on how retrieval
-results are arranged in the prompt, and in Chapter~13 as one of
+reappear in Chapter~\ref{chap:systems} as a major constraint on how retrieval
+results are arranged in the prompt, and in Chapter~\ref{chap:error-model} as one of
 the failure modes the error-model ladder helps diagnose. The
 next chapter --- \emph{Pretraining and the Birth of GPT} ---
 takes the Transformer architecture and explains what was done

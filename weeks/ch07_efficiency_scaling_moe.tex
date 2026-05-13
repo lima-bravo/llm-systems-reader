@@ -1,4 +1,5 @@
 \chapter{Efficiency, Scaling, and Mixture-of-Experts}
+\label{chap:efficiency}
 \label{sec:ch7-moe}
 
 \scenelabel
@@ -111,7 +112,7 @@ By the end of this chapter, you should be able to:
         expert parallelism and pick a sensible composite for a given
         cluster.
   \item Derive the ZeRO staging (P/OS/G/activations) and relate it to
-        the AdamW optimizer-state bookkeeping from Chapter~2.
+        the AdamW optimizer-state bookkeeping from Chapter~\ref{chap:optimization}.
   \item Write the MoE forward pass, including top-$k$ gating,
         load-balancing auxiliary loss, and token capacity factor.
   \item Contrast the Switch Transformer, GShard, and Mixtral
@@ -211,7 +212,7 @@ non-expert parameters.
 \textbf{Expert indexing.}
 $N_e$ is the number of experts per MoE layer; experts are indexed
 $i \in \{1, \ldots, N_e\}$ and denoted $E_i$ (capital $E$, distinct
-from the Chinchilla floor constant $E$ in Chapter~2). The router maps
+from the Chinchilla floor constant $E$ in Chapter~\ref{chap:optimization}). The router maps
 each token to a top-$k$ subset $\mathcal{T}_k(x) \subset \{1, \ldots,
 N_e\}$ via the softmax scores $\mathbf{s}(x) \in \Delta^{N_e - 1}$.
 In older MoE equations reproduced below, $N$ without subscript also
@@ -238,7 +239,7 @@ for top-$k$ routing under A6.2 below.
 
 Standing assumptions are:
 \textbf{(A6.1)} The Chinchilla FLOP approximation $C \approx 6 N D$
-and its compute-optimal conclusions (Chapter~2, A2.2) hold with
+and its compute-optimal conclusions (Chapter~\ref{chap:optimization}, A2.2) hold with
 $N = N_{\mathrm{active}}$ for MoE training compute; total parameter
 count $N_{\mathrm{total}}$ affects memory, not per-token compute.
 \textbf{(A6.2)} All-to-all bandwidth estimates below assume (i)
@@ -351,14 +352,14 @@ bubble size, and the blast radius of a single-GPU failure.
 Pure data parallelism replicates parameters, gradients, optimizer
 state, and activations on every GPU -- memory is $O(N)$ per device
 even on huge clusters. Recall the per-worker memory budget from
-Chapter~2 Eq.~\eqref{eq:ch2-mem-budget},
+Chapter~\ref{chap:optimization} Eq.~\eqref{eq:ch2-mem-budget},
 $M_{\mathrm{total}} = b_p N + b_g N + b_o N + M_{\mathrm{act}}$;
 unsharded DP pays all four terms per device. The Zero Redundancy
 Optimizer (ZeRO)~\citep{rajbhandari2020zero} shards these tensors
 across data-parallel ranks, reconstructing them only when needed:
 \begin{itemize}
   \item \textbf{ZeRO-1}: shard the optimizer state (the $m_t, v_t$ of
-        AdamW from Chapter~2; the $b_o N$ term of
+        AdamW from Chapter~\ref{chap:optimization}; the $b_o N$ term of
         Eq.~\eqref{eq:ch2-mem-budget}). Memory per device drops by
         the DP degree with only an additional all-gather per step.
   \item \textbf{ZeRO-2}: additionally shard the gradients (the
@@ -378,7 +379,7 @@ open-source LLM training.
 
 Even after sharding parameters and optimizer state, activation memory
 often dominates. Activation recomputation \citep{chen2016training}
-(Chapter~2) drops intermediate activations and re-computes them in the
+(Chapter~\ref{chap:optimization}) drops intermediate activations and re-computes them in the
 backward pass. \citet{korthikanti2023reducing} refined this to
 \emph{selective} recomputation -- keep the activations for
 compute-heavy blocks (attention, FFN) and recompute the cheap ones
@@ -594,7 +595,7 @@ Consequences:
         batch size 1 the same expert can be loaded and unloaded from
         SRAM repeatedly.
   \item \textbf{Speculative decoding} (\citealt{leviathan2023speculative},
-        Chapter~8) pairs well with MoE because the cheap draft model
+        Chapter~\ref{chap:adaptation}) pairs well with MoE because the cheap draft model
         generates many candidates and the MoE verifies them in a
         large batch.
 \end{itemize}
@@ -621,13 +622,13 @@ Two empirical takeaways:
         typically 8--16 experts with top-2 routing.
 \end{itemize}
 These observations, combined with Chinchilla's FLOP accounting from
-Chapter~2, drive the MoE proliferation of 2024--2025 (Mixtral, DeepSeek,
+Chapter~\ref{chap:optimization}, drive the MoE proliferation of 2024--2025 (Mixtral, DeepSeek,
 Qwen-MoE, Grok-1).
 
 \begin{provedassumed}
 \emph{Proved (within the fit range).}
 Given the functional form Eq.~\eqref{eq:ch7-unified-scaling}, the
-same Lagrangian argument used for Chinchilla in Chapter~2 applies: at
+same Lagrangian argument used for Chinchilla in Chapter~\ref{chap:optimization} applies: at
 fixed compute $C$, the loss-minimizing split between
 $N_{\mathrm{active}}$ and $D$ is determined by matching the two
 power-law terms' logarithmic sensitivities. The reduction to
@@ -720,7 +721,7 @@ decreases, bandwidth plummets.
 
 Design consequences:
 \begin{itemize}
-  \item \textbf{FlashAttention} (Chapter~5) exists because
+  \item \textbf{FlashAttention} (Chapter~\ref{chap:transformer}) exists because
         materializing $A \in \mathbb{R}^{T \times T}$ in HBM is a
         bandwidth tax. Its tiling moves the attention compute into
         SRAM.
@@ -748,7 +749,7 @@ For typical LLM matmuls at training (large $M$ from batch) this
 is hundreds of FLOPs/byte and compute-bound. Per-token inference of a
 single prompt has $M = 1$ and is bandwidth-bound -- explaining why
 \emph{batching} is the single largest lever for inference throughput
-(Chapter~8).
+(Chapter~\ref{chap:adaptation}).
 
 \section{Systems Engineering Implications}
 

@@ -1,7 +1,8 @@
 \chapter{Chapter 1 Refresher: Statistical Learning Foundations for Large Language Models --- Probability, Likelihood, and Calibration}
+\label{chap:stat-foundations}
 
 \scenelabel
-Chapter~1 of the reader applies the probability spine summarised in the \emph{Preface: Probability Building Blocks}: Steps~2--4 turn sequential text into products of conditionals; Steps~8--10 justify cross-entropy training as likelihood plus coding intuition; Step~7 motivates interpreting finite corpora as imperfect proxies for expectations.
+Chapter~\ref{chap:stat-foundations} of the reader applies the probability spine summarised in the \emph{Preface: Probability Building Blocks}: Steps~2--4 turn sequential text into products of conditionals; Steps~8--10 justify cross-entropy training as likelihood plus coding intuition; Step~7 motivates interpreting finite corpora as imperfect proxies for expectations.
 
 \paragraph{Reasoning cadence (Strang-style).}
 Each numbered derivation below answers an explicit question that bothered practitioners historically:
@@ -14,7 +15,7 @@ Each numbered derivation below answers an explicit question that bothered practi
   \item \textbf{What does calibration add that loss omits?} Reliability of stated probabilities versus empirical hit rates (psychometrics meets scoring rules).
 \end{enumerate}
 
-The critical insight for Chapter~1 is that language modeling does not invent probability theory; it \emph{sequences} classical moves under computational constraints. Logarithms convert products into sums because curvature and gradient variance behave better that way---not because theoreticians prefer prettier notation.
+The critical insight for Chapter~\ref{chap:stat-foundations} is that language modeling does not invent probability theory; it \emph{sequences} classical moves under computational constraints. Logarithms convert products into sums because curvature and gradient variance behave better that way---not because theoreticians prefer prettier notation.
 
 This refresher chapter specialises the preface steps into LM notation; reread the preface whenever conditioning identities feel unmotivated.
 
@@ -153,7 +154,7 @@ Assume a validation slice with $N=1000$ predicted tokens. We observe:
   \item Mean confidence of top-1 predictions $=0.78$.
   \item Actual top-1 accuracy $=0.64$.
 \end{itemize}
-Now reason in the chain used in Chapter~1:
+Now reason in the chain used in Chapter~\ref{chap:stat-foundations}:
 
 \textbf{Step 1: Loss to perplexity.}
 \[

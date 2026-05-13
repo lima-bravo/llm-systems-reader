@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Statistical Learning Foundations for Large Language Models}
+\label{chap:stat-foundations}
 \label{sec:ch1}
 
 \scenelabel
@@ -225,8 +226,8 @@ This identity is exact and holds for any distribution over sequences.
 
 \Cons\ An LLM commits to a particular parameterisation of the
 conditional $P_\theta(x_t \mid x_{<t})$ (the neural architecture,
-Chapter~5), and the weights $\theta$ are learned by fitting this
-conditional to empirical text (Chapter~6). Everything else---the
+Chapter~\ref{chap:transformer}), and the weights $\theta$ are learned by fitting this
+conditional to empirical text (Chapter~\ref{chap:pretraining}). Everything else---the
 reasoning-like behaviour, the hallucinations, the striking context
 sensitivity---is a downstream consequence of this one modelling choice.
 
@@ -242,7 +243,7 @@ one.
 
 \subsection{Why Left-to-Right?}
 
-The chain rule in equation (\ref{eq:chain}) is written left-to-right, but it could just as well be written right-to-left, or in any other ordering. Any particular factorization is mathematically equivalent on the joint. Neural language models nonetheless commit to a canonical ordering---left-to-right for GPT-style autoregressive models, or a masked variant for BERT-style bidirectional encoders---because the \emph{parameter sharing} induced by that ordering is what makes the model tractable. We return to this choice in Chapter~6, where we contrast autoregressive, masked, and prefix-LM objectives.
+The chain rule in equation (\ref{eq:chain}) is written left-to-right, but it could just as well be written right-to-left, or in any other ordering. Any particular factorization is mathematically equivalent on the joint. Neural language models nonetheless commit to a canonical ordering---left-to-right for GPT-style autoregressive models, or a masked variant for BERT-style bidirectional encoders---because the \emph{parameter sharing} induced by that ordering is what makes the model tractable. We return to this choice in Chapter~\ref{chap:pretraining}, where we contrast autoregressive, masked, and prefix-LM objectives.
 
 \section{Maximum Likelihood and Next-Token Prediction}
 
@@ -439,7 +440,7 @@ distributes the gradient across all of them simultaneously.
 
 \Emp\ A mis-tokenised example (one where a rare token has been split
 unusually) contributes anomalously large loss spikes to specific
-positions---a phenomenon we revisit in Chapter~4.
+positions---a phenomenon we revisit in Chapter~\ref{chap:tokenization}.
 
 \begin{provedassumed}
 \textbf{Proved here:} the equivalences
@@ -452,8 +453,8 @@ softmax), and the chain-rule factorisation (\ref{eq:chain}).
 training on large corpora yields models whose outputs \emph{look}
 coherent and contextually appropriate; this is a property of the
 data distribution, not a theorem.
-\textbf{Used later:} Chapter~2 optimises (\ref{eq:mle}); Chapter~5
-parameterises $q_\theta$ via attention; Chapter~9 replaces $\hat p$ with
+\textbf{Used later:} Chapter~\ref{chap:optimization} optimises (\ref{eq:mle}); Chapter~\ref{chap:transformer}
+parameterises $q_\theta$ via attention; Chapter~\ref{chap:alignment} replaces $\hat p$ with
 a preference distribution.
 \end{provedassumed}
 
@@ -499,7 +500,7 @@ code optimised for $q$.
 
 \Ident\ $\KL$ is non-negative, zero iff $p = q$, and asymmetric (in
 general $\KL(p\parallel q) \neq \KL(q\parallel p)$). Asymmetry reappears
-in Chapter~9 where reverse-KL and forward-KL yield qualitatively different
+in Chapter~\ref{chap:alignment} where reverse-KL and forward-KL yield qualitatively different
 alignment objectives.
 
 \Cons\ The identity $H(p,q) = H(p) + \KL(p\parallel q)$ (already
@@ -561,11 +562,11 @@ visually salient on a log-plot of PPL.
 smaller vocabulary mechanically achieves lower per-token perplexity
 because each token is less informative. Comparing perplexities across
 models trained with different tokenisers is therefore misleading; this
-is revisited in Chapter~4.
+is revisited in Chapter~\ref{chap:tokenization}.
 
 \Emp\ A low perplexity does not imply high task performance. A model
 can be excellent at modelling the statistics of Wikipedia prose while
-still being useless at answering a question. Chapter~10 confronts task-level
+still being useless at answering a question. Chapter~\ref{chap:systems} confronts task-level
 evaluation directly.
 
 \begin{provedassumed}
@@ -575,8 +576,8 @@ cross-entropy/perplexity equivalence (\ref{eq:ppl-argmin}).
 and $\log$ in $\nats$.
 \textbf{Empirically observed:} perplexity is tokenization-dependent and
 only weakly correlated with downstream task accuracy.
-\textbf{Used later:} Chapter~6 uses (\ref{eq:perplexity}) as a headline
-metric; Chapter~9 uses (\ref{eq:kl-def}) as the KL penalty in DPO.
+\textbf{Used later:} Chapter~\ref{chap:pretraining} uses (\ref{eq:perplexity}) as a headline
+metric; Chapter~\ref{chap:alignment} uses (\ref{eq:kl-def}) as the KL penalty in DPO.
 \end{provedassumed}
 
 \section{Uncertainty, Confidence, and Calibration}
@@ -886,8 +887,8 @@ calibration and operating distributions).
 \textbf{Empirically observed:} modern deep networks are overconfident
 in the high-probability regime; temperature scaling recovers most of
 the calibration deficit.
-\textbf{Used later:} Chapter~6 revisits temperature as a decoding knob;
-Chapter~9 tracks calibration drift after alignment; Chapter~10 uses
+\textbf{Used later:} Chapter~\ref{chap:pretraining} revisits temperature as a decoding knob;
+Chapter~\ref{chap:alignment} tracks calibration drift after alignment; Chapter~\ref{chap:systems} uses
 calibration as part of abstention and tool-use policies.
 \end{provedassumed}
 
@@ -921,7 +922,7 @@ incidental, but it materially shapes system behaviour.
 \Cons\ Decoding strategies define a \emph{second distribution} over
 outputs, layered on top of the model's learned conditional. The
 question ``what does the model say?'' is under-specified without a
-decoding strategy. Chapter~6 treats decoding more formally; here the
+decoding strategy. Chapter~\ref{chap:pretraining} treats decoding more formally; here the
 point is that sampling is a first-class design choice with measurable
 effects on calibration, diversity, and downstream task performance.
 
@@ -948,7 +949,7 @@ corrects.
 
 \paragraph{Token-boundary brittleness.}
 \Emp\ Because cross-entropy is computed per token and tokenisation is
-lossy (Chapter~4), semantically equivalent inputs can produce very
+lossy (Chapter~\ref{chap:tokenization}), semantically equivalent inputs can produce very
 different logit trajectories. The model may be confident on one phrasing
 of a prompt and unsure on a paraphrase. This is a calibration failure
 expressed at the level of inputs rather than outputs.
@@ -963,13 +964,13 @@ decomposition (\ref{eq:mle}) and a reason why long-form generation is
 harder than short-form.
 
 \paragraph{Calibration drift after alignment.}
-\Emp\ Post-training techniques (instruction tuning, RLHF; Chapter~9)
+\Emp\ Post-training techniques (instruction tuning, RLHF; Chapter~\ref{chap:alignment})
 reshape \emph{which} tokens receive probability mass without preserving
 \emph{how much}. Aligned models are often less calibrated than their
 base counterparts; the confidence signal that was useful in the base
 model becomes misleading after alignment. This is a critical
 consideration in production pipelines and motivates retrieval-augmented
-and tool-using systems (Chapter~10).
+and tool-using systems (Chapter~\ref{chap:systems}).
 
 \begin{workedexample}[: overconfidence vignette]
 A factual-QA benchmark reports an LLM's top-1 predictions at $88\%$
@@ -1020,7 +1021,7 @@ A common early failure mode in LLM systems is \emph{automation bias}:
 \end{quote}
 This arises from a mismatch between human epistemic intuitions---where confident assertions come from knowledgeable interlocutors---and probabilistic text generation, where confidence is a statistical property of the next-token distribution. Humans infer reliability from tone; models produce tone as a by-product of fitting tone-heavy text. The fluency heuristic is a cousin: the more coherent the output reads, the more we trust it, independent of whether it is correct.
 
-Effective first-line mitigations include structured outputs with explicit confidence fields, uncertainty visualization in user interfaces, and source attribution (retrieval citations, tool-call traces). We return to these in Chapter~10 in the context of system design and in Chapter~11 in the context of assurance cases.
+Effective first-line mitigations include structured outputs with explicit confidence fields, uncertainty visualization in user interfaces, and source attribution (retrieval citations, tool-call traces). We return to these in Chapter~\ref{chap:systems} in the context of system design and in Chapter~\ref{chap:governance} in the context of assurance cases.
 
 \section{Bridges to Later Chapters}
 
@@ -1042,7 +1043,7 @@ The statistical machinery of this chapter is revisited, refined, or challenged i
   \item \citet{murphy2012mlpp} and \citet{murphy2022pml} --- \emph{Machine Learning: A Probabilistic Perspective} and the updated \emph{Probabilistic Machine Learning}; covers MLE, exponential families, and information theory.
   \item \citet{shannon1948} --- \emph{A Mathematical Theory of Communication}; the foundational paper introducing entropy, cross-entropy, and the source-coding theorems that underpin perplexity.
   \item \citet{cover2006elements} --- \emph{Elements of Information Theory}; the canonical reference for information-theoretic quantities.
-  \item \citet{vapnik1998statistical} --- \emph{Statistical Learning Theory}; classical PAC framework for generalization, useful background for Chapter~2.
+  \item \citet{vapnik1998statistical} --- \emph{Statistical Learning Theory}; classical PAC framework for generalization, useful background for Chapter~\ref{chap:optimization}.
   \item \citet{guo2017calibration} --- empirical study of calibration in modern neural networks; introduces temperature scaling.
   \item \citet{gneiting2007strictly} --- survey of proper scoring rules in forecasting.
   \item \citet{holtzman2020curious} --- shows that maximum-likelihood decoding fails in open-ended generation; motivates the decoding toolkit.

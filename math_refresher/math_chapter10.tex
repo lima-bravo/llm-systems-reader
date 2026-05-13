@@ -1,4 +1,5 @@
 \chapter{Chapter 10 Refresher: LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses --- Retrieval Metrics and Evaluation Arithmetic}
+\label{chap:systems}
 
 \scenelabel
 Retrieval-augmented answering concatenates two stochastic modules: recall relevant evidence (set-valued event), then condition generation on that evidence (Preface Step~2 again). One scalar cannot isolate which module failed.
@@ -6,7 +7,7 @@ Retrieval-augmented answering concatenates two stochastic modules: recall releva
 \paragraph{Step A --- Set-valued relevance.}
 \textbf{Problem.} Truth may admit multiple supporting documents.
 \textbf{Insight.} Precision/recall generalise Preface Step~1 counting logic to partial overlaps between retrieved and gold sets.
-\textbf{Lineage.} Classical IR (Manning et al.); neural hybrids layer embedding geometry from Chapter~4.
+\textbf{Lineage.} Classical IR (Manning et al.); neural hybrids layer embedding geometry from Chapter~\ref{chap:tokenization}.
 
 \paragraph{Step B --- Conditional generation quality.}
 \textbf{Problem.} Good retriever + weak synthesiser still ships nonsense.

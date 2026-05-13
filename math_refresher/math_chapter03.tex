@@ -1,8 +1,9 @@
 \chapter{Chapter 3 Refresher: Neural Networks}
+\label{chap:neural-networks}
 \label{sec:math-refresher-neural-networks}
 
 \scenelabel
-Chapter~3 names the map \(f_\theta\) that converts contexts (embedded as vectors) into logits consumed by the softmax head from Chapter~1. Probability Preface Steps~2--3 built distributions over \emph{symbols}; here we build differentiable functions producing \emph{parameters} of those distributions.
+Chapter~\ref{chap:neural-networks} names the map \(f_\theta\) that converts contexts (embedded as vectors) into logits consumed by the softmax head from Chapter~\ref{chap:stat-foundations}. Probability Preface Steps~2--3 built distributions over \emph{symbols}; here we build differentiable functions producing \emph{parameters} of those distributions.
 
 \paragraph{Step A --- Affine versus nonlinear composition.}
 \textbf{Problem.} Stack linear maps naïvely and nothing new appears (matrix multiplication absorbs depth).
@@ -38,7 +39,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \item \(\odot\): Hadamard (elementwise) product of two vectors of the same shape.
   \item \(f \circ g\): composition, \((f \circ g)(x)=f(g(x))\).
   \item \(J\) or \(\partial u/\partial v\): Jacobian matrix of partial derivatives (shape dictated by numerator layout below).
-  \item \(\mathcal{L}\): scalar loss; \(\theta\): flattened parameters (as in Chapter~2 refresher).
+  \item \(\mathcal{L}\): scalar loss; \(\theta\): flattened parameters (as in Chapter~\ref{chap:optimization} refresher).
 \end{itemize}
 
 \section*{What You Need To Recall Precisely}
@@ -56,11 +57,11 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \[
     z^{(\ell)} = W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}.
   \]
-  The language-modelling head typically applies softmax to logits \(z^{(L)}\) (Chapter~1 refresher).
+  The language-modelling head typically applies softmax to logits \(z^{(L)}\) (Chapter~\ref{chap:stat-foundations} refresher).
 
   \item \textbf{Two ``chain rules'' (disambiguation).}
   \begin{itemize}[leftmargin=1.5em]
-    \item \emph{Probability chain rule} (Chapter~1): factorises a joint as a product of conditionals, e.g.\ \(p(x_{1:T})=\prod_t p(x_t\mid x_{<t})\).
+    \item \emph{Probability chain rule} (Chapter~\ref{chap:stat-foundations}): factorises a joint as a product of conditionals, e.g.\ \(p(x_{1:T})=\prod_t p(x_t\mid x_{<t})\).
     \item \emph{Calculus chain rule}: propagates derivatives through composed differentiable maps. Same phrase, different theorem.
   \end{itemize}
 
@@ -91,7 +92,7 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
   \[
     \nabla_z \mathcal{L}_{\mathrm{CE}} = p - e_k.
   \]
-  Sketch: write \(\log p_k = z_k - \log\sum_j e^{z_j}\). Differentiate: \(\partial (\log\sum_j e^{z_j})/\partial z_i = p_i\) because softmax derivatives telescope inside the log-sum-exp. Subtracting the indicator \(e_k\) leaves residual \(p_i\) on every coordinate except the target coordinate where it becomes \(p_k-1\). Packaging coordinates yields \(p-e_k\). This identity is the bridge between Chapter~1's probabilistic head and Chapter~3's layered map producing logits---gradients vanish exactly when \(p\) places mass \(1\) on the observed token.
+  Sketch: write \(\log p_k = z_k - \log\sum_j e^{z_j}\). Differentiate: \(\partial (\log\sum_j e^{z_j})/\partial z_i = p_i\) because softmax derivatives telescope inside the log-sum-exp. Subtracting the indicator \(e_k\) leaves residual \(p_i\) on every coordinate except the target coordinate where it becomes \(p_k-1\). Packaging coordinates yields \(p-e_k\). This identity is the bridge between Chapter~\ref{chap:stat-foundations}'s probabilistic head and Chapter~\ref{chap:neural-networks}'s layered map producing logits---gradients vanish exactly when \(p\) places mass \(1\) on the observed token.
 
   \item \textbf{Hyperplane and XOR.}
   A linear classifier uses \(\mathrm{sign}(w^{\top}x+b)\); the decision boundary is \(\{x:w^{\top}x+b=0\}\), an affine hyperplane. XOR labels on \(\{(0,0),(0,1),(1,0),(1,1)\}\) are not linearly separable in \(\mathbb{R}^2\): no single line separates the two label classes. A hidden layer folds space so a second boundary can finish the job.
@@ -109,8 +110,8 @@ This refresher installs calculus-chain-rule literacy distinct from the probabili
 
 \section*{How These Results Build on Each Other}
 \begin{enumerate}[leftmargin=1.5em]
-  \item Chapter~1 fixes the probabilistic head (softmax, CE); gradients at logits land on \(p-e_k\).
-  \item Chapter~2 consumes \(\nabla_\theta \mathcal{L}\) as an abstract vector; Chapter~3 explains how software obtains it through layered Jacobians.
+  \item Chapter~\ref{chap:stat-foundations} fixes the probabilistic head (softmax, CE); gradients at logits land on \(p-e_k\).
+  \item Chapter~\ref{chap:optimization} consumes \(\nabla_\theta \mathcal{L}\) as an abstract vector; Chapter~\ref{chap:neural-networks} explains how software obtains it through layered Jacobians.
   \item Affine maps propagate signals forward (\(W,b\)) and sensitivities backward (\(W^{\top}\)).
   \item Elementwise \(\varphi\) applies nonlinearity forward and gates gradients backward via \(\odot \varphi'(z)\).
   \item Composing many layers iterates these two patterns (calculus chain rule), yielding backpropagation when implemented reversibly.
@@ -144,13 +145,13 @@ The second and third requirements contradict each other. No affine hyperplane in
 \]
 Each layer contributes a factor \(\varphi'(u)\, w\); depth multiplies many such factors---either shrink toward \(0\) or grow past \(1\) unless \(\varphi'\), weights, and stabilisers are chosen carefully. This scalar picture is the skeleton of vanishing/exploding gradients in vector nets.
 
-\textbf{Practical reading implication:} when Chapter~3 of the reader walks backpropagation, read each layer as supplying one Jacobian--vector product like the factors above; when it discusses Xavier/He, read \(\mathrm{Var}(z)\) reasoning like Part B scaled to fan-in \(n\).
+\textbf{Practical reading implication:} when Chapter~\ref{chap:neural-networks} of the reader walks backpropagation, read each layer as supplying one Jacobian--vector product like the factors above; when it discusses Xavier/He, read \(\mathrm{Var}(z)\) reasoning like Part B scaled to fan-in \(n\).
 
 \section*{Intuition Checkpoints}
 \begin{itemize}[leftmargin=1.5em]
   \item Say ``probability chain rule'' or ``calculus chain rule'' explicitly when both appear in one sitting.
   \item Depth without elementwise \(\varphi\) is equivalent to one affine map.
-  \item \(\nabla_\theta \mathcal{L}\) from Chapter~2 is the same object software computes by reverse-mode differentiation through the graph defined here.
+  \item \(\nabla_\theta \mathcal{L}\) from Chapter~\ref{chap:optimization} is the same object software computes by reverse-mode differentiation through the graph defined here.
   \item \(\odot\) with \(\varphi'(z)\) is where ReLU sparsity (zeros) creates dead-unit risk.
   \item Representation theorems do not guarantee cheap optimisation; judge pipelines by trainability evidence, not approximation slogans alone.
 \end{itemize}
@@ -168,5 +169,5 @@ Each layer contributes a factor \(\varphi'(u)\, w\); depth multiplies many such 
   \item \textbf{Strang, \emph{Linear Algebra}} --- matrix multiplication, transpose, norms.
   \item \textbf{Cristianini \& Shawe-Taylor (or similar ML math notes)} --- Jacobian and gradient layout conventions if confusion persists.
   \item \textbf{Rumelhart--Hinton--Williams (1986)} --- historical chain-rule-through-networks narrative.
-  \item \textbf{Glorot \& Bengio (2010); He et al.\ (2015)} --- variance-preserving initialisation motivations (original papers optional; reader Chapter~3 operationalises scaling with \(\varphi\)).
+  \item \textbf{Glorot \& Bengio (2010); He et al.\ (2015)} --- variance-preserving initialisation motivations (original papers optional; reader Chapter~\ref{chap:neural-networks} operationalises scaling with \(\varphi\)).
 \end{itemize}

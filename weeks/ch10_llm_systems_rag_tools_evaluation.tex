@@ -1,4 +1,5 @@
 \chapter{LLM Systems --- Retrieval, Tool Use, and Evaluation Harnesses}
+\label{chap:systems}
 
 \scenelabel
 \begin{scenestrip}
@@ -158,7 +159,7 @@ set of chunks that are \emph{sufficient} to derive $a^\star$; for
 an answer $y$, we write $\mathrm{Claims}(y)$ for the atomic
 factual claims extracted from $y$. We continue to use $x$ for the
 user-visible prompt, $y$ for the model answer, $\tau$ for decoding
-temperature (Chapter~1), and $T$ for context length. The generator
+temperature (Chapter~\ref{chap:stat-foundations}), and $T$ for context length. The generator
 conditional is written $P_\theta(y \mid x, c_{(1)}, \dots, c_{(k_R)})$.
 
 We make three standing assumptions.
@@ -191,7 +192,7 @@ retrieved chunk \emph{tuple} $R_{k_R}(q) = (c_{(1)}, \dots, c_{(k_R)})$
 (an ordered list, since the generator is sensitive to position
 --- see lost-in-the-middle, Eq.~\eqref{eq:litm}) and the user
 query $q$ into a single token sequence, and $P_\theta$ is the
-frozen generator from Chapter~5. We use tuple notation rather than
+frozen generator from Chapter~\ref{chap:transformer}. We use tuple notation rather than
 set notation throughout to keep the order dependence explicit. The design space is
 larger than Eq.~\eqref{eq:rag-conditional} suggests: $R$, $k_R$, the
 chunking policy producing $\mathcal{C}$, and the prompt-construction
@@ -641,7 +642,7 @@ into four or more sub-tokens probably does not. If more than
 three or more sub-tokens, treat vocabulary gap as a deployment
 risk and apply the mitigations below. The measurement requires
 only the tokenizer, not the model; it can be run as a
-pre-deployment gate. Chapter~4 (\S\ref{sec:ch4_oov}) discusses
+pre-deployment gate. Chapter~\ref{chap:tokenization} (\S\ref{sec:ch4_oov}) discusses
 the fragmentation mechanism in more detail.
 
 \textbf{Layer 2: The embedding retrieval gap.}
@@ -682,7 +683,7 @@ other senses of the word it has learned.
 This failure is harder to detect than a gap because it
 produces coherent, fluent output. The model is not confused; it
 is confidently applying the wrong knowledge. The grounding axis
-of the Chapter~13 diagnostic ladder is the correct place to
+of the Chapter~\ref{chap:error-model} diagnostic ladder is the correct place to
 assign this failure: the model has produced a contextually
 appropriate, internally coherent, structurally valid answer
 that is wrong because its representation of a key term does
@@ -700,7 +701,7 @@ on whatever ``Minerva'' activates in the training distribution
 on the internal review the user intended. No uncertainty
 signal is emitted; the answer reads as confidently as any
 other. This is a grounding failure of the type described in
-Chapter~1's treatment of hallucination: the model produces the
+Chapter~\ref{chap:stat-foundations}'s treatment of hallucination: the model produces the
 most plausible token sequence given its training distribution,
 and that distribution does not contain the private entity.
 
@@ -763,7 +764,7 @@ mean of their sub-token embeddings, then run a round of
 next-token pretraining on the private corpus. This is the
 approach taken by BioBERT and LegalBERT and is the most
 thorough fix, but it produces a modified model that must be
-versioned, evaluated, and maintained separately. Chapter~8
+versioned, evaluated, and maintained separately. Chapter~\ref{chap:adaptation}
 (\S\ref{sec:ch8_private_vocab}) covers the mechanics.
 
 \Cons\ Deploy mitigations (i) through (iii) before any private
@@ -812,7 +813,7 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
   \mathrm{exec}_i(\mathrm{params}_t)$), and repeats until the policy
   emits a terminal answer. Only the Action is executed; the
   Thought is useful for debugging and sometimes for training (see
-  reasoning-trace-based methods in Chapter~9) but does not cross the
+  reasoning-trace-based methods in Chapter~\ref{chap:alignment}) but does not cross the
   trust boundary into the tool runtime.}
   \label{fig:react-loop}
 \end{figure}
@@ -820,7 +821,7 @@ Figure~\ref{fig:react-loop} illustrates the ReAct pattern
 \subsection{Tool schemas}
 
 Modern tool-use APIs (OpenAI function calling, Anthropic tool use,
-and the MCP standard introduced in Chapter~12) all require a
+and the MCP standard introduced in Chapter~\ref{chap:agents}) all require a
 JSON-schema description of each tool: its name, its parameter
 names and types, and a natural-language description. The model is
 trained (or prompted) to emit calls that validate against the
@@ -1071,7 +1072,7 @@ the LLM's reasoning is not exposed.
 
 \textbf{The calibration routing problem.} A natural response
 is to verify selectively: check only the outputs most likely
-to be wrong. Chapter~1 establishes that LLMs are poorly
+to be wrong. Chapter~\ref{chap:stat-foundations} establishes that LLMs are poorly
 calibrated --- the model's expressed confidence does not
 reliably track its accuracy. A fluently expressed hallucination
 arrives with the same textual confidence as a correct answer.
@@ -1230,7 +1231,7 @@ The lost-in-the-middle curve Eq.~\eqref{eq:litm} is an
 \emph{empirical observation} on multiple production and
 research-grade models. We do \emph{not} have a theorem that
 predicts the U-shape from architecture alone; it correlates with
-positional-encoding behaviour (Chapter~5) and training-data
+positional-encoding behaviour (Chapter~\ref{chap:transformer}) and training-data
 positional biases, but no derivation connects them. Treat
 Eq.~\eqref{eq:litm} as a robust regularity, not a law.
 
@@ -1252,7 +1253,7 @@ theorem.
 \citet{mialon2023augmented} offer a general framing for LLM
 systems as language models augmented with reasoning (chain-of-
 thought, ReAct), tools (calculator, interpreter, search), and
-actions (external APIs). Chapter~10 should be read in this frame:
+actions (external APIs). Chapter~\ref{chap:systems} should be read in this frame:
 every augmentation is a system component, every system component
 has its own failure modes, and every deployment is a choice of
 which components to include.
@@ -1392,17 +1393,17 @@ A concrete end-to-end RAG + evaluation lab:
 
 \section{Bridges to Other Weeks}
 
-Chapter~10 connects back to almost every prior chapter. Retrieval
-substitutes for some of the knowledge alignment (Chapter~9) or
-adaptation (Chapter~8) would otherwise have to encode. Tool use is
+Chapter~\ref{chap:systems} connects back to almost every prior chapter. Retrieval
+substitutes for some of the knowledge alignment (Chapter~\ref{chap:alignment}) or
+adaptation (Chapter~\ref{chap:adaptation}) would otherwise have to encode. Tool use is
 an alternative to scale for arithmetic, code execution, and
-dynamic knowledge (Chapter~7 would have that done by making the model
+dynamic knowledge (Chapter~\ref{chap:efficiency} would have that done by making the model
 bigger; here we make the surrounding system more capable).
 Evaluation is the lens under which every other chapter's claims
-become testable, and it is the hand-off into Chapter~11's governance
+become testable, and it is the hand-off into Chapter~\ref{chap:governance}'s governance
 framework, where eval results become assurance artefacts.
 
-Chapter~12 introduces the Model Context Protocol (MCP), which
+Chapter~\ref{chap:agents} introduces the Model Context Protocol (MCP), which
 standardizes the tool-use schema of this chapter across clients
 and servers and turns the ``integrate against my API'' problem
 into a declarative one.

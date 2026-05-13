@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Memory the Model Doesn't Have}
+\label{chap:systems}
 \label{ntg:ch10}
 
 \scenelabel
@@ -62,7 +63,7 @@ text-search systems and an essential component of many
 retrieval pipelines.
 
 The neural turn in retrieval came with the embedding work we
-described in Chapter~4. Once words could be represented as
+described in Chapter~\ref{chap:tokenization}. Once words could be represented as
 vectors and similarity could be measured geometrically,
 \emph{semantic search} became possible: a query and a
 document could be judged similar even when they shared no
@@ -94,7 +95,7 @@ production use came when OpenAI standardised the contract in
 a feature called \emph{function calling} in mid-2023, and when
 Anthropic followed in 2024 with a transport-layer standard
 called the Model Context Protocol (MCP) that we will discuss
-in Chapter~12. Tool use shifted, in about eighteen months,
+in Chapter~\ref{chap:agents}. Tool use shifted, in about eighteen months,
 from a research curiosity to a discipline with versioned
 interfaces, schemas, and audit trails.
 
@@ -141,7 +142,7 @@ exactly what it was asked to do; the retriever, not the model,
 is the source of the failure. The user usually cannot tell.
 
 Long contexts produce the lost-in-the-middle effect we
-discussed in Chapter~5. The model reliably attends to the
+discussed in Chapter~\ref{chap:transformer}. The model reliably attends to the
 beginning and end of the retrieved passages and underweights
 the middle, regardless of where the answer actually sits. A
 RAG system that just dumps a hundred retrieved passages into
@@ -210,7 +211,7 @@ wrong order, or fail to return what it was meant to return.
 
 The retrieval step in a modern RAG pipeline rests on the
 geometric meaning of the embedding space we described in
-Chapter~4. Each document in the corpus is converted, by an
+Chapter~\ref{chap:tokenization}. Each document in the corpus is converted, by an
 embedding model, into a vector in a high-dimensional space.
 The user's query is converted into a vector by the same
 model. The retrieval system finds the documents whose vectors
@@ -313,7 +314,7 @@ not intend. A schema that is too restrictive prevents the
 model from being useful. The design of tool schemas is a
 discipline in its own right, and it is the place where many
 of the security trade-offs in agentic systems are negotiated.
-We will return to this in Chapter~12.
+We will return to this in Chapter~\ref{chap:agents}.
 
 \paragraph{Evaluation is itself a piece of software.} The
 question of whether the system is working well is not
@@ -407,22 +408,22 @@ system will return the document; the model will see the
 injection; the model may follow it. The fix is layered: input
 sanitisation, prompt structure that flags retrieved content
 as untrusted, output filtering. None of the fixes are
-complete. We will return to this in Chapter~12.
+complete. We will return to this in Chapter~\ref{chap:agents}.
 
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~4 (the embedding space that
-makes semantic retrieval work), Chapter~5 (the attention
+This chapter built on Chapter~\ref{chap:tokenization} (the embedding space that
+makes semantic retrieval work), Chapter~\ref{chap:transformer} (the attention
 mechanism that determines how the retrieved passages are
-processed), Chapter~6 (the pretrained model that the system
-wraps), and Chapter~9 (the aligned model that responds to
+processed), Chapter~\ref{chap:pretraining} (the pretrained model that the system
+wraps), and Chapter~\ref{chap:alignment} (the aligned model that responds to
 user requests). It is the place where most of the
 engineering of a deployed LLM product happens, and most of
-its surprises. Chapter~11 takes up the governance question of
-how to assure such a system operationally. Chapter~12 looks
+its surprises. Chapter~\ref{chap:governance} takes up the governance question of
+how to assure such a system operationally. Chapter~\ref{chap:agents} looks
 at the developer-facing surface of these systems and the
-attack patterns that arise. Chapter~13 returns to the
+attack patterns that arise. Chapter~\ref{chap:error-model} returns to the
 failure modes of retrieval and tool use as the
 \emph{groundedness} and \emph{environment} axes of the error
 model. The next chapter --- \emph{Trust, Governance, and Who

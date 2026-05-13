@@ -1,4 +1,5 @@
 \chapter{The Transformer --- Attention as the Core Computational Primitive}
+\label{chap:transformer}
 \label{sec:ch5-transformer}
 
 \scenelabel
@@ -222,7 +223,7 @@ constant-depth signal paths, and is in principle \emph{addressable}
 across the full context length $T$. Whether information at position
 $j$ is reliably \emph{recalled} when needed at position $i$ is an
 empirical question --- the lost-in-the-middle phenomenon
-(\citealt{liu2024lost}, Chapter~10) shows that addressability and
+(\citealt{liu2024lost}, Chapter~\ref{chap:systems}) shows that addressability and
 reliable recall come apart in practice.
 
 \section{Scaled Dot-Product Self-Attention}
@@ -426,7 +427,7 @@ so the parameter count matches a single full-size head. Figure
 \Emp\ Heads specialize \citep{elhage2021mathematical}: some attend to
 adjacent positions (n-gram heads), some to syntactic dependencies,
 some to previously-seen tokens of the same type (induction heads,
-\citealt{olsson2022induction}, revisited in Chapter~6). This
+\citealt{olsson2022induction}, revisited in Chapter~\ref{chap:pretraining}). This
 specialization is not engineered in; it \emph{emerges} from training
 (A4.3) and can regress under recipe changes --- it is an observation,
 not a guarantee.

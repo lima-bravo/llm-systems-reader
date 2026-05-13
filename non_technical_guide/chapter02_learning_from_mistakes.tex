@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{How Machines Learn from Their Mistakes}
+\label{chap:optimization}
 \label{ntg:ch2}
 
 \scenelabel
@@ -13,7 +14,7 @@
 \sceneitem{What goes wrong}
 \end{scenestrip}
 
-\paragraph{The problem.} Chapter~1 told us \emph{what} we want a language model to do:
+\paragraph{The problem.} Chapter~\ref{chap:stat-foundations} told us \emph{what} we want a language model to do:
 look at the words so far and produce a sensible weighting over
 the words that might come next. It said almost nothing about
 \emph{how} the model came to be able to do that. We now face
@@ -124,7 +125,7 @@ research question. The research questions are now elsewhere.
 The most consequential of those questions is: \emph{how much
 of what should we spend?} Jared Kaplan and his coauthors at
 OpenAI, in 2020, observed that the loss --- the surprise number
-from Chapter~1 --- decreases as a slow, predictable function of
+from Chapter~\ref{chap:stat-foundations} --- decreases as a slow, predictable function of
 three quantities: the number of parameters in the model, the
 number of words in the training corpus, and the total amount of
 arithmetic spent. The relationship is what mathematicians call
@@ -208,9 +209,9 @@ did exactly what it was asked to do: it reduced the loss. The
 failures are mismatches between what the loss measures and what
 the deployed system actually needs to do. We will see this
 pattern repeat throughout the rest of the book under different
-names: in Chapter~6 it will be the gap between pretraining and
-deployment, in Chapter~9 it will be the alignment tax, in
-Chapter~10 it will be evaluation contamination, in Chapter~13 it
+names: in Chapter~\ref{chap:pretraining} it will be the gap between pretraining and
+deployment, in Chapter~\ref{chap:alignment} it will be the alignment tax, in
+Chapter~\ref{chap:systems} it will be evaluation contamination, in Chapter~\ref{chap:error-model} it
 will be the structure-meaning-context-groundedness-environment
 ladder.
 
@@ -293,7 +294,7 @@ looks discontinuous. The technical name for this is
 \emph{emergence}, and there is a continuing argument in the
 literature about whether it is a real phenomenon or an artefact
 of how the capabilities are being measured. We will return to
-this in Chapter~6.
+this in Chapter~\ref{chap:pretraining}.
 
 The Chinchilla paper sharpened the Kaplan picture by pointing
 out that, given a fixed budget, you do better by training a
@@ -324,7 +325,7 @@ behaviour, but not always. The translation is mediated by:
         mostly informal web text and the deployment is asking
         the model to draft contracts, the loss improvement may
         not transfer.
-  \item How well the alignment work of Chapter~9 has been done.
+  \item How well the alignment work of Chapter~\ref{chap:alignment} has been done.
         A model that is perfectly trained but unhelpfully
         evasive at deployment is not actually useful.
   \item How well the surrounding system --- the retrieval, the
@@ -337,8 +338,8 @@ The honest summary is that scaling helps but is not a strategy
 on its own. The gap between a research model that scores well
 on internal benchmarks and a product that delights users is not,
 in our experience, predictable from the benchmarks. We will
-return to this in Chapter~10 when we discuss evaluation
-harnesses, and again in Chapter~11 when we discuss what
+return to this in Chapter~\ref{chap:systems} when we discuss evaluation
+harnesses, and again in Chapter~\ref{chap:governance} when we discuss what
 ``deployment-ready'' actually means.
 
 \section{The engineering consequence}
@@ -375,8 +376,8 @@ deliberate: training is amortised across hundreds of millions
 of queries. It also has a perverse consequence: an organisation
 that trained a frontier model has no economic reason to retrain
 it from scratch when a better recipe appears. They have an
-economic reason to fine-tune (Chapter~8), to add retrieval
-(Chapter~10), to align (Chapter~9). Training a brand new
+economic reason to fine-tune (Chapter~\ref{chap:adaptation}), to add retrieval
+(Chapter~\ref{chap:systems}), to align (Chapter~\ref{chap:alignment}). Training a brand new
 foundation model is a bet that is made only by the small set of
 organisations that can afford to make it, and it is made
 roughly once a year per such organisation.
@@ -404,7 +405,7 @@ to store many of those examples verbatim, modern models reliably
 memorise some fraction of their training data. The fraction is
 small in proportional terms but large in absolute terms.
 Memorised content is recoverable from the model under the right
-prompt, which has implications for copyright (Chapter~11), for
+prompt, which has implications for copyright (Chapter~\ref{chap:governance}), for
 privacy (a model trained on a corpus that contained leaked
 personal data may surface that data on request), and for
 benchmark integrity (a model that memorised the test set will
@@ -421,9 +422,9 @@ about subjects that did not exist when the training data was
 collected, or framed in ways that do not appear in the training
 data. The gap between training distribution and deployment
 distribution is the single largest source of unpredictable
-behaviour in the field. We will see in Chapter~10 how retrieval
-helps to close part of the gap, in Chapter~9 how alignment
-helps to close another part, and in Chapter~13 how, even with
+behaviour in the field. We will see in Chapter~\ref{chap:systems} how retrieval
+helps to close part of the gap, in Chapter~\ref{chap:alignment} how alignment
+helps to close another part, and in Chapter~\ref{chap:error-model} how, even with
 both interventions, a residue remains.
 
 \paragraph{Compute as a binding constraint.} A widespread
@@ -456,17 +457,17 @@ disclose''.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter depended only on Chapter~1: we are reducing the
-``surprise'' number Chapter~1 introduced. The hiker-in-the-fog
+This chapter depended only on Chapter~\ref{chap:stat-foundations}: we are reducing the
+``surprise'' number Chapter~\ref{chap:stat-foundations} introduced. The hiker-in-the-fog
 picture and the Chinchilla scaling argument reappear in
-Chapter~6 (where we apply them to actual pretraining), in
-Chapter~7 (where we discuss what to do when the budget is
-binding), and in Chapter~8 (where we discuss adaptation as the
+Chapter~\ref{chap:pretraining} (where we apply them to actual pretraining), in
+Chapter~\ref{chap:efficiency} (where we discuss what to do when the budget is
+binding), and in Chapter~\ref{chap:adaptation} (where we discuss adaptation as the
 art of getting useful model behaviour without paying the full
 training cost). The notion that the loss is a proxy for the
 deployment property the user actually cares about reappears
 throughout the rest of the book, and is the central organising
-idea of Chapter~13. The next chapter --- \emph{Networks of
+idea of Chapter~\ref{chap:error-model}. The next chapter --- \emph{Networks of
 Simple Decisions} --- explains, in similarly plain language,
 what is actually inside the network that the procedure of this
 chapter is training.

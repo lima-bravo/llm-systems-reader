@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{A Map of How LLMs Go Wrong}
+\label{chap:error-model}
 \label{ntg:ch13}
 
 \scenelabel
@@ -238,7 +239,7 @@ coherence.
 
 The mechanism that produces meaning failures is the same
 mechanism that produces fluent text. A language model trained
-on next-token prediction (Chapter~1) optimises for the
+on next-token prediction (Chapter~\ref{chap:stat-foundations}) optimises for the
 \emph{plausibility} of the next token given the prefix.
 Plausibility is a local property. A token can be plausible at
 every position in a long sequence and still produce, at the
@@ -301,11 +302,11 @@ about the situation and what the prompt encodes. The model
 has access only to the words in its context window. Anything
 the user knows about themselves, their audience, their goals,
 or their constraints that is not written into the prompt does
-not exist for the model. Few-shot prompting (Chapter~6) is,
+not exist for the model. Few-shot prompting (Chapter~\ref{chap:pretraining}) is,
 among other things, an attempt to encode situational
-expectations through examples. System prompts (Chapter~12)
+expectations through examples. System prompts (Chapter~\ref{chap:agents})
 are an attempt to fix the situation up front. Alignment
-training (Chapter~9) shapes the model's defaults along this
+training (Chapter~\ref{chap:alignment}) shapes the model's defaults along this
 axis --- politeness, refusal, length, formality --- but the
 defaults are defaults, not the situation.
 
@@ -348,13 +349,13 @@ surrounding pattern. This is the deeper philosophical point
 that Harnad and Bender and Koller made: a system trained only
 on form has no native way to ground form in reference.
 
-The remedy at the system level is retrieval (Chapter~10). A
+The remedy at the system level is retrieval (Chapter~\ref{chap:systems}). A
 retrieval-augmented generation pipeline replaces the question
 ``what is the most probable thing to say'' with ``what is the
 most probable thing to say given these specific sources''.
 The groundedness is no longer the model's problem; it is the
 retriever's problem and the prompt's problem. Tool use
-(Chapter~10 and Chapter~12) extends the same idea: a model
+(Chapter~\ref{chap:systems} and Chapter~\ref{chap:agents}) extends the same idea: a model
 that can call a calculator can delegate arithmetic; a model
 that can query a database can delegate fact lookup. The
 pattern in each case is to take the work that demands
@@ -454,13 +455,13 @@ appropriate, factually grounded, and environmentally informed
 but that is, by some standard the user holds, simply wrong
 --- offensive, biased, unethical, in conflict with the values
 the user expected the system to hold. These failures live in
-Chapter~9's territory rather than this one. The five axes
+Chapter~\ref{chap:alignment}'s territory rather than this one. The five axes
 ask whether the answer is correct; the normative dimension
 asks whether the answer is right, and right is not the same
 thing as correct. A related version operates at the
 population level: an output correct for one user may be part
 of a pattern that, across many users, produces systematic
-harm. Chapter~11 is where population-level monitoring belongs.
+harm. Chapter~\ref{chap:governance} is where population-level monitoring belongs.
 
 The second is the \emph{adversarial} failure: an output
 induced by a malicious party manipulating one of the inputs
@@ -473,7 +474,7 @@ asked to read --- a contract being reviewed, a web page being
 summarised, an email being processed --- can embed
 instructions in that content. The model, trained to follow
 instructions, may follow them without signalling that
-anything is amiss. Chapter~12 is where the discipline of
+anything is amiss. Chapter~\ref{chap:agents} is where the discipline of
 prompt injection and confused-deputy defences belongs.
 
 The third is the \emph{drift} failure: an output that is
@@ -482,7 +483,7 @@ part of a stream of similar outputs over time, indicates that
 the system's behaviour has changed in a way the operator did
 not anticipate. Drift is detected statistically rather than
 individually, and the monitoring infrastructure of
-Chapter~11 is what catches it.
+Chapter~\ref{chap:governance} is what catches it.
 
 The fourth is the \emph{complacency} failure. The ladder
 assumes an active reviewer examining each output carefully.
@@ -518,8 +519,8 @@ walk can surface. Walk it bottom-up.
   \item \textbf{Structure.} Does the output parse, compile,
         validate against its expected form? If not, the
         failure is structural. The remedy lives in the model's
-        decoding (Chapter~6) or the system's constrained
-        generation (Chapter~12).
+        decoding (Chapter~\ref{chap:pretraining}) or the system's constrained
+        generation (Chapter~\ref{chap:agents}).
   \item \textbf{Meaning.} Read the output as a self-contained
         artefact. Does it contradict itself? Does it use a
         term differently in different sentences? Does its
@@ -678,42 +679,42 @@ The five axes connect to the technical mechanisms of earlier
 chapters in ways worth making explicit.
 
 \textbf{Structure} is the territory of the decoding step
-(Chapter~6) and the structured-output contracts of tool use
-(Chapter~12). When you see a structural failure, the
+(Chapter~\ref{chap:pretraining}) and the structured-output contracts of tool use
+(Chapter~\ref{chap:agents}). When you see a structural failure, the
 intervention is in the decoder, the schema, or the validation
 layer immediately after the model.
 
 \textbf{Meaning} is the territory of the next-token prediction
-objective (Chapter~1), the deep neural network architecture
-(Chapter~3), and the inference-time techniques that trade
-compute for coherence (Chapter~6). When you see a meaning
+objective (Chapter~\ref{chap:stat-foundations}), the deep neural network architecture
+(Chapter~\ref{chap:neural-networks}), and the inference-time techniques that trade
+compute for coherence (Chapter~\ref{chap:pretraining}). When you see a meaning
 failure, the intervention is in how the model is being asked
 to think out loud, how many samples are being drawn, and
 whether self-checking is being used.
 
 \textbf{Context} is the territory of in-context learning
-(Chapter~6), the attention mechanism (Chapter~5), the
-prompt-construction discipline (Chapter~10), the system
-prompts of the API surface (Chapter~12), and the alignment
-work that shapes the model's defaults (Chapter~9). When you
+(Chapter~\ref{chap:pretraining}), the attention mechanism (Chapter~\ref{chap:transformer}), the
+prompt-construction discipline (Chapter~\ref{chap:systems}), the system
+prompts of the API surface (Chapter~\ref{chap:agents}), and the alignment
+work that shapes the model's defaults (Chapter~\ref{chap:alignment}). When you
 see a context failure, the intervention is in the prompt: more
 of the situation, more explicit constraints, more examples of
 the desired behaviour.
 
-\textbf{Groundedness} is the territory of retrieval (Chapter~10),
+\textbf{Groundedness} is the territory of retrieval (Chapter~\ref{chap:systems}),
 tool use, the symbol-grounding literature (Harnad, Bender and
 Koller), and the memorisation-versus-hallucination distinction
-of Chapter~6. When you see a groundedness failure, the
+of Chapter~\ref{chap:pretraining}. When you see a groundedness failure, the
 intervention is to move the work that demands ground truth
 outside the model: into a retriever, a tool, a verification
 step, a human reviewer.
 
 \textbf{Environment} is the territory of system design rather
-than model design. Long-context architectures (Chapter~5)
+than model design. Long-context architectures (Chapter~\ref{chap:transformer})
 extend how much environment can be imported. Agent loops
-(Chapter~12) accumulate environment over time. The
+(Chapter~\ref{chap:agents}) accumulate environment over time. The
 documentation, logging, and incident reporting disciplines of
-governance (Chapter~11) make the environment the system sees
+governance (Chapter~\ref{chap:governance}) make the environment the system sees
 explicit and auditable.
 
 The general pattern is that lower axes are increasingly the

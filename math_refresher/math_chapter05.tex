@@ -1,4 +1,5 @@
 \chapter{Chapter 5 Refresher: The Transformer --- Attention as the Core Computational Primitive --- Attention, Shapes, and Complexity}
+\label{chap:transformer}
 
 \scenelabel
 Attention replaces recurrence's sequential bottleneck with explicit pairwise comparisons implemented as batched matrix multiply---linear algebra becomes architecture instead of notation garnish. But attention alone is position-blind: the formula $\mathrm{softmax}(QK^\top/\sqrt{d_k})V$ treats all positions identically unless position is injected explicitly. This chapter covers both the attention mechanism and the positional encoding family that completes it.
@@ -11,7 +12,7 @@ Attention replaces recurrence's sequential bottleneck with explicit pairwise com
 
 \paragraph{Step B --- softmax as differentiable selector.}
 \textbf{Problem.} Hard argmax blocks gradients; we need smooth convex combinations.
-\textbf{Insight.} Softmax (Chapter~1 tools) turns logits into mixing weights---Preface Step~10 intuition specialised row-wise.
+\textbf{Insight.} Softmax (Chapter~\ref{chap:stat-foundations} tools) turns logits into mixing weights---Preface Step~10 intuition specialised row-wise.
 \textbf{Lineage.} Statistical mechanics exponential tilts $\to$ neural attention gates.
 \textbf{Mental model.} Temperature inherited from decoding chapters scales sharpness identically in spirit.
 
@@ -93,7 +94,7 @@ If shapes align, attention is honest matrix cookbookery---when shapes drift, bug
   \]
   The dot product of a rotated query at position $m$ with a rotated key at position $n$ depends only on the \emph{relative} offset $n - m$, not on the absolute positions. This is the algebraic reason RoPE gives length-generalisation properties that absolute encodings lack.
 
-  \textbf{Why this matters for Chapter~5.} The reader derives all three families. RoPE is the default in Llama, Mistral, and most open-weight models released since 2023; understanding the rotation-matrix identity is the prerequisite for following that derivation.
+  \textbf{Why this matters for Chapter~\ref{chap:transformer}.} The reader derives all three families. RoPE is the default in Llama, Mistral, and most open-weight models released since 2023; understanding the rotation-matrix identity is the prerequisite for following that derivation.
 \end{itemize}
 
 \section*{How These Results Build on Each Other}

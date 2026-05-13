@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{What to Ask Before You Deploy}
+\label{chap:what-to-ask}
 \label{ntg:ch14}
 
 \section*{A note on purpose}
@@ -35,7 +36,7 @@ A language model produces the most plausible continuation
 of the prompt it has been given. Plausibility and truth are
 correlated but not the same. The model has no native way to
 tell the two apart. The groundedness axis of the error model
-in Chapter~13 is where hallucinations live.
+in Chapter~\ref{chap:error-model} is where hallucinations live.
 
 \medskip
 \noindent\textbf{Ask:}
@@ -119,7 +120,7 @@ process, not bugs the model is hiding.
 Two prompts that a human would read as equivalent can
 produce qualitatively different outputs from the same model.
 This is not random noise. It is a structural property of
-the attention mechanism (Chapter~5): the model is sensitive
+the attention mechanism (Chapter~\ref{chap:transformer}): the model is sensitive
 to the exact sequence of tokens it receives, and small
 changes to that sequence change the weighting across the
 context window.
@@ -159,12 +160,12 @@ context window.
 A model with a large context window can accept a large
 document as input. Accepting a document and reliably using
 all of it are different things. The attention mechanism
-described in Chapter~5 is theoretically capable of relating
+described in Chapter~\ref{chap:transformer} is theoretically capable of relating
 any position in the context to any other, but in practice
 the model's ability to use information from the middle of
 a very long context is weaker than its ability to use
 information from the beginning or end. This is the
-``lost in the middle'' failure documented in Chapter~10.
+``lost in the middle'' failure documented in Chapter~\ref{chap:systems}.
 
 \medskip
 \noindent\textbf{Ask:}
@@ -201,7 +202,7 @@ embeds instructions in content the model processes ---
 a retrieved document, a tool result, a user-supplied input
 --- that cause the model to execute those instructions as
 if they were part of the system prompt. It is, as
-Chapter~12 notes, roughly what SQL injection once was to
+Chapter~\ref{chap:agents} notes, roughly what SQL injection once was to
 web applications: a class of attack that arises from
 treating untrusted input as trusted instruction.
 
@@ -241,7 +242,7 @@ treating untrusted input as trusted instruction.
 
 \section{On automation complacency}
 
-As Chapter~11 describes, the most insidious failure mode of
+As Chapter~\ref{chap:governance} describes, the most insidious failure mode of
 any reliable-seeming system is the erosion of the human
 review that was supposed to catch its errors. A system that
 is correct ninety-five per cent of the time is one that is

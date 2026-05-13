@@ -3,6 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \chapter{Why Bigger Sometimes Helps}
+\label{chap:efficiency}
 \label{ntg:ch7}
 
 \scenelabel
@@ -18,7 +19,7 @@ sometimes more than a trillion. The internal arithmetic of such
 a model does not fit on a single computer chip. Neither do the
 intermediate values it produces while running, nor the
 adjustments the training procedure makes to its parameters. A
-single training run, as we noted in Chapter~2, takes weeks,
+single training run, as we noted in Chapter~\ref{chap:optimization}, takes weeks,
 runs on tens of thousands of accelerator chips, and costs tens
 to hundreds of millions of dollars. At inference time --- when
 a user sends a query and waits for a response --- the same
@@ -150,21 +151,21 @@ loss that prevents these collapses is itself a hyperparameter
 whose tuning is delicate. None of this is unfixable, but all of
 it adds operational risk that dense models do not carry.
 
-The deeper problem is that the scaling laws of Chapter~2 are a
+The deeper problem is that the scaling laws of Chapter~\ref{chap:optimization} are a
 description of how the loss decreases with resources, not a
 guarantee that the deployed model will be useful. A model that
 has trained to a lower loss is, on average, more capable than a
 model that has not, but the relationship between the loss and
 any specific deployment property is loose. We will see this
-again in Chapter~10 when we discuss evaluation, and in
-Chapter~13 when we discuss the gap between what the model
+again in Chapter~\ref{chap:systems} when we discuss evaluation, and in
+Chapter~\ref{chap:error-model} when we discuss the gap between what the model
 optimises and what the user wants.
 
 \section{The idea, in plain language}
 
 \subsection*{The Chinchilla insight, revisited}
 
-Chapter~2 introduced the Chinchilla scaling law in passing. It
+Chapter~\ref{chap:optimization} introduced the Chinchilla scaling law in passing. It
 is worth stating it more carefully here because it is the
 single most consequential empirical result in the field's
 recent history.
@@ -268,7 +269,7 @@ research, no amount of scale will let the model reason about
 post-training-cut-off discoveries. The scaling laws describe
 how the loss falls with resources, on the distribution the
 model is trained on. They do not promise behaviour outside that
-distribution. We will return to this in Chapter~10 when we
+distribution. We will return to this in Chapter~\ref{chap:systems} when we
 discuss retrieval as a way of importing information the model
 was not trained on.
 
@@ -384,15 +385,15 @@ LLM-based products should be aware of it.
 \section*{Bridges}
 \addcontentsline{toc}{section}{Bridges}
 
-This chapter built on Chapter~2 (the scaling-law framing) and
-Chapter~6 (the pretraining recipe) and described the
+This chapter built on Chapter~\ref{chap:optimization} (the scaling-law framing) and
+Chapter~\ref{chap:pretraining} (the pretraining recipe) and described the
 engineering by which the scaling is actually realised. It also
 described the mixture-of-experts design as one of the more
 consequential recent moves to make scaling more efficient.
-Chapter~8 looks at the other half of the cost-control story:
+Chapter~\ref{chap:adaptation} looks at the other half of the cost-control story:
 how to make a trained model adaptable without retraining it
-from scratch. Chapter~10 looks at how to make a trained model
-useful on data it was not trained on. Chapter~11 looks at the
+from scratch. Chapter~\ref{chap:systems} looks at how to make a trained model
+useful on data it was not trained on. Chapter~\ref{chap:governance} looks at the
 governance implications of the geopolitical and infrastructural
 concentration described above. The next chapter --- \emph{Adapting
 a Giant Model} --- explains how a model trained at industrial
