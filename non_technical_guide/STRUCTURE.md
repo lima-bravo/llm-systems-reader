@@ -47,15 +47,19 @@ By the end of the guide they should be able to:
    credulous techno-optimism or reflexive dismissal.
 
 The standard the guide holds itself to is what we call the
-**Feynman Standard**, after Richard Feynman's popular physics
-lectures: no equations, but genuine mechanism-level comprehension.
-Feynman insisted on the difference between knowing the name of a
-thing and knowing the thing. A reader who finishes a chapter should
-be able to reason *forward* from the mechanism — to predict,
-imperfectly but directionally, what will go wrong when the mechanism
-is stressed — not only recognise failure modes by name. A passage
-that teaches vocabulary without teaching why the thing behaves as it
-does has done half the work. The Feynman Standard is the other half.
+**Feynman Standard** — though that phrase overstates the case.
+There is no written rulebook. It is an observation of how a great
+teacher worked and an aspiration to do something similar. Feynman's
+popular physics lectures were not remarkable for avoiding mathematics;
+they were remarkable because he refused to let a term stand
+unexplained. Every word had to earn its place. Feynman insisted on
+the difference between knowing the name of a thing and knowing the
+thing. A reader who finishes a chapter should be able to reason
+*forward* from the mechanism — to predict, imperfectly but
+directionally, what will go wrong when the mechanism is stressed —
+not only recognise failure modes by name. A passage that teaches
+vocabulary without teaching why the thing behaves as it does has
+done half the work. The Feynman Standard is the other half.
 
 ---
 
