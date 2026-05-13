@@ -142,7 +142,7 @@ situation, the purpose, and the audience. The right tone, the
 right level of detail, the right register, the right answer
 to the question the user actually asked.
 
-\textbf{Grounding.} Whether the output connects to verifiable
+\textbf{Groundedness.} Whether the output connects to verifiable
 reality or has drifted into plausible-sounding fabrication.
 The factual claims in the output, evaluated against the
 world.
@@ -164,7 +164,7 @@ walk the axes and ask which has failed. For engineers and
 operators, it is a way of mapping the vocabulary of the
 previous chapters onto a shape that non-specialists can hold.
 Cross-entropy training is a structure-and-meaning mechanism
-that makes no native attempt at grounding. Retrieval is a
+that makes no native attempt at groundedness. Retrieval is a
 grounding mechanism that does not by itself solve context.
 Tool use is an environment-importing mechanism whose contract
 is structural. The ladder makes these connections explicit.
@@ -182,12 +182,12 @@ The first is the temptation to use it mechanically, as if the
 diagnosis of an output were a checklist that always returns a
 single answer. Real failures often span multiple axes. A
 model that is wrong about a fact and presents the fact in the
-wrong tone has failed on grounding and context simultaneously.
+wrong tone has failed on groundedness and context simultaneously.
 Pulling the two apart can be artificial.
 
 The second is the temptation to treat the axes as orthogonal.
 They are not. Failures of structure tend to drag meaning with
-them; failures of context tend to drag grounding. The axes
+them; failures of context tend to drag groundedness. The axes
 are a vocabulary, not an algebra.
 
 The third is the deeper mistake of treating the model as a
@@ -320,16 +320,16 @@ a good one. The asymmetry between the ease of recognition and
 the difficulty of fix is the diagnostic signature of a context
 failure.
 
-\subsection*{Grounding: does the output connect to reality?}
+\subsection*{Groundedness: does the output connect to reality?}
 
 The fourth axis is whether the output connects to verifiable
 reality or has drifted into plausible-sounding fabrication.
-The practitioner literature calls a grounding failure a
+The practitioner literature calls a groundedness failure a
 \emph{hallucination}: the model produces a fluent, confident,
 well-formed claim that does not correspond to any fact in
 the world.
 
-Grounding failures are uniquely dangerous because no internal
+Groundedness failures are uniquely dangerous because no internal
 reading of the output reveals them. A hallucinated citation
 has the same structural form as a real one. A hallucinated
 statistic has the same surface plausibility as a true one. A
@@ -353,15 +353,15 @@ The remedy at the system level is retrieval (Chapter~10). A
 retrieval-augmented generation pipeline replaces the question
 ``what is the most probable thing to say'' with ``what is the
 most probable thing to say given these specific sources''.
-The grounding is no longer the model's problem; it is the
+The groundedness is no longer the model's problem; it is the
 retriever's problem and the prompt's problem. Tool use
 (Chapter~10 and Chapter~12) extends the same idea: a model
 that can call a calculator can delegate arithmetic; a model
 that can query a database can delegate fact lookup. The
 pattern in each case is to take the work that demands
-grounding and move it outside the language model entirely.
+groundedness and move it outside the language model entirely.
 
-Grounding failures are compounded by a problem the model
+Groundedness failures are compounded by a problem the model
 cannot solve from the inside. The model writes with the same
 assured, confident prose regardless of whether the underlying
 claim is well-attested or thinly supported. A sentence about
@@ -376,15 +376,15 @@ factual claims need the same scrutiny --- not because all are
 equally likely to be wrong, but because the surface of the
 text gives no reliable signal of which are.
 
-In diagnosis, grounding failures call for a particular
+In diagnosis, groundedness failures call for a particular
 discipline. Treat any factual claim by the model as a
 hypothesis. If the claim matters, verify it. If it cannot be
 verified, do not use it. The careful practitioner builds
 workflows that make verification cheap (retrieval, citations,
-linked sources) so that grounding failures are catchable by
+linked sources) so that groundedness failures are catchable by
 construction.
 
-When grounding failures appear consistently in a specific
+When groundedness failures appear consistently in a specific
 domain or type of question, the root cause may be a mismatch
 between where the model was calibrated and where it is being
 used. The per-call remedy --- better retrieval, more
@@ -468,7 +468,7 @@ The second is the \emph{adversarial} failure: an output
 induced by a malicious party manipulating one of the inputs
 --- the prompt, a retrieved document, a tool result. The
 ladder will identify the failure (most often as a context or
-grounding failure), but the diagnosis does not explain that
+groundedness failure), but the diagnosis does not explain that
 an attacker caused it. A particularly subtle form: an
 attacker who can place content in documents the model will be
 asked to read --- a contract being reviewed, a web page being
@@ -538,7 +538,7 @@ walk can surface. Walk it bottom-up.
         import more of the situation into the prompt: who you
         are, who you are writing for, why you need the answer,
         what would count as a good one.
-  \item \textbf{Grounding.} Are the factual claims in the
+  \item \textbf{Groundedness.} Are the factual claims in the
         output true? If verification is hard, treat the claims
         as hypotheses. If verification is easy, do it.
         Failures here call for retrieval, tool use, or human
@@ -556,7 +556,7 @@ cheaper to remedy than higher-axis ones. A practitioner who
 jumps straight to ``the model hallucinated'' may have missed
 a meaning or context failure that does not require any change
 to the model at all. Conversely, a practitioner who never
-considers grounding will deploy systems that are confidently
+considers groundedness will deploy systems that are confidently
 wrong about the world.
 
 When a single output fails on more than one axis, the
@@ -626,7 +626,7 @@ together as written. Meaning passes.
 knowledge question. The length is reasonable. The response
 answers the actual question asked. Context passes.
 
-\textbf{Grounding.} Here the ladder catches something.
+\textbf{Groundedness.} Here the ladder catches something.
 Room 101 is not in the Ministry of Truth. In the novel it
 is in the Ministry of Love --- the building responsible for
 torture and psychological reconditioning. Winston works in
@@ -637,7 +637,7 @@ single sentence that sounds correct because it has the
 right surface shape (a place, an action, a consequence)
 even though the detail is wrong.
 
-The final sentence is a different kind of grounding problem.
+The final sentence is a different kind of groundedness problem.
 The claim that Orwell arrived at the title 1984 by reversing
 the digits of 1948 is plausible and widely repeated.
 Orwell himself never confirmed it in any letter or diary
@@ -653,8 +653,8 @@ degree of confidence it does not earn.
 No underspecification. Environment passes.
 
 \medskip
-\noindent\textbf{Diagnosis:} one grounding failure
-(wrong ministry for Room 101) and one disguised grounding
+\noindent\textbf{Diagnosis:} one groundedness failure
+(wrong ministry for Room 101) and one disguised groundedness
 problem (an unverified attribution presented as common
 knowledge). The fix is not to distrust the model's account of
 the novel's themes or characters, which is accurate. The fix
@@ -668,7 +668,7 @@ meaning, and context passed; the response reads fluently; the
 novel's themes are described correctly; the failure is
 concentrated in two specific details that only a reader who
 already knows the novel, or who checks, will catch. That
-concentration is characteristic of grounding failures. They
+concentration is characteristic of groundedness failures. They
 are not randomly distributed. They tend to appear in the
 peripheral details --- the supporting citations, the secondary
 attributions, the names and dates that surround a well-known
@@ -705,10 +705,10 @@ see a context failure, the intervention is in the prompt: more
 of the situation, more explicit constraints, more examples of
 the desired behaviour.
 
-\textbf{Grounding} is the territory of retrieval (Chapter~10),
+\textbf{Groundedness} is the territory of retrieval (Chapter~10),
 tool use, the symbol-grounding literature (Harnad, Bender and
 Koller), and the memorisation-versus-hallucination distinction
-of Chapter~6. When you see a grounding failure, the
+of Chapter~6. When you see a groundedness failure, the
 intervention is to move the work that demands ground truth
 outside the model: into a retriever, a tool, a verification
 step, a human reviewer.
@@ -735,7 +735,7 @@ You have, by this point, walked through the entire engineering
 of a Large Language Model in plain language. You know,
 roughly, where they came from, what they do, why they do it
 the way they do, and how they fail. The vocabulary you now
-have --- structure, meaning, context, grounding, environment;
+have --- structure, meaning, context, groundedness, environment;
 hallucination, sycophancy, jailbreak, prompt injection,
 alignment tax; pretraining, alignment, retrieval, tool
 use; Markov, Shannon, Rumelhart, Mikolov, Vaswani, Hu,
