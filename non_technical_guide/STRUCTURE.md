@@ -403,6 +403,7 @@ chapter introduces a forward-pointing promise.
       invented quotations).
 - [ ] Feynman Standard met: the "plain language" section contains
       at least one subsection explaining *why* the mechanism
-      behaves as it does, not only *what* it produces. A reader
-      who finishes the chapter can reason directionally forward
-      from the mechanism without formulas.
+      behaves as it does, not only *what* it produces. No term
+      is left standing without being explained. A reader who
+      finishes the chapter can reason directionally forward from
+      the mechanism, not only name it.
