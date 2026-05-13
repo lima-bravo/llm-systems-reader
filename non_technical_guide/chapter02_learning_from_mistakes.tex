@@ -32,7 +32,39 @@ at all. The slightly less remarkable thing is what it costs in
 electricity, in chips, in human attention, and in the design
 choices that surround it.
 
-\paragraph{How we got here.} The mathematics of descending a function by following its slope
+\paragraph{How we got here.} The phrase "change the numbers a little"
+conceals a question. A large language model has hundreds of millions
+to hundreds of billions of parameters. Searching through all possible
+combinations at random would take longer than the age of the universe.
+You need to know \emph{which} numbers to change, and \emph{in which
+direction}.
+
+Here is the key insight. For any particular setting of all the
+parameters, you can compute the wrongness score. That makes the
+wrongness a function of the parameter settings: a single number
+that goes up or down as you move through the space of all possible
+combinations. Imagine --- as a mental shorthand, since the real
+space has as many dimensions as the model has parameters --- that
+there are only two parameters, and you draw them as two axes on a
+map. At every point on the map, the height is the wrongness for
+that combination. Training is the problem of finding the lowest
+valley on this map.
+
+Now suppose you are standing somewhere on that landscape and can
+feel only the slope of the ground immediately beneath your feet.
+The slope is informative: if the ground runs downhill to your left,
+take a step left. The same logic holds in any number of dimensions.
+For each parameter, you can ask whether nudging it very slightly
+upward or downward would make the wrongness increase or decrease,
+and by how much. This rate of change --- the slope of the wrongness
+with respect to each parameter, computed at the current setting ---
+is a list of numbers, one per parameter. Mathematicians call this
+list the \emph{gradient}. It tells you, at your current position in
+the landscape, which direction runs downhill. Take a small step in
+that direction, recompute the gradient, and repeat. This is the
+core of the whole procedure.
+
+The mathematics of descending a function by following its slope
 is older than electricity. In 1847 the French mathematician
 Augustin-Louis Cauchy described, in a short note to the French
 Academy of Sciences, the method we now call \emph{gradient
