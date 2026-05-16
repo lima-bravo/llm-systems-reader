@@ -1,0 +1,7 @@
+# PDF paths (relative to repository root). One target per line.
+main.pdf
+article/human_centric_error_model.pdf
+article/legal_diagnostic_ladder.pdf
+article/legal_diagnostic_ladder_brief.pdf
+math_refresher/math_refresh.pdf
+non_technical_guide/non_technical_guide.pdf

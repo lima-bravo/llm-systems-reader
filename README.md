@@ -6,7 +6,11 @@ as *engineered socio-technical systems*, and walks through the underlying
 technology end-to-end so that a practicing engineer can reason rigorously about
 integration, failure modes, and tradeoffs.
 
-## Scope
+The repository also contains companion and spin-off LaTeX works (a non-technical
+guide, a math refresher, and standalone articles). All PDFs are built from the
+same root with one script; see [Building PDFs](#building-pdfs).
+
+## Scope (main reader)
 
 Thirteen chapters, each a deep-dive of roughly twenty pages:
 
@@ -35,39 +39,83 @@ learning objectives, conceptual core, systems-engineering implications,
 human-factors and failure modes, key references, recommended university
 lectures, practitioner lab, and a closing takeaway.
 
+### Other documents in this repository
+
+| Output (`targets.txt`) | Source | Role |
+| --- | --- | --- |
+| `main.pdf` | `main.tex` | Primary engineering reader (above) |
+| `non_technical_guide/non_technical_guide.pdf` | `non_technical_guide/non_technical_guide.tex` | Same chapter arc without formulas; see `non_technical_guide/README.md` |
+| `math_refresher/math_refresh.pdf` | `math_refresher/math_refresh.tex` | Strang-style math companion keyed to the main chapters |
+| `article/human_centric_error_model.pdf` | `article/human_centric_error_model.tex` | Standalone article from the error-model chapter |
+| `article/legal_diagnostic_ladder.pdf` | `article/legal_diagnostic_ladder.tex` | Long-form legal diagnostic ladder |
+| `article/legal_diagnostic_ladder_brief.pdf` | `article/legal_diagnostic_ladder_brief.tex` | One-page legal brief |
+
 ## Repository layout
 
 ```
 .
 ├── main.tex                 Top-level document; \input's every chapter
 ├── preamble.tex             Packages, math macros, TikZ setup, styling
-├── references.bib           Bibliography (papers + vendor docs + course URLs)
-├── weeks/                   One .tex file per chapter (week01..week12
-│                            for the original 12 chapters; ch03 for
-│                            the new neural-networks chapter inserted
-│                            in Wave 11.2)
+├── references.bib           Bibliography for the main reader
+├── targets.txt              PDF paths to build (one per line)
+├── build-pdfs.sh            Build all targets; stage into PDF/
+├── weeks/                   One .tex file per main-reader chapter
 ├── figures/                 TikZ source for diagrams
 ├── labs/                    Accompanying Jupyter notebooks (one per week)
 ├── templates/               Assurance-case, hazard-analysis, controls matrix
-├── article/                 Standalone articles derived from CH12
-│                            (engineering long-form, legal long-form,
-│                            legal one-page brief), with .tex / .md / .pdf
+├── non_technical_guide/     Companion guide (own preamble, chapters, README)
+├── math_refresher/          Math companion chapters + math_refresh.tex
+├── article/                 Standalone articles (.tex / .md)
+├── editorial_archive/       Past reviews and editorial notes
+├── build/                   latexmk output (aux + PDF); gitignored
+├── PDF/                     Staged PDFs after a successful build-pdfs run
 ├── CHANGELOG.md             Wave-level history of revisions
 └── .project/                Editorial decisions and authoring notes
 ```
 
-## Building the PDF
+## Building PDFs
 
-The document uses `pdflatex` + `bibtex` with an `apalike` bibliography. Any
-standard TeX Live 2022 (or newer) installation works.
+**Requirements:** TeX Live 2022 (or newer) with `latexmk` and `pdflatex` on
+your `PATH`. The main reader uses `pdflatex` + `bibtex` with an `apalike`
+bibliography; other documents may omit BibTeX.
 
-### One-shot with latexmk (recommended)
+### Build everything (recommended)
+
+From the repository root:
 
 ```bash
-latexmk -pdf main.tex
+./build-pdfs.sh
 ```
 
-### Manual four-pass build
+The script:
+
+1. Reads relative PDF paths from `targets.txt` (comments and blank lines
+   allowed).
+2. For each target, runs `latexmk` from `./build` with `-outdir` and
+   `-auxdir` set so artifacts land under `build/` with the same layout as
+   the final PDF path (e.g. `build/article/legal_diagnostic_ladder.pdf`).
+3. Copies each built PDF into `PDF/` with the same relative path, **only when
+   the file changed** (byte-for-byte compare with the existing staged copy).
+
+Add or remove a publication by editing `targets.txt` and ensuring the
+matching `.tex` file exists alongside the listed `.pdf` path.
+
+### Build a single target
+
+Example for the main reader only:
+
+```bash
+mkdir -p build
+cd build
+latexmk -pdf -interaction=nonstopmode -halt-on-error -file-line-error -cd \
+  -outdir=. -auxdir=. ../main.tex
+```
+
+Use the corresponding `../<path>.tex` and set `-outdir` / `-auxdir` to
+`build/<subdir>` when the PDF is not at the repository root (mirror the paths
+used in `build-pdfs.sh`).
+
+### Manual four-pass build (main reader only)
 
 ```bash
 pdflatex main.tex
@@ -76,14 +124,15 @@ pdflatex main.tex
 pdflatex main.tex
 ```
 
-The build is currently verified to complete with zero warnings and zero errors
-on a stock Debian TeX Live installation.
+Run these from the directory that contains `main.tex` (the repository root).
+Auxiliary files will be created next to the sources unless you pass
+`-output-directory` / use `latexmk` as above.
 
 ## Conventions
 
-- **Bibliography**: every citation referenced in text lives in
-  `references.bib`. Web resources use `@misc` entries with
-  `howpublished = {\url{...}}` and an access-date `note`.
+- **Bibliography**: citations in the main reader live in `references.bib`.
+  Web resources use `@misc` entries with `howpublished = {\url{...}}` and an
+  access-date `note`.
 - **Figures**: TikZ diagrams live in `figures/*.tex` and are included via
   `\input{figures/<name>}` inside a `figure` environment with a caption and
   label.
@@ -91,7 +140,7 @@ on a stock Debian TeX Live installation.
   prefix in the heading (LaTeX auto-numbers). Subsections follow
   the template in Chapter 1. Cross-reference with
   `\label{sec:weekN-subject}` for the original chapters and
-  `\label{sec:nn-subject}` for the new neural-networks chapter,
+  `\label{sec:nn-subject}` for the neural-networks chapter,
   resolved via `\ref{}`. File names retain their original
   `weekNN_*.tex` numbering as stable internal anchors; the
   rendered chapter numbering is what changed in Wave 11.2.
